@@ -23,6 +23,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 
 import io.confluent.kafkarest.KafkaRestContext;
+import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.Versions;
 import io.confluent.kafkarest.entities.BrokerList;
 import io.confluent.rest.annotations.PerformanceMetric;
@@ -37,15 +38,20 @@ import io.confluent.rest.annotations.PerformanceMetric;
 public class BrokersResource {
 
   private final KafkaRestContext ctx;
+  private final boolean isStreams;
 
   public BrokersResource(KafkaRestContext ctx) {
     this.ctx = ctx;
+    this.isStreams = ctx.getConfig().isStreams();
   }
 
   @GET
   @Valid
   @PerformanceMetric("brokers.list")
   public BrokerList list() {
+    if (isStreams) {
+        throw Errors.notSupportedByMapRStreams();
+    }      
     return new BrokerList(ctx.getAdminClientWrapper().getBrokerIds());
   }
 }

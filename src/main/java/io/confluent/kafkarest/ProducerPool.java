@@ -43,8 +43,13 @@ import io.confluent.kafkarest.entities.SchemaHolder;
 public class ProducerPool {
 
   private static final Logger log = LoggerFactory.getLogger(ProducerPool.class);
-  private Map<EmbeddedFormat, RestProducer> producers =
+  private Map<EmbeddedFormat, RestProducer> kafkaProducers =
       new HashMap<EmbeddedFormat, RestProducer>();
+  private Map<EmbeddedFormat, RestProducer> streamsProducers =
+    new HashMap<EmbeddedFormat, RestProducer>();
+
+  private boolean isStreams;
+  private boolean defaultStreamSet;
 
   public ProducerPool(KafkaRestConfig appConfig) {
     this(appConfig, null);
@@ -62,18 +67,31 @@ public class ProducerPool {
       String bootstrapBrokers,
       Properties producerConfigOverrides
   ) {
+      this.isStreams = appConfig.isStreams();
+      this.defaultStreamSet = appConfig.isDefaultStreamSet();
 
+      if (!isStreams) {
+          // initialize producers for kafka backend
+          Map<String, Object> binaryProps = buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
+          kafkaProducers.put(EmbeddedFormat.BINARY, buildBinaryProducer(binaryProps));
+
+          Map<String, Object> jsonProps = buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
+          kafkaProducers.put(EmbeddedFormat.JSON, buildJsonProducer(jsonProps));
+
+          Map<String, Object> avroProps = buildAvroConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
+          kafkaProducers.put(EmbeddedFormat.AVRO, buildAvroProducer(avroProps));
+      }
     Map<String, Object> binaryProps =
         buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
-    producers.put(EmbeddedFormat.BINARY, buildBinaryProducer(binaryProps));
+      streamsProducers.put(EmbeddedFormat.BINARY, buildBinaryProducer(binaryProps));
 
     Map<String, Object> jsonProps =
         buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
-    producers.put(EmbeddedFormat.JSON, buildJsonProducer(jsonProps));
+      streamsProducers.put(EmbeddedFormat.JSON, buildJsonProducer(jsonProps));
 
     Map<String, Object> avroProps =
         buildAvroConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
-    producers.put(EmbeddedFormat.AVRO, buildAvroProducer(avroProps));
+      streamsProducers.put(EmbeddedFormat.AVRO, buildAvroProducer(avroProps));
   }
 
   private Map<String, Object> buildStandardConfig(
@@ -85,6 +103,11 @@ public class ProducerPool {
     props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapBrokers);
 
     Properties producerProps = (Properties) appConfig.getProducerProperties();
+      // configure default stream
+      String defaultStream = appConfig.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
+      if (!"".equals(defaultStream)) {
+          props.put(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG, defaultStream);
+      }    
     return buildConfig(props, producerProps, producerConfigOverrides);
   }
 
@@ -167,12 +190,33 @@ public class ProducerPool {
   ) {
     ProduceTask task = new ProduceTask(schemaHolder, records.size(), callback);
     log.trace("Starting produce task " + task.toString());
-    RestProducer restProducer = producers.get(recordFormat);
+
+    RestProducer restProducer = null;
+    if (isStreams) {
+      if (!defaultStreamSet && !topic.contains(":")) {
+        throw Errors.topicNotFoundException();
+      }
+      restProducer = streamsProducers.get(recordFormat);
+    } else {
+      if (!defaultStreamSet) {
+        if (topic.contains(":")) {
+          restProducer = streamsProducers.get(recordFormat);
+        } else {
+          restProducer = kafkaProducers.get(recordFormat);
+        }
+      } else {
+        restProducer = streamsProducers.get(recordFormat);
+      }
+    }
+
     restProducer.produce(task, topic, partition, records);
   }
 
   public void shutdown() {
-    for (RestProducer restProducer : producers.values()) {
+    for (RestProducer restProducer : kafkaProducers.values()) {
+      restProducer.close();
+    }
+    for (RestProducer restProducer : streamsProducers.values()) {
       restProducer.close();
     }
   }

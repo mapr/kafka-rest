@@ -125,6 +125,8 @@ public abstract class ConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, ClientVa
   }
 
   public void close() {
+    // interrupt consumer poll request
+    consumer.wakeup();
     lock.writeLock().lock();
     try {
       consumer.shutdown();

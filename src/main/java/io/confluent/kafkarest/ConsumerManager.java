@@ -57,7 +57,7 @@ public class ConsumerManager {
   private final KafkaRestConfig config;
   private final Time time;
   private final String zookeeperConnect;
-  private final MetadataObserver mdObserver;
+  private final KafkaStreamsMetadataObserver mdObserver;
   private final int iteratorTimeoutMs;
 
   // ConsumerState is generic, but we store them untyped here. This allows many operations to
@@ -76,7 +76,7 @@ public class ConsumerManager {
   private final PriorityQueue<ConsumerState> consumersByExpiration = new PriorityQueue<>();
   private final ExpirationThread expirationThread;
 
-  public ConsumerManager(KafkaRestConfig config, MetadataObserver mdObserver) {
+  public ConsumerManager(KafkaRestConfig config, KafkaStreamsMetadataObserver mdObserver) {
     this.config = config;
     this.time = config.getTime();
     this.zookeeperConnect = config.getString(KafkaRestConfig.ZOOKEEPER_CONNECT_CONFIG);
@@ -97,7 +97,7 @@ public class ConsumerManager {
 
   public ConsumerManager(
       KafkaRestConfig config,
-      MetadataObserver mdObserver,
+      KafkaStreamsMetadataObserver mdObserver,
       ConsumerFactory consumerFactory
   ) {
     this(config, mdObserver);
@@ -171,6 +171,12 @@ public class ConsumerManager {
       if (instanceConfig.getAutoOffsetReset() != null) {
         props.setProperty("auto.offset.reset", instanceConfig.getAutoOffsetReset());
       }
+        // configure default stream
+        String defaultStream = config.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
+        if (!"".equals(defaultStream)) {
+            props.put(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, defaultStream);
+        }
+        
       ConsumerConnector consumer;
       try {
         if (consumerFactory == null) {
