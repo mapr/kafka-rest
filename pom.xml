@@ -55,6 +55,14 @@
             <name>Confluent</name>
             <url>${confluent.maven.repo}</url>
         </repository>
+
+        <!-- MapR repository -->
+        <repository>
+            <id>mapr-releases</id>
+            <url>http://repository.mapr.com/nexus/content/repositories/releases</url>
+            <snapshots><enabled>true</enabled></snapshots>
+            <releases><enabled>true</enabled></releases>
+        </repository>
     </repositories>
 
     <dependencies>

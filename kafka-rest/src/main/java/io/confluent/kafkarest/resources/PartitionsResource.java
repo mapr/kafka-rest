@@ -66,9 +66,11 @@ public class PartitionsResource {
   private static final Logger log = LoggerFactory.getLogger(PartitionsResource.class);
 
   private final KafkaRestContext ctx;
+  private final boolean isStreams;
 
   public PartitionsResource(KafkaRestContext ctx) {
     this.ctx = ctx;
+    this.isStreams = ctx.getConfig().isStreams();
   }
 
   @GET
@@ -123,7 +125,9 @@ public class PartitionsResource {
       final @QueryParam("offset") long offset,
       final @QueryParam("count") @DefaultValue("1") long count
   ) {
-
+    if (isStreams) {
+      throw Errors.notSupportedByMapRStreams();
+    }
     consume(asyncResponse, topicName, partitionId, offset, count, EmbeddedFormat.AVRO);
   }
 
@@ -179,6 +183,9 @@ public class PartitionsResource {
       final @PathParam("partition") int partition,
       @Valid @NotNull PartitionProduceRequest<AvroProduceRecord> request
   ) {
+    if (isStreams) {
+        throw Errors.notSupportedByMapRStreams();
+    }      
     // Validations we can't do generically since they depend on the data format -- schemas need to
     // be available if there are any non-null entries
     boolean hasKeys = false;

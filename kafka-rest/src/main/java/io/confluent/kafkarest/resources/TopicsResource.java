@@ -31,6 +31,7 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
 
@@ -60,9 +61,11 @@ public class TopicsResource {
   private static final Logger log = LoggerFactory.getLogger(TopicsResource.class);
 
   private final KafkaRestContext ctx;
+  private final boolean isStreams;
 
   public TopicsResource(KafkaRestContext ctx) {
     this.ctx = ctx;
+    this.isStreams = ctx.getConfig().isStreams();
   }
 
   @GET
@@ -117,6 +120,9 @@ public class TopicsResource {
       @PathParam("topic") String topicName,
       @Valid @NotNull TopicProduceRequest<AvroTopicProduceRecord> request
   ) {
+    if (isStreams) {
+        throw Errors.notSupportedByMapRStreams();
+    }      
     // Validations we can't do generically since they depend on the data format -- schemas need to
     // be available if there are any non-null entries
     boolean hasKeys = false;
@@ -144,6 +150,9 @@ public class TopicsResource {
     log.trace("Executing topic produce request id={} topic={} format={} request={}",
               asyncResponse, topicName, format, request
     );
+      if (!ctx.getMetadataObserver().topicExists(topicName)) {
+          throw Errors.topicNotFoundException();
+      }
     ctx.getProducerPool().produce(
         topicName, null, format,
         request,

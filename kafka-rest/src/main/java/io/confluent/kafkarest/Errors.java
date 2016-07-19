@@ -244,4 +244,19 @@ public class Errors {
     }
   }
 
+
+  public final static String NOT_SUPPORTED_API_BY_STREAMS_ERROR_MESSAGE =
+    "MapR Streams do not currently support this API ";
+  public final static int NOT_SUPPORTED_API_BY_STREAMS_ERROR_CODE = 80001;
+
+  public static RestConstraintViolationException notSupportedByMapRStreams() {
+    return new RestConstraintViolationException(NOT_SUPPORTED_API_BY_STREAMS_ERROR_MESSAGE,
+      NOT_SUPPORTED_API_BY_STREAMS_ERROR_CODE);
+  }
+
+  public static RestConstraintViolationException notSupportedByMapRStreams(String message) {
+    return new RestConstraintViolationException(NOT_SUPPORTED_API_BY_STREAMS_ERROR_MESSAGE + message,
+      NOT_SUPPORTED_API_BY_STREAMS_ERROR_CODE);
+  }
+
 }

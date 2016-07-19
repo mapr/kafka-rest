@@ -1,0 +1,9 @@
+diff a/kafka-rest/src/main/java/io/confluent/kafkarest/KafkaRestApplication.java b/kafka-rest/src/main/java/io/confluent/kafkarest/KafkaRestApplication.java	(rejected hunks)
+@@ -45,6 +46,7 @@ import kafka.utils.ZkUtils;
+ public class KafkaRestApplication extends Application<KafkaRestConfig> {
+ 
+   RestResourceExtension restResourceExtension;
++  boolean isStreams;
+ 
+   public KafkaRestApplication() throws RestConfigException {
+     this(new Properties());

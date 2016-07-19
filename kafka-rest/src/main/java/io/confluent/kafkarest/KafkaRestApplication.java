@@ -34,6 +34,7 @@ import io.confluent.kafkarest.resources.ConsumersResource;
 import io.confluent.kafkarest.resources.PartitionsResource;
 import io.confluent.kafkarest.resources.RootResource;
 import io.confluent.kafkarest.resources.TopicsResource;
+import io.confluent.kafkarest.resources.StreamsResource;
 import io.confluent.kafkarest.v2.KafkaConsumerManager;
 import io.confluent.rest.Application;
 import io.confluent.rest.RestConfigException;
@@ -46,6 +47,7 @@ import kafka.utils.ZkUtils;
 public class KafkaRestApplication extends Application<KafkaRestConfig> {
 
   List<RestResourceExtension> restResourceExtensions;
+  boolean isStreams;
 
   public KafkaRestApplication() throws RestConfigException {
     this(new Properties());
@@ -78,7 +80,7 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
    */
   protected void setupInjectedResources(
       Configurable<?> config, KafkaRestConfig appConfig,
-      ZkUtils zkUtils, MetadataObserver mdObserver,
+      ZkUtils zkUtils, KafkaStreamsMetadataObserver mdObserver,
       ProducerPool producerPool,
       ConsumerManager consumerManager,
       SimpleConsumerFactory simpleConsumerFactory,
@@ -94,8 +96,21 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
                                     + " needs to be configured");
     }
 
-    config.register(new ZkExceptionMapper(appConfig));
+    isStreams = appConfig.isStreams();
 
+    if (isStreams) {
+      if (producerPool == null) {
+          producerPool = new ProducerPool(appConfig, null);
+      }
+    } else { // Kafka
+        config.register(new ZkExceptionMapper(appConfig));
+        appConfig.getString(KafkaRestConfig.ZOOKEEPER_CONNECT_CONFIG), 30000, 30000,
+                 JaasUtils.isZkSecurityEnabled());
+      }
+      if (producerPool == null) {
+          producerPool = new ProducerPool(appConfig, zkUtils, null);
+      }
+      
     KafkaRestContextProvider.initialize(zkUtils, appConfig, mdObserver, producerPool,
         consumerManager, simpleConsumerFactory,
         simpleConsumerManager, kafkaConsumerManager, adminClientWrapperInjected
@@ -112,6 +127,7 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
     config.register(new TopicsResource(context));
     config.register(new PartitionsResource(context));
     config.register(new ConsumersResource(context));
+    config.register(new StreamsResource(context));
     config.register(new io.confluent.kafkarest.resources.v2.ConsumersResource(context));
     config.register(new io.confluent.kafkarest.resources.v2.PartitionsResource(context));
     config.register(KafkaRestCleanupFilter.class);

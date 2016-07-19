@@ -16,6 +16,19 @@
 
 base_dir=$(dirname $0)/..
 
+add_streams_paths(){
+  local MAPR_LIB_DIR="${BASEMAPR:-/opt/mapr}/lib"
+  local MAPR_STREAMS_LIB=$(ls ${MAPR_LIB_DIR}/mapr-streams*.jar 2> /dev/null | grep -v "tests.jar$" )
+  local PROTOBUF_LIB=$(ls ${MAPR_LIB_DIR}/protobuf-java*.jar 2> /dev/null)
+  local MAPRFS_LIB=$(ls ${MAPR_LIB_DIR}/maprfs-5*.jar 2> /dev/null)
+  local STREAMS_CLIENTS_LIB=$(ls ${MAPR_LIB_DIR}/kafka-clients*.jar 2> /dev/null)
+
+  if [ ! -z "$MAPR_STREAMS_LIB" ] && [ ! -z "$STREAMS_CLIENTS_LIB" ]; then
+    echo "Including MapR Streams libraries found in ($MAPR_LIB_DIR) for Streams access"
+    CLASSPATH="${PROTOBUF_LIB}:${MAPRFS_LIB}:${STREAMS_CLIENTS_LIB}:${MAPR_STREAMS_LIB}:${CLASSPATH}"
+  fi
+}
+
 # Development jars. `mvn package` should collect all the required dependency jars here
 for dir in $base_dir/target/kafka-rest-*-development; do
   CLASSPATH=$CLASSPATH:$dir/share/java/kafka-rest/*
@@ -100,6 +113,8 @@ if [ "x$HELP" = "xtrue" ]; then
   echo "USAGE: $0 [-daemon] [opts] [-help]"
   exit 0
 fi
+
+add_streams_paths
 
 # Launch mode
 if [ "x$DAEMON_MODE" = "xtrue" ]; then

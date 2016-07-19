@@ -40,6 +40,7 @@ import io.confluent.kafkarest.KafkaRestContext;
 import io.confluent.kafkarest.JsonConsumerState;
 import io.confluent.kafkarest.UriUtils;
 import io.confluent.kafkarest.Versions;
+import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.entities.ConsumerInstanceConfig;
 import io.confluent.kafkarest.entities.ConsumerRecord;
 import io.confluent.kafkarest.entities.CreateConsumerInstanceResponse;
@@ -58,9 +59,11 @@ import io.confluent.rest.annotations.PerformanceMetric;
 public class ConsumersResource {
 
   private final KafkaRestContext ctx;
+  private final boolean isStreams;
 
   public ConsumersResource(KafkaRestContext ctx) {
     this.ctx = ctx;
+    this.isStreams = ctx.getConfig().isStreams();
   }
 
   @POST
@@ -154,6 +157,9 @@ public class ConsumersResource {
       final @PathParam("topic") String topic,
       @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes
   ) {
+    if (isStreams) {
+        throw Errors.notSupportedByMapRStreams();
+    }      
     readTopic(asyncResponse, group, instance, topic, maxBytes, AvroConsumerState.class);
   }
 
@@ -167,8 +173,10 @@ public class ConsumersResource {
           consumerStateType
   ) {
     maxBytes = (maxBytes <= 0) ? Long.MAX_VALUE : maxBytes;
+    String fqTopic = ctx.getMetadataObserver().toFullyQualifiedTopic(topic);
+
     ctx.getConsumerManager().readTopic(
-        group, instance, topic, consumerStateType, maxBytes,
+        group, instance, fqTopic, consumerStateType, maxBytes,
         new ConsumerManager.ReadCallback<ClientKeyT, ClientValueT>() {
           @Override
           public void onCompletion(
