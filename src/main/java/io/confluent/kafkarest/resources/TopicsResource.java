@@ -38,6 +38,7 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
 import java.util.Collection;
@@ -52,9 +53,11 @@ import java.util.Vector;
 public class TopicsResource {
 
   private final Context ctx;
+  private final boolean isStreams;
 
   public TopicsResource(Context ctx) {
     this.ctx = ctx;
+    this.isStreams = ctx.getConfig().isStreams();
   }
 
   @GET
@@ -102,6 +105,9 @@ public class TopicsResource {
   public void produceAvro(final @Suspended AsyncResponse asyncResponse,
                           @PathParam("topic") String topicName,
                           @Valid TopicProduceRequest<AvroTopicProduceRecord> request) {
+    if (isStreams) {
+      throw Errors.notSupportedByMapRStreams();
+    }
     // Validations we can't do generically since they depend on the data format -- schemas need to
     // be available if there are any non-null entries
     boolean hasKeys = false, hasValues = false;
@@ -124,6 +130,9 @@ public class TopicsResource {
       final String topicName,
       final EmbeddedFormat format,
       final TopicProduceRequest<R> request) {
+    if (!ctx.getMetadataObserver().topicExists(topicName)) {
+      throw Errors.topicNotFoundException();
+    }
     ctx.getProducerPool().produce(
         topicName, null, format,
         request,

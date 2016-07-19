@@ -57,9 +57,11 @@ import io.confluent.rest.annotations.PerformanceMetric;
 public class PartitionsResource {
 
   private final Context ctx;
+  private final boolean isStreams;
 
   public PartitionsResource(Context ctx) {
     this.ctx = ctx;
+    this.isStreams = ctx.getConfig().isStreams();
   }
 
   @GET
@@ -108,7 +110,9 @@ public class PartitionsResource {
                           final @PathParam("partition") int partitionId,
                           final @QueryParam("offset") long offset,
                           final @QueryParam("count") @DefaultValue("1") long count) {
-
+    if (isStreams) {
+      throw Errors.notSupportedByMapRStreams();
+    }
     consume(asyncResponse, topicName, partitionId, offset, count, EmbeddedFormat.AVRO);
   }
 
@@ -156,6 +160,10 @@ public class PartitionsResource {
                           final @PathParam("topic") String topic,
                           final @PathParam("partition") int partition,
                           @Valid PartitionProduceRequest<AvroProduceRecord> request) {
+
+    if (isStreams) {
+      throw Errors.notSupportedByMapRStreams();
+    }
     // Validations we can't do generically since they depend on the data format -- schemas need to
     // be available if there are any non-null entries
     boolean hasKeys = false, hasValues = false;

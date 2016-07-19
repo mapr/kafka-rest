@@ -215,6 +215,16 @@ public class MockKafkaConsumer implements Consumer<byte[], byte[]> {
   }
 
   @Override
+  public Map<String, List<PartitionInfo>> listTopics(String s) {
+    return null;
+  }
+
+  @Override
+  public Map<String, List<PartitionInfo>> listTopics(Pattern pattern) {
+    return null;
+  }
+
+  @Override
   public void pause(TopicPartition... partitions) {
     throw new AssertionError("Not implemented");
   }

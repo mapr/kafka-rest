@@ -28,14 +28,14 @@ import javax.ws.rs.core.Configurable;
 public class TestKafkaRestApplication extends KafkaRestApplication {
 
   ZkUtils zkUtilsInjected;
-  MetadataObserver mdObserverInjected;
+  KafkaStreamsMetadataObserver mdObserverInjected;
   ProducerPool producerPoolInjected;
   ConsumerManager consumerManagerInjected;
   SimpleConsumerFactory simpleConsumerFactoryInjected;
   SimpleConsumerManager simpleConsumerManagerInjected;
 
   public TestKafkaRestApplication(KafkaRestConfig config, ZkUtils zkUtils,
-                                  MetadataObserver mdObserver, ProducerPool producerPool,
+                                  KafkaStreamsMetadataObserver mdObserver, ProducerPool producerPool,
                                   ConsumerManager consumerManager,
                                   SimpleConsumerFactory simpleConsumerFactory, SimpleConsumerManager simpleConsumerManager) {
     super(config);

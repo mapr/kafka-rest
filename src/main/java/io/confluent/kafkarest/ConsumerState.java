@@ -206,7 +206,7 @@ public abstract class ConsumerState<KafkaK, KafkaV, ClientK, ClientV>
       && lock.readLock().tryLock()) {
       try {
         log.info("Consumer {} sends heartbeat.", instanceId.getInstance());
-        ConsumerRecords<KafkaK, KafkaV> records = consumer.poll(0);
+        ConsumerRecords<KafkaK, KafkaV> records = consumer.poll(100);
 
         // change next heartbeat time before processing records
         this.nextHeartbeatTime = config.getTime().milliseconds() + heartbeatDelay;
@@ -231,11 +231,11 @@ public abstract class ConsumerState<KafkaK, KafkaV, ClientK, ClientV>
 
   @Override
   public void close() {
+    // interrupt consumer poll request
+    consumer.wakeup();
     lock.writeLock().lock();
     try {
       heartbeatThread.shutdown();
-      // interrupt consumer poll request
-      consumer.wakeup();
       consumer.close();
       // Marks this state entry as no longer valid because the consumer group is being destroyed.
       consumer = null;
@@ -317,7 +317,7 @@ public abstract class ConsumerState<KafkaK, KafkaV, ClientK, ClientV>
         throw Errors.consumerAlreadySubscribedException();
       }
     } finally {
-      lock.writeLock().lock();
+      lock.writeLock().unlock();
     }
   }
 

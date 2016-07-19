@@ -15,6 +15,7 @@
  **/
 package io.confluent.kafkarest.unit;
 
+import io.confluent.kafkarest.KafkaStreamsMetadataObserver;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
@@ -46,7 +47,7 @@ import static org.junit.Assert.assertEquals;
 public class PartitionsResourceTest
     extends EmbeddedServerTestHarness<KafkaRestConfig, KafkaRestApplication> {
 
-  private MetadataObserver mdObserver;
+  private KafkaStreamsMetadataObserver mdObserver;
   private ProducerPool producerPool;
   private Context ctx;
 
@@ -63,7 +64,7 @@ public class PartitionsResourceTest
   );
 
   public PartitionsResourceTest() throws RestConfigException {
-    mdObserver = EasyMock.createMock(MetadataObserver.class);
+    mdObserver = EasyMock.createMock(KafkaStreamsMetadataObserver.class);
     producerPool = EasyMock.createMock(ProducerPool.class);
     ctx = new Context(config, mdObserver, producerPool, null, null);
 

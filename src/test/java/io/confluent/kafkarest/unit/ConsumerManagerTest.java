@@ -19,6 +19,7 @@ import io.confluent.kafkarest.BinaryConsumerState;
 import io.confluent.kafkarest.ConsumerManager;
 import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.KafkaRestConfig;
+import io.confluent.kafkarest.KafkaStreamsMetadataObserver;
 import io.confluent.kafkarest.MetadataObserver;
 import io.confluent.kafkarest.entities.BinaryConsumerRecord;
 import io.confluent.kafkarest.entities.ConsumerInstanceConfig;
@@ -63,7 +64,7 @@ import static org.junit.Assert.fail;
 public class ConsumerManagerTest {
 
   private KafkaRestConfig config;
-  private MetadataObserver mdObserver;
+  private KafkaStreamsMetadataObserver mdObserver;
   private ConsumerManager.ConsumerFactory consumerFactory;
   private ConsumerManager consumerManager;
 
@@ -84,7 +85,7 @@ public class ConsumerManagerTest {
     props.setProperty("exclude.internal.topics", "false");
 
     config = new KafkaRestConfig(props, new MockTime());
-    mdObserver = EasyMock.createMock(MetadataObserver.class);
+    mdObserver = EasyMock.createMock(KafkaStreamsMetadataObserver.class);
     consumerFactory = EasyMock.createMock(ConsumerManager.ConsumerFactory.class);
     consumerManager = new ConsumerManager(config, mdObserver, consumerFactory);
   }

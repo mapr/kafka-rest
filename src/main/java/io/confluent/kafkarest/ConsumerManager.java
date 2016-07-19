@@ -18,6 +18,7 @@ package io.confluent.kafkarest;
 import io.confluent.kafkarest.entities.AbstractConsumerRecord;
 import io.confluent.kafkarest.entities.EmbeddedFormat;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.serialization.Deserializer;
@@ -55,7 +56,7 @@ public class ConsumerManager {
   private final KafkaRestConfig config;
   private final Time time;
   private final String bootstrapServers;
-  private final MetadataObserver mdObserver;
+  private final KafkaStreamsMetadataObserver mdObserver;
 
   // ConsumerState is generic, but we store them untyped here. This allows many operations to
   // work without having to know the types for the consumer, only requiring type information
@@ -75,7 +76,7 @@ public class ConsumerManager {
       new PriorityQueue<ConsumerState>();
   private final ExpirationThread expirationThread;
 
-  public ConsumerManager(KafkaRestConfig config, MetadataObserver mdObserver,
+  public ConsumerManager(KafkaRestConfig config, KafkaStreamsMetadataObserver mdObserver,
                          ConsumerFactory consumerFactory) {
     this.config = config;
     this.time = config.getTime();
@@ -107,7 +108,7 @@ public class ConsumerManager {
     this.expirationThread.start();
   }
 
-  public ConsumerManager(KafkaRestConfig config, MetadataObserver mdObserver) {
+  public ConsumerManager(KafkaRestConfig config, KafkaStreamsMetadataObserver mdObserver) {
     this(config, mdObserver, null);
   }
 
@@ -175,6 +176,12 @@ public class ConsumerManager {
       }
       if (instanceConfig.getAutoOffsetReset() != null) {
         props.setProperty("auto.offset.reset", instanceConfig.getAutoOffsetReset());
+      }
+
+      // configure default stream
+      String defaultStream = config.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
+      if (!"".equals(defaultStream)) {
+        props.put(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, defaultStream);
       }
 
       try {

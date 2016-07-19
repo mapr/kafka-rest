@@ -69,6 +69,10 @@ public class SimpleConsumerFactory {
     properties.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
         config.getString(KafkaRestConfig.BOOTSTRAP_SERVERS_CONFIG));
     properties.setProperty("client.id", clientId);
+    String defaultStream = config.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
+    if (!"".equals(defaultStream)) {
+      properties.setProperty(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, defaultStream);
+    }
 
     Consumer<byte[], byte[]> consumer =  new KafkaConsumer<byte[], byte[]>(properties,
       new ByteArrayDeserializer(),

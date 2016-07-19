@@ -40,7 +40,7 @@ import io.confluent.rest.exceptions.RestNotFoundException;
 public class AbstractConsumerResourceTest
     extends EmbeddedServerTestHarness<KafkaRestConfig, KafkaRestApplication> {
 
-  protected MetadataObserver mdObserver;
+  protected KafkaStreamsMetadataObserver mdObserver;
   protected ConsumerManager consumerManager;
   protected Context ctx;
 
@@ -54,7 +54,7 @@ public class AbstractConsumerResourceTest
   protected static final String not_found_message = "not found";
 
   public AbstractConsumerResourceTest() throws RestConfigException {
-    mdObserver = EasyMock.createMock(MetadataObserver.class);
+    mdObserver = EasyMock.createMock(KafkaStreamsMetadataObserver.class);
     consumerManager = EasyMock.createMock(ConsumerManager.class);
     ctx = new Context(config, mdObserver, null, consumerManager, null);
 

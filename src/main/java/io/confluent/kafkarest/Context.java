@@ -21,12 +21,12 @@ package io.confluent.kafkarest;
 public class Context {
 
   private final KafkaRestConfig config;
-  private final MetadataObserver metadataObserver;
+  private final KafkaStreamsMetadataObserver metadataObserver;
   private final ProducerPool producerPool;
   private final ConsumerManager consumerManager;
   private final SimpleConsumerManager simpleConsumerManager;
 
-  public Context(KafkaRestConfig config, MetadataObserver metadataObserver,
+  public Context(KafkaRestConfig config, KafkaStreamsMetadataObserver metadataObserver,
                  ProducerPool producerPool, ConsumerManager consumerManager,
                  SimpleConsumerManager simpleConsumerManager) {
     this.config = config;
@@ -40,7 +40,7 @@ public class Context {
     return config;
   }
 
-  public MetadataObserver getMetadataObserver() {
+  public KafkaStreamsMetadataObserver getMetadataObserver() {
     return metadataObserver;
   }
 

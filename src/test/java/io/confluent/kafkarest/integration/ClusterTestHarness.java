@@ -180,6 +180,8 @@ public abstract class ClusterTestHarness {
       schemaRegServer.start();
     }
 
+    restProperties.put(KafkaRestConfig.REST_PROXY_BACKEND_CONFIG, KafkaRestConfig.HYBRID_BACKEND);
+
     int restPort = choosePort();
     restProperties.put(KafkaRestConfig.PORT_CONFIG, ((Integer) restPort).toString());
     restProperties.put(KafkaRestConfig.ZOOKEEPER_CONNECT_CONFIG, zkConnect);
@@ -208,7 +210,7 @@ public abstract class ClusterTestHarness {
     return null;
   }
 
-  protected MetadataObserver getMetadataObserver(KafkaRestConfig appConfig) {
+  protected KafkaStreamsMetadataObserver getMetadataObserver(KafkaRestConfig appConfig) {
     return null;
   }
 

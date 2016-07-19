@@ -16,6 +16,7 @@
 
 package io.confluent.kafkarest.unit;
 
+import io.confluent.kafkarest.KafkaStreamsMetadataObserver;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.TopicPartition;
@@ -62,7 +63,7 @@ import static org.junit.Assert.assertEquals;
 public class TopicsResourceBinaryProduceTest
     extends EmbeddedServerTestHarness<KafkaRestConfig, KafkaRestApplication> {
 
-  private MetadataObserver mdObserver;
+  private KafkaStreamsMetadataObserver mdObserver;
   private ProducerPool producerPool;
   private Context ctx;
 
@@ -86,7 +87,7 @@ public class TopicsResourceBinaryProduceTest
   private static final String exceptionMessage = "Error message";
 
   public TopicsResourceBinaryProduceTest() throws RestConfigException {
-    mdObserver = EasyMock.createMock(MetadataObserver.class);
+    mdObserver = EasyMock.createMock(KafkaStreamsMetadataObserver.class);
     producerPool = EasyMock.createMock(ProducerPool.class);
     ctx = new Context(config, mdObserver, producerPool, null, null);
 

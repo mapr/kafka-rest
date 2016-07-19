@@ -15,6 +15,7 @@
  **/
 package io.confluent.kafkarest;
 
+import io.confluent.kafkarest.resources.StreamsResource;
 import org.apache.kafka.common.security.JaasUtils;
 
 import java.util.Properties;
@@ -38,6 +39,7 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
 
   ZkUtils zkUtils;
   Context context;
+  boolean isStreams;
 
   public KafkaRestApplication() throws RestConfigException {
     this(new Properties());
@@ -61,23 +63,31 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
    * can be customized for testing. This only exists to support TestKafkaRestApplication
    */
   protected void setupInjectedResources(Configurable<?> config, KafkaRestConfig appConfig,
-                                        ZkUtils zkUtils, MetadataObserver mdObserver,
+                                        ZkUtils zkUtils, KafkaStreamsMetadataObserver mdObserver,
                                         ProducerPool producerPool,
                                         ConsumerManager consumerManager,
                                         SimpleConsumerFactory simpleConsumerFactory,
                                         SimpleConsumerManager simpleConsumerManager) {
-    config.register(new ZkExceptionMapper(appConfig));
+    isStreams = appConfig.isStreams();
 
-    if (zkUtils == null) {
-      zkUtils = ZkUtils.apply(
+    if (isStreams) {
+      if (producerPool == null) {
+        producerPool = new ProducerPool(appConfig, null);
+      }
+    } else { // Kafka
+      config.register(new ZkExceptionMapper(appConfig));
+      if (zkUtils == null) {
+        zkUtils = ZkUtils.apply(
           appConfig.getString(KafkaRestConfig.ZOOKEEPER_CONNECT_CONFIG), 30000, 30000,
           JaasUtils.isZkSecurityEnabled());
+      }
+      if (producerPool == null) {
+        producerPool = new ProducerPool(appConfig, zkUtils, null);
+      }
     }
+
     if (mdObserver == null) {
-      mdObserver = new MetadataObserver(appConfig, zkUtils);
-    }
-    if (producerPool == null) {
-      producerPool = new ProducerPool(appConfig, zkUtils);
+      mdObserver = new KafkaStreamsMetadataObserver(appConfig, zkUtils, isStreams);
     }
     if (consumerManager == null) {
       consumerManager = new ConsumerManager(appConfig, mdObserver);
@@ -96,6 +106,7 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
     config.register(new TopicsResource(context));
     config.register(new PartitionsResource(context));
     config.register(new ConsumersResource(context));
+    config.register(new StreamsResource(context));
   }
 
   @Override
@@ -104,6 +115,8 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
     context.getProducerPool().shutdown();
     context.getSimpleConsumerManager().shutdown();
     context.getMetadataObserver().shutdown();
-    zkUtils.close();
+    if (!isStreams) {
+      zkUtils.close();
+    }
   }
 }

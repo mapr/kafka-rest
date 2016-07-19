@@ -39,15 +39,20 @@ import java.util.Map;
 import java.util.Properties;
 
 /**
- * Shared pool of Kafka producers used to send messages. The pool manages batched sends, tracking
+ * Shared pool of Kafka kafkaProducers used to send messages. The pool manages batched sends, tracking
  * all required acks for a batch and managing timeouts. Currently this pool only contains one
  * producer per serialization format (e.g. byte[], Avro).
  */
 public class ProducerPool {
 
   private static final Logger log = LoggerFactory.getLogger(ProducerPool.class);
-  private Map<EmbeddedFormat, RestProducer> producers =
+  private Map<EmbeddedFormat, RestProducer> kafkaProducers =
       new HashMap<EmbeddedFormat, RestProducer>();
+  private Map<EmbeddedFormat, RestProducer> streamsProducers =
+    new HashMap<EmbeddedFormat, RestProducer>();
+
+  private boolean isStreams;
+  private boolean defaultStreamSet;
 
   public ProducerPool(KafkaRestConfig appConfig, ZkUtils zkUtils) {
     this(appConfig, zkUtils, null);
@@ -60,21 +65,41 @@ public class ProducerPool {
 
   public ProducerPool(KafkaRestConfig appConfig, String bootstrapBrokers,
                       Properties producerConfigOverrides) {
+    this.isStreams = appConfig.isStreams();
+    this.defaultStreamSet = appConfig.isDefaultStreamSet();
 
+    if (!isStreams) {
+      // initialize producers for kafka backend
+      Map<String, Object> binaryProps = buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
+      kafkaProducers.put(EmbeddedFormat.BINARY, buildBinaryProducer(binaryProps));
+
+      Map<String, Object> jsonProps = buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
+      kafkaProducers.put(EmbeddedFormat.JSON, buildJsonProducer(jsonProps));
+
+      Map<String, Object> avroProps = buildAvroConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
+      kafkaProducers.put(EmbeddedFormat.AVRO, buildAvroProducer(avroProps));
+    }
+
+    // Initialize producers for Streams backend.
+    // Avro serialization is not supported by MapR Streams.
     Map<String, Object> binaryProps = buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
-    producers.put(EmbeddedFormat.BINARY, buildBinaryProducer(binaryProps));
+    streamsProducers.put(EmbeddedFormat.BINARY, buildBinaryProducer(binaryProps));
 
     Map<String, Object> jsonProps = buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
-    producers.put(EmbeddedFormat.JSON, buildJsonProducer(jsonProps));
-
-    Map<String, Object> avroProps = buildAvroConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
-    producers.put(EmbeddedFormat.AVRO, buildAvroProducer(avroProps));
+    streamsProducers.put(EmbeddedFormat.JSON, buildJsonProducer(jsonProps));
   }
 
   private Map<String, Object> buildStandardConfig(KafkaRestConfig appConfig, String bootstrapBrokers,
                                                   Properties producerConfigOverrides) {
     Map<String, Object> props = new HashMap<String, Object>();
     props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapBrokers);
+
+    // configure default stream
+    String defaultStream = appConfig.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
+    if (!"".equals(defaultStream)) {
+      props.put(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG, defaultStream);
+    }
+
     return buildConfig(props, appConfig.getOriginalProperties(), producerConfigOverrides);
   }
 
@@ -134,6 +159,9 @@ public class ProducerPool {
   }
 
   private static String getBootstrapBrokers(ZkUtils zkUtils) {
+    if (zkUtils == null) {
+      return "";
+    }
     Seq<Broker> brokerSeq = zkUtils.getAllBrokersInCluster();
 
     List<Broker> brokers = JavaConversions.seqAsJavaList(brokerSeq);
@@ -156,12 +184,33 @@ public class ProducerPool {
                              ProduceRequestCallback callback) {
     ProduceTask task = new ProduceTask(schemaHolder, records.size(), callback);
     log.trace("Starting produce task " + task.toString());
-    RestProducer restProducer = producers.get(recordFormat);
+
+    RestProducer restProducer = null;
+    if (isStreams) {
+      if (!defaultStreamSet && !topic.contains(":")) {
+        throw Errors.topicNotFoundException();
+      }
+      restProducer = streamsProducers.get(recordFormat);
+    } else {
+      if (!defaultStreamSet) {
+        if (topic.contains(":")) {
+          restProducer = streamsProducers.get(recordFormat);
+        } else {
+          restProducer = kafkaProducers.get(recordFormat);
+        }
+      } else {
+        restProducer = streamsProducers.get(recordFormat);
+      }
+    }
+
     restProducer.produce(task, topic, partition, records);
   }
 
   public void shutdown() {
-    for (RestProducer restProducer : producers.values()) {
+    for (RestProducer restProducer : kafkaProducers.values()) {
+      restProducer.close();
+    }
+    for (RestProducer restProducer : streamsProducers.values()) {
       restProducer.close();
     }
   }
