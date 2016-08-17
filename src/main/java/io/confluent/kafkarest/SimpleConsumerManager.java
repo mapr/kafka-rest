@@ -45,7 +45,7 @@ public class SimpleConsumerManager {
   private final int poolInstanceAvailabilityTimeoutMs;
   private final Time time;
 
-  private final MetadataObserver mdObserver;
+  private final KafkaStreamsMetadataObserver mdObserver;
   private final SimpleConsumerFactory simpleConsumerFactory;
 
   // stores pull of KafkaConsumer objects
@@ -57,7 +57,7 @@ public class SimpleConsumerManager {
   private final ObjectMapper objectMapper;
 
   public SimpleConsumerManager(final KafkaRestConfig config,
-                               final MetadataObserver mdObserver,
+                               final KafkaStreamsMetadataObserver mdObserver,
                                final SimpleConsumerFactory simpleConsumerFactory) {
 
     this.mdObserver = mdObserver;
@@ -68,7 +68,7 @@ public class SimpleConsumerManager {
     time = config.getTime();
 
     simpleConsumersPool =
-      new SimpleConsumerPool(maxPoolSize, poolInstanceAvailabilityTimeoutMs, time, simpleConsumerFactory);
+      new SimpleConsumerPool(maxPoolSize, poolInstanceAvailabilityTimeoutMs, time, simpleConsumerFactory, mdObserver);
     cache =
       new SimpleConsumerRecordsCache(config);
 

@@ -27,9 +27,14 @@ public class TPConsumerState implements AutoCloseable {
   private Consumer<byte[], byte[]> consumer;
   private SimpleConsumerPool ownerPool;
   private String clientId;
+  private final boolean isStreams;
 
-  public TPConsumerState(Consumer<byte[], byte[]> consumer, SimpleConsumerPool ownerPool, String clientId) {
+  public TPConsumerState(Consumer<byte[], byte[]> consumer,
+                         final boolean isStreams,
+                         SimpleConsumerPool ownerPool,
+                         String clientId) {
     this.consumer = consumer;
+    this.isStreams = isStreams;
     this.ownerPool = ownerPool;
     this.clientId = clientId;
   }
@@ -48,4 +53,7 @@ public class TPConsumerState implements AutoCloseable {
     ownerPool.release(this);
   }
 
+  public boolean isStreams() {
+    return isStreams;
+  }
 }

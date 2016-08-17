@@ -44,6 +44,16 @@ public class SimpleConsumerPoolTest {
     simpleConsumerFactory = EasyMock.createMock(SimpleConsumerFactory.class);
   }
 
+  public KafkaStreamsMetadataObserver createFakeMetadataObserver() {
+    KafkaStreamsMetadataObserver observer = EasyMock
+      .createMockBuilder(KafkaStreamsMetadataObserver.class)
+      .addMockedMethod("requestToStreams").createMock();
+    EasyMock.expect(observer.requestToStreams(EasyMock.anyObject(String.class))).andReturn(false).anyTimes();
+
+    EasyMock.replay(observer);
+    return observer;
+  }
+
   @Before
   public void setUp() throws Exception {
     mockTime = new MockTime();
@@ -78,7 +88,7 @@ public class SimpleConsumerPoolTest {
     final int maxPoolSize = 3;
     final int poolTimeout = 1000;
     final SimpleConsumerPool pool =
-        new SimpleConsumerPool(maxPoolSize, poolTimeout, new SystemTime(), simpleConsumerFactory);
+        new SimpleConsumerPool(maxPoolSize, poolTimeout, new SystemTime(), simpleConsumerFactory, createFakeMetadataObserver());
 
     for (int i = 0; i < 10; i++) {
       TPConsumerState fetcher = pool.get("topic", 0);
@@ -115,7 +125,7 @@ public class SimpleConsumerPoolTest {
     final int maxPoolSize = 3;
     final int poolTimeout = 1000;
     final SimpleConsumerPool consumersPool =
-        new SimpleConsumerPool(maxPoolSize, poolTimeout, new SystemTime(), simpleConsumerFactory);
+        new SimpleConsumerPool(maxPoolSize, poolTimeout, new SystemTime(), simpleConsumerFactory, createFakeMetadataObserver());
 
     final ExecutorService executorService = Executors.newFixedThreadPool(10);
     for (int i = 0; i < 10; i++) {
@@ -135,7 +145,7 @@ public class SimpleConsumerPoolTest {
     final int maxPoolSize = 0; // 0 meaning unlimited
     final int poolTimeout = 1000;
     final SimpleConsumerPool consumersPool =
-        new SimpleConsumerPool(maxPoolSize, poolTimeout, new SystemTime(), simpleConsumerFactory);
+        new SimpleConsumerPool(maxPoolSize, poolTimeout, new SystemTime(), simpleConsumerFactory, createFakeMetadataObserver());
 
     final ExecutorService executorService = Executors.newFixedThreadPool(10);
     for (int i = 0; i < 10; i++) {
@@ -157,7 +167,7 @@ public class SimpleConsumerPoolTest {
     final int maxPoolSize = 1; // Only one SimpleConsumer instance
     final int poolTimeout = 1; // And we don't allow allow to wait a lot to get it
     final SimpleConsumerPool consumersPool =
-        new SimpleConsumerPool(maxPoolSize, poolTimeout, new SystemTime(), simpleConsumerFactory);
+        new SimpleConsumerPool(maxPoolSize, poolTimeout, new SystemTime(), simpleConsumerFactory, createFakeMetadataObserver());
 
     final ExecutorService executorService = Executors.newFixedThreadPool(10);
     final ArrayList<Future<?>> futures = new ArrayList<Future<?>>();
@@ -189,7 +199,7 @@ public class SimpleConsumerPoolTest {
     final int maxPoolSize = 1; // Only one SimpleConsumer instance
     final int poolTimeout = 0; // No timeout. A request will wait as long as needed to get a SimpleConsumer instance
     final SimpleConsumerPool consumersPool =
-        new SimpleConsumerPool(maxPoolSize, poolTimeout, new SystemTime(), simpleConsumerFactory);
+        new SimpleConsumerPool(maxPoolSize, poolTimeout, new SystemTime(), simpleConsumerFactory, createFakeMetadataObserver());
 
     final ExecutorService executorService = Executors.newFixedThreadPool(10);
     for (int i = 0; i < 10; i++) {
