@@ -15,6 +15,19 @@
  **/
 package io.confluent.kafkarest.resources;
 
+import java.util.Collection;
+import java.util.List;
+import java.util.Vector;
+import javax.validation.Valid;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.container.AsyncResponse;
+import javax.ws.rs.container.Suspended;
+
 import io.confluent.kafkarest.Context;
 import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.ProducerPool;
@@ -31,20 +44,6 @@ import io.confluent.kafkarest.entities.TopicProduceRecord;
 import io.confluent.kafkarest.entities.TopicProduceRequest;
 import io.confluent.rest.annotations.PerformanceMetric;
 
-import javax.validation.Valid;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.container.AsyncResponse;
-import javax.ws.rs.container.Suspended;
-import java.util.Collection;
-import java.util.List;
-import java.util.Vector;
-
 @Path("/topics")
 @Produces({Versions.KAFKA_V1_JSON_WEIGHTED, Versions.KAFKA_DEFAULT_JSON_WEIGHTED,
            Versions.JSON_WEIGHTED})
@@ -53,11 +52,9 @@ import java.util.Vector;
 public class TopicsResource {
 
   private final Context ctx;
-  private final boolean isStreams;
 
   public TopicsResource(Context ctx) {
     this.ctx = ctx;
-    this.isStreams = ctx.getConfig().isStreams();
   }
 
   @GET
@@ -105,7 +102,7 @@ public class TopicsResource {
   public void produceAvro(final @Suspended AsyncResponse asyncResponse,
                           @PathParam("topic") String topicName,
                           @Valid TopicProduceRequest<AvroTopicProduceRecord> request) {
-    if (isStreams) {
+    if (ctx.getMetadataObserver().requestToStreams(topicName)) {
       throw Errors.notSupportedByMapRStreams();
     }
     // Validations we can't do generically since they depend on the data format -- schemas need to

@@ -58,11 +58,9 @@ import io.confluent.rest.annotations.PerformanceMetric;
 public class ConsumersResource {
 
   private final Context ctx;
-  private final boolean isStreams;
 
   public ConsumersResource(Context ctx) {
     this.ctx = ctx;
-    this.isStreams = ctx.getConfig().isStreams();
   }
 
   @POST
@@ -143,7 +141,7 @@ public class ConsumersResource {
                             final @PathParam("instance") String instance,
                             final @PathParam("topic") String topic,
                             @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes) {
-    if (isStreams) {
+    if (ctx.getMetadataObserver().requestToStreams(topic)) {
       throw Errors.notSupportedByMapRStreams();
     }
     readTopic(asyncResponse, group, instance, topic, maxBytes, AvroConsumerState.class);
