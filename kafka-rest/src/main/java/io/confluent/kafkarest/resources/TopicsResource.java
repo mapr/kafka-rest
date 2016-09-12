@@ -120,7 +120,7 @@ public class TopicsResource {
       @PathParam("topic") String topicName,
       @Valid @NotNull TopicProduceRequest<AvroTopicProduceRecord> request
   ) {
-    if (isStreams) {
+      if (ctx.getMetadataObserver().requestToStreams(topicName)) {
         throw Errors.notSupportedByMapRStreams();
     }      
     // Validations we can't do generically since they depend on the data format -- schemas need to
