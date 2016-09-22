@@ -66,7 +66,8 @@
         <dependency>
             <groupId>io.confluent</groupId>
             <artifactId>rest-utils</artifactId>
-            <version>${confluent.version}</version>
+            <!-- HTTPS is supported since 3.x confluent release -->
+            <version>3.0.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>

@@ -25,11 +25,60 @@ Java Kafka clients.
   * Default: ""
   * Importance: high
 
+``listeners``
+  List of listeners. http and https are supported. Each listener must include the protocol, hostname, and port. For example: http://myhost:8080,https://0.0.0.0:8081
+
+  * Type: list
+  * Default: []
+  * Importance: high
+
+``rest.proxy.backend``
+  Specifies which storage backend is used. Set 'hybrid' to use both Kafka and Streams or 'streams' to use MapR Streams only. if the value is hybrid and streams.default.stream is not set  then we refer to Kafka topics if topic name does not contain ':', topics with ':' refer to Streams.  If default stream is set to valid value and topic name does not contain ':' then we refer to Streams topic in the default stream. The default value is 'streams'.
+
+  * Type: string
+  * Default: "streams"
+  * Importance: high
+
 ``schema.registry.url``
   The base URL for the schema registry that should be used by the Avro serializer.
 
   * Type: string
   * Default: "http://localhost:8081"
+  * Importance: high
+
+``ssl.key.password``
+  The password of the private key in the keystore file.
+
+  * Type: string
+  * Default: ""
+  * Importance: high
+
+``ssl.keystore.location``
+  Location of the keystore file to use for SSL. This is required for HTTPS.
+
+  * Type: string
+  * Default: ""
+  * Importance: high
+
+``ssl.keystore.password``
+  The store password for the keystore file.
+
+  * Type: string
+  * Default: ""
+  * Importance: high
+
+``ssl.truststore.location``
+  Location of the trust store. Required only to authenticate HTTPS clients.
+
+  * Type: string
+  * Default: ""
+  * Importance: high
+
+``ssl.truststore.password``
+  The store password for the trust store file.
+
+  * Type: string
+  * Default: ""
   * Importance: high
 
 ``zookeeper.connect``
@@ -90,6 +139,62 @@ Java Kafka clients.
   * Default: 25
   * Importance: medium
 
+``ssl.client.auth``
+  Whether or not to require the https client to authenticate via the server's trust store.
+
+  * Type: boolean
+  * Default: false
+  * Importance: medium
+
+``ssl.enabled.protocols``
+  The list of protocols enabled for SSL connections. Comma-separated list. Leave blank to use Jetty's defaults.
+
+  * Type: list
+  * Default: []
+  * Importance: medium
+
+``ssl.keystore.type``
+  The type of keystore file.
+
+  * Type: string
+  * Default: "JKS"
+  * Importance: medium
+
+``ssl.protocol``
+  The SSL protocol used to generate the SslContextFactory.
+
+  * Type: string
+  * Default: "TLS"
+  * Importance: medium
+
+``ssl.provider``
+  The SSL security provider name. Leave blank to use Jetty's default.
+
+  * Type: string
+  * Default: ""
+  * Importance: medium
+
+``ssl.truststore.type``
+  The type of trust store file.
+
+  * Type: string
+  * Default: "JKS"
+  * Importance: medium
+
+``streams.default.stream``
+  The default stream the consumer should poll messages from andthe producer should send messages to, if the topic name does not specify the stream path and the property has a valid value, then this topic name is looked in the default stream.
+
+  * Type: string
+  * Default: ""
+  * Importance: medium
+
+``access.control.allow.methods``
+  Set value to Jetty Access-Control-Allow-Origin header for specified methods
+
+  * Type: string
+  * Default: ""
+  * Importance: low
+
 ``access.control.allow.origin``
   Set value for Jetty Access-Control-Allow-Origin header
 
@@ -147,7 +252,7 @@ Java Kafka clients.
   * Importance: low
 
 ``port``
-  Port to listen on for new connections.
+  DEPRECATED: port to listen on for new HTTP connections. Use listeners instead.
 
   * Type: int
   * Default: 8082
@@ -188,13 +293,6 @@ Java Kafka clients.
   * Default: 1000
   * Importance: low
 
-``simpleconsumer.max.poll.records``
-  Maximum number of records that can be fetched by a single consumer poll request. Since desired number of fetched records can't be defined for every poll request the consumer can poll more records thannecessary (extra records are stored in cache.). The value of this property defines maximum number of excess records fetched by a single user request. The grater value means grater network overhead. It may be reasonable if user retrieves records from specified partition increasing offset sequentially. The smaller value suits better when the user consumes records in a random fashion.Use 0 for no max value allowed by kafka consumer 2147483647
-
-  * Type: string
-  * Default: "100"
-  * Importance: low
-
 ``simpleconsumer.max.poll.time``
   Maximum amount of time to poll for records by a consumer.
 
@@ -207,4 +305,32 @@ Java Kafka clients.
 
   * Type: int
   * Default: 1000
+  * Importance: low
+
+``ssl.cipher.suites``
+  A list of SSL cipher suites. Leave blank to use Jetty's defaults.
+
+  * Type: list
+  * Default: []
+  * Importance: low
+
+``ssl.endpoint.identification.algorithm``
+  The endpoint identification algorithm to validate the server hostname using the server certificate. Leave blank to use Jetty's default.
+
+  * Type: string
+  * Default: ""
+  * Importance: low
+
+``ssl.keymanager.algorithm``
+  The algorithm used by the key manager factory for SSL connections. Leave blank to use Jetty's default.
+
+  * Type: string
+  * Default: ""
+  * Importance: low
+
+``ssl.trustmanager.algorithm``
+  The algorithm used by the trust manager factory for SSL connections. Leave blank to use Jetty's default.
+
+  * Type: string
+  * Default: ""
   * Importance: low

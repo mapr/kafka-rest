@@ -157,6 +157,8 @@ public class KafkaRestConfig extends RestConfig {
      + " Must be greater that 0.";
   public static final int SIMPLE_CONSUMER_CACHE_MAX_RECORDS_DEFAULT = 1000;
 
+  // TODO: change this to "http://0.0.0.0:8082" when PORT_CONFIG is deleted.
+  private static final String KAFKAREST_LISTENERS_DEFAULT = "";
   private static final int KAFKAREST_PORT_DEFAULT = 8082;
 
   private static final String METRICS_JMX_PREFIX_DEFAULT_OVERRIDE = "kafka.rest";
@@ -186,6 +188,8 @@ public class KafkaRestConfig extends RestConfig {
     config = baseConfigDef()
         .defineOverride(PORT_CONFIG, ConfigDef.Type.INT, KAFKAREST_PORT_DEFAULT,
                         ConfigDef.Importance.LOW, PORT_CONFIG_DOC)
+        .defineOverride(LISTENERS_CONFIG, ConfigDef.Type.LIST, KAFKAREST_LISTENERS_DEFAULT,
+                        ConfigDef.Importance.HIGH, LISTENERS_DOC)
         .defineOverride(RESPONSE_MEDIATYPE_PREFERRED_CONFIG, Type.LIST,
                         Versions.PREFERRED_RESPONSE_TYPES, Importance.LOW,
                         RESPONSE_MEDIATYPE_PREFERRED_CONFIG_DOC)
