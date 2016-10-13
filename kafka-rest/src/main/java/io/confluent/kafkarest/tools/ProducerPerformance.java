@@ -16,14 +16,15 @@
 
 package io.confluent.kafkarest.tools;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.confluent.common.utils.AbstractPerformanceTest;
 import io.confluent.common.utils.PerformanceStats;
 import io.confluent.kafkarest.Versions;
@@ -86,7 +87,8 @@ public class ProducerPerformance extends AbstractPerformanceTest {
     this.bytesPerIteration = recordsPerIteration * recordSize;
 
     /* setup perf test */
-    targetUrl = baseUrl + "/topics/" + topic;
+    String encodedTopic = URLEncoder.encode(topic, StandardCharsets.UTF_8.name());
+    targetUrl = baseUrl + "/topics/" + encodedTopic;
     byte[] payload = new byte[recordSize];
     Arrays.fill(payload, (byte) 1);
     TopicProduceRecord record = new BinaryTopicProduceRecord(payload);
