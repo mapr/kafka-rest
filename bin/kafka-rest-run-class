@@ -19,9 +19,9 @@ base_dir=$(dirname $0)/..
 add_streams_paths(){
   local MAPR_LIB_DIR="${BASEMAPR:-/opt/mapr}/lib"
   local MAPR_STREAMS_LIB=$(ls ${MAPR_LIB_DIR}/mapr-streams*.jar 2> /dev/null | grep -v "tests.jar$" )
-  local PROTOBUF_LIB=$(ls ${MAPR_LIB_DIR}/protobuf-java*.jar 2> /dev/null)
-  local MAPRFS_LIB=$(ls ${MAPR_LIB_DIR}/maprfs-*.jar 2> /dev/null | grep -v "maprfs-diagnostic-tools" )
-  local STREAMS_CLIENTS_LIB=$(ls ${MAPR_LIB_DIR}/kafka-clients*.jar 2> /dev/null)
+  local PROTOBUF_LIB=$(ls ${MAPR_LIB_DIR}/protobuf-java*.jar 2> /dev/null | grep -v "tests.jar$" )
+  local MAPRFS_LIB=$(ls ${MAPR_LIB_DIR}/maprfs-*.jar 2> /dev/null | grep -v "maprfs-diagnostic-tools" | grep -v "tests.jar$" )
+  local STREAMS_CLIENTS_LIB=$(ls ${MAPR_LIB_DIR}/kafka-clients*.jar 2> /dev/null | grep -v "tests.jar$" )
 
   CLASSPATH="${MAPR_STREAMS_LIB}:${CLASSPATH}"
   CLASSPATH="${PROTOBUF_LIB}:${CLASSPATH}"
