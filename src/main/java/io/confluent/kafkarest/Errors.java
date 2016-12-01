@@ -63,6 +63,12 @@ public class Errors {
         LEADER_NOT_AVAILABLE_ERROR_CODE
     );
   }
+  public static RestException topicPermissionException() {
+      return new RestNotFoundException(TOPIC_PERMISSION_MESSAGE, TOPIC_PERMISSION_MESSAGE_ERROR_CODE);
+  }
+
+  public final static String TOPIC_PERMISSION_MESSAGE = "Topic not found or you have not permission to access.";
+  public final static int TOPIC_PERMISSION_MESSAGE_ERROR_CODE = 40405;
 
   public static final String CONSUMER_FORMAT_MISMATCH_MESSAGE =
       "The requested embedded data format does not match the deserializer for this consumer "
