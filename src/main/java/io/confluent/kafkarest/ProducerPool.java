@@ -27,6 +27,7 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.Serializer;
+import  io.confluent.rest.exceptions.RestServerErrorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.collection.JavaConversions;
@@ -191,6 +192,15 @@ public class ProducerPool {
         throw Errors.topicNotFoundException();
       }
       restProducer = streamsProducers.get(recordFormat);
+      //we enclose it only for streams producer
+      //because there can be exception due to permissions
+      try {
+        restProducer.produce(task, topic, partition, records);
+      } catch (RestServerErrorException e){
+        log.warn("Producer error "+ e);
+        throw Errors.topicPermissionException();
+      }
+
     } else {
       if (!defaultStreamSet) {
         if (topic.contains(":")) {
@@ -201,9 +211,8 @@ public class ProducerPool {
       } else {
         restProducer = streamsProducers.get(recordFormat);
       }
+        restProducer.produce(task, topic, partition, records);
     }
-
-    restProducer.produce(task, topic, partition, records);
   }
 
   public void shutdown() {
