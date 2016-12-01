@@ -127,7 +127,7 @@ public class TopicsResource {
       final String topicName,
       final EmbeddedFormat format,
       final TopicProduceRequest<R> request) {
-    if (!ctx.getMetadataObserver().topicExists(topicName)) {
+    if (!ctx.getConfig().isStreams() && !ctx.getMetadataObserver().topicExists(topicName)) {
       throw Errors.topicNotFoundException();
     }
     ctx.getProducerPool().produce(
