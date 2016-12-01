@@ -150,7 +150,7 @@ public class TopicsResource {
     log.trace("Executing topic produce request id={} topic={} format={} request={}",
               asyncResponse, topicName, format, request
     );
-      if (!ctx.getMetadataObserver().topicExists(topicName)) {
+      if (!ctx.getConfig().isStreams() && !ctx.getMetadataObserver().topicExists(topicName)) {
           throw Errors.topicNotFoundException();
       }
     ctx.getProducerPool().produce(
