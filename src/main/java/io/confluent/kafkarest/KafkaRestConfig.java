@@ -130,7 +130,7 @@ public class KafkaRestConfig extends RestConfig {
   private static final String CONSUMER_REQUEST_TIMEOUT_MS_DOC =
       "The maximum total time to wait for messages for a "
       + "request if the maximum number of messages has not yet been reached.";
-  public static final String CONSUMER_REQUEST_TIMEOUT_MS_DEFAULT = "1000";
+  public static final String CONSUMER_REQUEST_TIMEOUT_MS_DEFAULT = "1";
 
   public static final String CONSUMER_REQUEST_MAX_BYTES_CONFIG = "consumer.request.max.bytes";
   private static final String CONSUMER_REQUEST_MAX_BYTES_DOC =
@@ -166,6 +166,13 @@ public class KafkaRestConfig extends RestConfig {
       + " Use 0 for no timeout";
   public static final String SIMPLE_CONSUMER_POOL_TIMEOUT_MS_DEFAULT = "1000";
 
+
+  public static final String STREAM_BUFFER_MAX_TIME_CONFIG = "producer.streams.buffer.max.time.ms";
+  private static final String STREAM_BUFFER_MAX_TIME_DOC = "Messages are buffered in the producer for at most the " 
+    + "specified time. A thread will flush all the messages that have been buffered for more than the time specified";
+
+  public static final String STREAM_BUFFER_MAX_TIME_DEFAULT = "1";
+    
   // TODO: change this to "http://0.0.0.0:8082" when PORT_CONFIG is deleted.
   private static final String KAFKAREST_LISTENERS_DEFAULT = "";
   private static final int KAFKAREST_PORT_DEFAULT = 8082;
@@ -623,10 +630,12 @@ public class KafkaRestConfig extends RestConfig {
             Importance.LOW,
             KAFKA_REST_RESOURCE_EXTENSION_DOC
         )
-            .define(REST_PROXY_BACKEND_CONFIG, Type.STRING, REST_PROXY_BACKEND_DEFAULT,
-                    Importance.HIGH, REST_PROXY_BACKEND_DOC)
-            .define(STREAMS_DEFAULT_STREAM_CONFIG, Type.STRING, STREAMS_DEFAULT_STREAM_DEFAULT,
-                    Importance.MEDIUM, STREAMS_DEFAULT_STREAM_DOC);
+        .define(REST_PROXY_BACKEND_CONFIG, Type.STRING, REST_PROXY_BACKEND_DEFAULT,
+            Importance.HIGH, REST_PROXY_BACKEND_DOC)
+        .define(STREAMS_DEFAULT_STREAM_CONFIG, Type.STRING, STREAMS_DEFAULT_STREAM_DEFAULT,
+            Importance.MEDIUM, STREAMS_DEFAULT_STREAM_DOC)
+        .define(STREAM_BUFFER_MAX_TIME_CONFIG, Type.INT, STREAM_BUFFER_MAX_TIME_DEFAULT,
+            Importance.MEDIUM, STREAM_BUFFER_MAX_TIME_DOC);
   }
 
   private Time time;
