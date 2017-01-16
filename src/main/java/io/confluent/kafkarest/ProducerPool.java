@@ -100,6 +100,8 @@ public class ProducerPool {
     if (!"".equals(defaultStream)) {
       props.put(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG, defaultStream);
     }
+    int streamBuffer = appConfig.getInt(KafkaRestConfig.STREAM_BUFFER_MAX_TIME_CONFIG);
+    props.put(ProducerConfig.STREAMS_BUFFER_TIME_CONFIG, streamBuffer);
 
     return buildConfig(props, appConfig.getOriginalProperties(), producerConfigOverrides);
   }
