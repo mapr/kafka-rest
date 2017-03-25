@@ -7,7 +7,7 @@
     <groupId>io.confluent</groupId>
     <artifactId>kafka-rest</artifactId>
     <packaging>jar</packaging>
-    <version>2.0.1</version>
+    <version>2.0.1-mapr-1703</version>
     <name>kafka-rest</name>
     <organization>
         <name>Confluent, Inc.</name>
