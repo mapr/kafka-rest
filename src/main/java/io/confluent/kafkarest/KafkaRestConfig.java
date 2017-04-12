@@ -189,6 +189,8 @@ public class KafkaRestConfig extends RestConfig {
       + "topic in the default stream. The default value is '" + MAPR_STREAMS_BACKEND + "'.";
   public static final String REST_PROXY_BACKEND_DEFAULT = MAPR_STREAMS_BACKEND;
 
+  protected static final String SSL_PROTOCOL_DEFAULT_OVERRIDE = "TLSv1.2";
+  
   private static final ConfigDef config;
 
   static {
@@ -205,6 +207,8 @@ public class KafkaRestConfig extends RestConfig {
                         RESPONSE_MEDIATYPE_DEFAULT_CONFIG_DOC)
         .defineOverride(METRICS_JMX_PREFIX_CONFIG, Type.STRING,
                         METRICS_JMX_PREFIX_DEFAULT_OVERRIDE, Importance.LOW, METRICS_JMX_PREFIX_DOC)
+        .defineOverride(SSL_PROTOCOL_CONFIG, Type.STRING, SSL_PROTOCOL_DEFAULT_OVERRIDE, 
+                Importance.MEDIUM, SSL_PROTOCOL_DOC)
         .define(ID_CONFIG, Type.STRING, ID_DEFAULT, Importance.HIGH, ID_CONFIG_DOC)
         .define(HOST_NAME_CONFIG, Type.STRING, HOST_NAME_DEFAULT, Importance.MEDIUM, HOST_NAME_DOC)
         .define(ZOOKEEPER_CONNECT_CONFIG, Type.STRING, ZOOKEEPER_CONNECT_DEFAULT,
