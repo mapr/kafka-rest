@@ -308,6 +308,7 @@ public class KafkaRestConfig extends RestConfig {
       + " security, etc.";
   private static final boolean ZOOKEEPER_SET_ACL_DEFAULT = false;
   private static final ConfigDef config;
+  protected static final String SSL_PROTOCOL_DEFAULT_OVERRIDE = "TLSv1.2";
     public static final String STREAMS_DEFAULT_STREAM_CONFIG = "streams.default.stream";
     private static final String STREAMS_DEFAULT_STREAM_DOC = "The default stream the consumer should poll messages from and"
             + "the producer should send messages to, if the topic name does not specify the stream path and the property has "
@@ -369,6 +370,10 @@ public class KafkaRestConfig extends RestConfig {
             Importance.LOW,
             METRICS_JMX_PREFIX_DOC
         )
+        .defineOverride(
+            SSL_PROTOCOL_CONFIG, Type.STRING, 
+            SSL_PROTOCOL_DEFAULT_OVERRIDE,
+            Importance.MEDIUM, SSL_PROTOCOL_DOC)            
         .define(ID_CONFIG, Type.STRING, ID_DEFAULT, Importance.HIGH, ID_CONFIG_DOC)
         .define(HOST_NAME_CONFIG, Type.STRING, HOST_NAME_DEFAULT, Importance.MEDIUM, HOST_NAME_DOC)
         .define(
