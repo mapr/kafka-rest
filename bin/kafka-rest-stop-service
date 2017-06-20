@@ -13,7 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-TARGET=`ps ax | egrep -i "$1" | grep java | grep -v grep | awk '{print $1}'`
+TARGET=`jps | grep KafkaRestMain | awk '{print $1}'`
 if [ "x$TARGET" = "x" ]; then
   >&2 echo "No running instance found."
   exit 1
