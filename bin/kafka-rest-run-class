@@ -16,6 +16,9 @@
 
 base_dir=$(dirname $0)/..
 
+# This will set MAPR_HOME, etc.
+source `which mapr-config.sh` # Both "mapr" and "mapr-config.sh" are symlinked in "/usr/bin"
+
 add_streams_paths(){
   local MAPR_LIB_DIR="${BASEMAPR:-/opt/mapr}/lib"
   local MAPR_STREAMS_LIB=$(ls ${MAPR_LIB_DIR}/mapr-streams*.jar 2> /dev/null | grep -v "tests.jar$" )
@@ -23,10 +26,20 @@ add_streams_paths(){
   local MAPRFS_LIB=$(ls ${MAPR_LIB_DIR}/maprfs-*.jar 2> /dev/null | grep -v "maprfs-diagnostic-tools" | grep -v "tests.jar$" )
   local STREAMS_CLIENTS_LIB=$(ls ${MAPR_LIB_DIR}/kafka-clients*.jar 2> /dev/null | grep -v "tests.jar$" )
 
+  local HADOOP_LIB=$(ls ${MAPR_LIB_DIR}/hadoop*.jar 2> /dev/null | grep -v "tests.jar$" | tr '\n' ':' )
+  local COMMONS_LIB=$(ls ${MAPR_LIB_DIR}/commons*.jar 2> /dev/null | grep -v "tests.jar$" | tr '\n' ':' )
+  local GUAVA_LIB=$(ls ${MAPR_LIB_DIR}/guava*.jar 2> /dev/null | grep -v "tests.jar$")
+  local JSON_LIB=$(ls ${MAPR_LIB_DIR}/json*.jar 2> /dev/null | grep -v "tests.jar$" | tr '\n' ':' )
+
   CLASSPATH="${MAPR_STREAMS_LIB}:${CLASSPATH}"
   CLASSPATH="${PROTOBUF_LIB}:${CLASSPATH}"
   CLASSPATH="${MAPRFS_LIB}:${CLASSPATH}"
   CLASSPATH="${STREAMS_CLIENTS_LIB}:${CLASSPATH}"
+
+  CLASSPATH="${HADOOP_LIB}:${CLASSPATH}"
+  CLASSPATH="${COMMONS_LIB}:${CLASSPATH}"
+  CLASSPATH="${GUAVA_LIB}:${CLASSPATH}"
+  CLASSPATH="${JSON_LIB}:${CLASSPATH}"
 }
 
 # Development jars. `mvn package` should collect all the required dependency jars here
@@ -51,6 +64,9 @@ if [ "x$KAFKAREST_LOG4J_OPTS" = "x" ]; then
     KAFKAREST_LOG4J_OPTS="-Dlog4j.configuration=file:/etc/kafka-rest/log4j.properties"
   fi
 fi
+
+# Add native library path to LD_LIBRARY_PATH
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$(get_hadoop_libpath)" # function in mapr-config.sh
 
 # JMX settings
 if [ -z "$KAFKAREST_JMX_OPTS" ]; then
