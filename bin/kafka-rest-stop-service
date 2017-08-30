@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 TARGET=`jps | grep KafkaRestMain | awk '{print $1}'`
+pid="${BASEMAPR:-/opt/mapr}/pid/kafka-rest.pid"
+
 if [ "x$TARGET" = "x" ]; then
   >&2 echo "No running instance found."
   exit 1
@@ -24,6 +26,7 @@ for i in `seq 20`; do
   sleep 0.25
   ps ax | egrep -i "$1" | grep "$TARGET" > /dev/null
   if [ $? -eq 0 ]; then
+    rm -rf $pid
     exit 0
   fi
 done
