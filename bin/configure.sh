@@ -264,7 +264,6 @@ function restart_kafka_rest_service() {
 	su ${MAPR_USER} <<-EOF
 	maprcli node services -name kafka-rest -action restart -nodes `hostname`
 	EOF
-	write_kafka_rest_restart
 }
 
 function register_port_if_available() {
@@ -290,7 +289,8 @@ function configure_insecure_mode() {
     save_current_properties
     create_standard_properties_file
     change_permissions
-    restart_kafka_rest_service
+    setup_warden_config
+    write_kafka_rest_restart
     return 0
 }
 
@@ -309,7 +309,8 @@ function configure_secure_mode() {
         return 1
     fi
     change_permissions
-    restart_kafka_rest_service
+    setup_warden_config
+    write_kafka_rest_restart
     return 0
 }
 
@@ -377,7 +378,6 @@ if $SECURE; then
     IS_SECURE_CONFIG=$(grep -e ssl.key -e listeners  ${KAFKA_REST_PROPERTIES} | wc -l)
     if [ $IS_SECURE_CONFIG -lt $num ]; then
         if configure_secure_mode; then
-            setup_warden_config
             logInfo 'Kafka REST successfully configured to run in secure mode.'
         else
             logErr 'Error: Errors occurred while configuring Kafka REST to run in secure mode.'
@@ -390,7 +390,6 @@ else
     if $INSECURE; then
         if grep -q ssl "$KAFKA_REST_PROPERTIES"; then
             configure_insecure_mode
-            setup_warden_config
             logInfo 'Kafka REST successfully configured to run in unsecure mode.'
         fi
     else
