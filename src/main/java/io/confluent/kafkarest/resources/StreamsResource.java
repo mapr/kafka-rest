@@ -5,12 +5,15 @@ import io.confluent.kafkarest.Context;
 import io.confluent.kafkarest.Versions;
 import io.confluent.rest.annotations.PerformanceMetric;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import java.security.PrivilegedExceptionAction;
 import java.util.Collection;
+import org.apache.hadoop.security.UserGroupInformation;
 
 @Path("/streams")
 @Produces({Versions.KAFKA_V1_JSON_BINARY_WEIGHTED_LOW, Versions.KAFKA_V1_JSON_AVRO_WEIGHTED_LOW,
@@ -28,8 +31,25 @@ public class StreamsResource {
   @GET
   @Path("/{stream}/topics")
   @PerformanceMetric("stream.topics.list")
-  public Collection<String> list(@PathParam("stream") String stream) {
-    return ctx.getMetadataObserver().getTopicNames(stream);
+  public Collection<String> list(@javax.ws.rs.core.Context HttpServletRequest httpRequest, 
+                                 final @PathParam("stream") String stream) throws Exception {
+      
+    return  (Collection<String>) runProxyQuery(new PrivilegedExceptionAction<Collection<String>>() {
+        @Override
+        public Collection<String> run() throws Exception {
+            return  ctx.getMetadataObserver().getTopicNames(stream);
+        }
+    }, httpRequest.getRemoteUser());
   }
+
+    public Object runProxyQuery(PrivilegedExceptionAction action, String remoteUser) throws Exception {
+        if (ctx.isImpersonationEnabled()){
+            UserGroupInformation ugi = UserGroupInformation.createProxyUser(remoteUser,
+                    UserGroupInformation.getCurrentUser());
+            return ugi.doAs(action);
+        } else {
+            return action.run();
+        }
+    }
 
 }

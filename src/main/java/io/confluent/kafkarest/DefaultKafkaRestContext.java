@@ -17,6 +17,7 @@
 package io.confluent.kafkarest;
 
 import io.confluent.kafkarest.v2.KafkaConsumerManager;
+import kafka.utils.ZkUtils;
 
 /**
  * Shared, global state for the REST proxy server, including configuration and connection pools.
@@ -25,98 +26,129 @@ import io.confluent.kafkarest.v2.KafkaConsumerManager;
  */
 public class DefaultKafkaRestContext implements KafkaRestContext {
 
-  private final KafkaRestConfig config;
-  private final MetadataObserver metadataObserver;
-  private ProducerPool producerPool;
-  private final ConsumerManager consumerManager;
-  private KafkaConsumerManager kafkaConsumerManager;
-  private final SimpleConsumerManager simpleConsumerManager;
-  private AdminClientWrapper adminClientWrapper;
+    private final KafkaRestConfig config;
+    private final KafkaStreamsMetadataObserver metadataObserver;
+    private ProducerPool producerPool;
+    private final ConsumerManager consumerManager;
+    private KafkaConsumerManager kafkaConsumerManager;
+    private final SimpleConsumerManager simpleConsumerManager;
+    private AdminClientWrapper adminClientWrapper;
+    private final ZkUtils zkUtils;
+    private final boolean isStreams;
+    private final boolean isImpersonationEnabled;
 
 
-  public DefaultKafkaRestContext(
-      KafkaRestConfig config,
-      MetadataObserver metadataObserver,
-      ProducerPool producerPool,
-      ConsumerManager consumerManager,
-      SimpleConsumerManager simpleConsumerManager,
-      KafkaConsumerManager kafkaConsumerManager,
-      AdminClientWrapper adminClientWrapper
-  ) {
+    public DefaultKafkaRestContext(
+            KafkaRestConfig config,
+            KafkaStreamsMetadataObserver metadataObserver,
+            ProducerPool producerPool,
+            ConsumerManager consumerManager,
+            SimpleConsumerManager simpleConsumerManager,
+            KafkaConsumerManager kafkaConsumerManager,
+            AdminClientWrapper adminClientWrapper,
+            ZkUtils zkUtils,
+            boolean isStreams,
+            boolean isImpersonationEnabled
+    ) {
 
-    this.config = config;
-    this.metadataObserver = metadataObserver;
-    this.producerPool = producerPool;
-    this.consumerManager = consumerManager;
-    this.simpleConsumerManager = simpleConsumerManager;
-    this.kafkaConsumerManager = kafkaConsumerManager;
-    this.adminClientWrapper = adminClientWrapper;
-  }
-
-
-  @Override
-  public KafkaRestConfig getConfig() {
-    return config;
-  }
-
-  @Override
-  public MetadataObserver getMetadataObserver() {
-    return metadataObserver;
-  }
-
-  @Override
-  public ProducerPool getProducerPool() {
-    if (producerPool == null) {
-      producerPool = new ProducerPool(config);
+        this.config = config;
+        this.metadataObserver = metadataObserver;
+        this.producerPool = producerPool;
+        this.consumerManager = consumerManager;
+        this.simpleConsumerManager = simpleConsumerManager;
+        this.kafkaConsumerManager = kafkaConsumerManager;
+        this.adminClientWrapper = adminClientWrapper;
+        this.zkUtils = zkUtils;
+        this.isStreams = isStreams;
+        this.isImpersonationEnabled = isImpersonationEnabled;
     }
-    return producerPool;
-  }
 
-  @Override
-  public ConsumerManager getConsumerManager() {
-    return consumerManager;
-  }
 
-  @Override
-  public SimpleConsumerManager getSimpleConsumerManager() {
-    return simpleConsumerManager;
-  }
+    @Override
+    public KafkaRestConfig getConfig() {
+        return config;
+    }
 
-  @Override
-  public KafkaConsumerManager getKafkaConsumerManager() {
-    if (kafkaConsumerManager == null) {
-      kafkaConsumerManager = new KafkaConsumerManager(config);
+    @Override
+    public KafkaStreamsMetadataObserver getMetadataObserver() {
+        if (isImpersonationEnabled) {
+            return new KafkaStreamsMetadataObserver(config, zkUtils, isStreams);
+        } else {
+            return metadataObserver;
+        }
     }
-    return kafkaConsumerManager;
-  }
 
-  @Override
-  public AdminClientWrapper getAdminClientWrapper() {
-    if (adminClientWrapper == null) {
-      adminClientWrapper = new AdminClientWrapper(config);
+    @Override
+    public ProducerPool getProducerPool() {
+        if (isImpersonationEnabled) {
+            return new ProducerPool(config);
+        } else {
+            return producerPool;
+        }
     }
-    return adminClientWrapper;
-  }
 
-  @Override
-  public void shutdown() {
-    if (kafkaConsumerManager != null) {
-      kafkaConsumerManager.shutdown();
+    @Override
+    public ConsumerManager getConsumerManager() {
+        return consumerManager;
     }
-    if (producerPool != null) {
-      producerPool.shutdown();
+
+    @Override
+    public SimpleConsumerManager getSimpleConsumerManager() {
+        if (isImpersonationEnabled) {
+            return new SimpleConsumerManager(config, getMetadataObserver(),
+                    new SimpleConsumerFactory(config));
+        } else {
+            return simpleConsumerManager;
+        }
     }
-    if (simpleConsumerManager != null) {
-      simpleConsumerManager.shutdown();
+
+    @Override
+    public KafkaConsumerManager getKafkaConsumerManager() {
+        if (kafkaConsumerManager == null) {
+            kafkaConsumerManager = new KafkaConsumerManager(config);
+        }
+        return kafkaConsumerManager;
     }
-    if (consumerManager != null) {
-      consumerManager.shutdown();
+
+    @Override
+    public AdminClientWrapper getAdminClientWrapper() {
+        if (adminClientWrapper == null) {
+            adminClientWrapper = new AdminClientWrapper(config);
+        }
+        return adminClientWrapper;
     }
-    if (adminClientWrapper != null) {
-      adminClientWrapper.shutdown();
+
+    public ZkUtils getZkUtils() {
+        return zkUtils;
     }
-    if (metadataObserver != null) {
-      metadataObserver.shutdown();
+
+    public boolean isStreams() {
+        return isStreams;
     }
-  }
+
+    public boolean isImpersonationEnabled() {
+        return isImpersonationEnabled;
+    }
+
+    @Override
+    public void shutdown() {
+        if (kafkaConsumerManager != null) {
+            kafkaConsumerManager.shutdown();
+        }
+        if (producerPool != null) {
+            producerPool.shutdown();
+        }
+        if (simpleConsumerManager != null) {
+            simpleConsumerManager.shutdown();
+        }
+        if (consumerManager != null) {
+            consumerManager.shutdown();
+        }
+        if (adminClientWrapper != null) {
+            adminClientWrapper.shutdown();
+        }
+        if (metadataObserver != null) {
+            metadataObserver.shutdown();
+        }
+    }
 }

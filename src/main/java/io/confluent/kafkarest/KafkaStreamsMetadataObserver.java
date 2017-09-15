@@ -64,9 +64,16 @@ public class KafkaStreamsMetadataObserver extends MetadataObserver {
    */
   private boolean isStreams;
   private boolean defaultStreamSet;
-  private String defaultStream;
-
-  public KafkaStreamsMetadataObserver(KafkaRestConfig config, ZkUtils zkUtils, boolean isStreams) {
+  private String defaultStream; 
+  private ZkUtils zkUtil;
+  private boolean isImpersonationEnabled;
+  
+  public boolean isImpersonationEnabled() {
+        return isImpersonationEnabled;
+    }
+    
+  
+  public KafkaStreamsMetadataObserver(KafkaRestConfig config, ZkUtils zkUtils, boolean isStreams, boolean isImpersonationEnabled) {
     super(config, zkUtils);
 
     String bootstrapServers = config.getString(KafkaRestConfig.BOOTSTRAP_SERVERS_CONFIG);
@@ -75,7 +82,8 @@ public class KafkaStreamsMetadataObserver extends MetadataObserver {
     this.defaultStreamSet = config.isDefaultStreamSet();
     this.defaultStream = defaultStream;
     this.isStreams = isStreams;
-
+    this.isImpersonationEnabled = isImpersonationEnabled;
+    this.zkUtil = zkUtils;
     streamsMetadataConsumer = new StreamsMetadataConsumer(bootstrapServers, defaultStream);
   }
 
@@ -281,6 +289,15 @@ public class KafkaStreamsMetadataObserver extends MetadataObserver {
     }
     return partitions;
   }
+
+
+  public ZkUtils getZkUtils(){
+      return zkUtil;
+  }
+
+    public boolean isStreams(){
+        return isStreams;
+    }
 }
 
 

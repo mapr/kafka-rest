@@ -110,6 +110,10 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
     }
 
     isStreams = appConfig.isStreams();
+      if((appConfig.isImpersonationEnabled()) && 
+              ! appConfig.getString(KafkaRestConfig.AUTHENTICATION_REALM_CONFIG).equals("jpamLogin")){
+          throw new RuntimeException("PAM Authentication must be enabled in order to support MapR Streams impersonation");
+      }
 
     if (isStreams) {
       if (producerPool == null) {
