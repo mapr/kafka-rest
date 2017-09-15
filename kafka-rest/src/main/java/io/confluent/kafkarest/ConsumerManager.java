@@ -252,14 +252,30 @@ public class ConsumerManager {
       return null;
     }
 
-    // Consumer will try reading even if it doesn't exist, so we need to check this explicitly.
-    if (!mdObserver.topicExists(topic)) {
-      callback.onCompletion(null, Errors.topicNotFoundException());
-      return null;
+      // Consumer will try reading even if it doesn't exist, so we need to check this explicitly.
+    if (mdObserver.isImpersonationEnabled()){
+        KafkaStreamsMetadataObserver mdUserObserver =  new KafkaStreamsMetadataObserver(config, mdObserver.getZkUtils(),
+                mdObserver.isStreams(), true);
+        if (!mdUserObserver.topicExists(topic)) {
+            callback.onCompletion(null, Errors.topicNotFoundException());
+            return null;
+        }
+    } else {
+        if (!mdObserver.topicExists(topic)) {
+            callback.onCompletion(null, Errors.topicNotFoundException());
+            return null;
+        }        
     }
 
-    int workerId = nextWorker.getAndIncrement() % workers.size();
-    ConsumerWorker worker = workers.get(workerId);
+    ConsumerWorker worker;
+    if (mdObserver.isImpersonationEnabled()){
+        worker = new ConsumerWorker(config);
+        worker.start();        
+    } else {
+        int workerId = nextWorker.getAndIncrement() % workers.size();
+        worker = workers.get(workerId);
+    }
+
     return worker.readTopic(
         state, topic, maxBytes,
         new ConsumerWorkerReadCallback<ClientKeyT, ClientValueT>() {

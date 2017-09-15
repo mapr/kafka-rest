@@ -138,6 +138,17 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-common</artifactId>
+            <version>2.7.0-mapr-1607</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.sf.jpam</groupId>
+            <artifactId>jpam</artifactId>
+            <version>1.1</version>
+        </dependency>
     </dependencies>
 
 

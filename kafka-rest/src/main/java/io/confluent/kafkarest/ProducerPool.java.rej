@@ -1,0 +1,21 @@
+diff a/kafka-rest/src/main/java/io/confluent/kafkarest/ProducerPool.java b/kafka-rest/src/main/java/io/confluent/kafkarest/ProducerPool.java	(rejected hunks)
+@@ -104,11 +104,14 @@ public class ProducerPool {
+     props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapBrokers);
+ 
+     Properties producerProps = (Properties) appConfig.getProducerProperties();
+-      // configure default stream
+-      String defaultStream = appConfig.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
+-      if (!"".equals(defaultStream)) {
+-          props.put(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG, defaultStream);
+-      }    
++    // configure default stream
++    String defaultStream = appConfig.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
++    if (!"".equals(defaultStream)) {
++        props.put(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG, defaultStream);
++    }
++    int streamBuffer = appConfig.getInt(KafkaRestConfig.STREAM_BUFFER_MAX_TIME_CONFIG);
++    props.put(ProducerConfig.STREAMS_BUFFER_TIME_CONFIG, streamBuffer);
++      
+     return buildConfig(props, producerProps, producerConfigOverrides);
+   }
+ 

@@ -51,7 +51,10 @@ public class ProducerPool {
 
   private boolean isStreams;
   private boolean defaultStreamSet;
-
+  private boolean isImpersonationEnabled;
+  private Map<String, Object> binaryStreamProps;
+  private Map<String, Object> jsonStreamProps;
+  
   public ProducerPool(KafkaRestConfig appConfig) {
     this(appConfig, null);
   }
@@ -70,6 +73,7 @@ public class ProducerPool {
   ) {
       this.isStreams = appConfig.isStreams();
       this.defaultStreamSet = appConfig.isDefaultStreamSet();
+      this.isImpersonationEnabled = appConfig.isImpersonationEnabled();
 
       if (!isStreams) {
           // initialize producers for kafka backend
@@ -82,17 +86,16 @@ public class ProducerPool {
           Map<String, Object> avroProps = buildAvroConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
           kafkaProducers.put(EmbeddedFormat.AVRO, buildAvroProducer(avroProps));
       }
-    Map<String, Object> binaryProps =
-        buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
-      streamsProducers.put(EmbeddedFormat.BINARY, buildBinaryProducer(binaryProps));
 
-    Map<String, Object> jsonProps =
-        buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
-      streamsProducers.put(EmbeddedFormat.JSON, buildJsonProducer(jsonProps));
+      binaryStreamProps = buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
+      jsonStreamProps = buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
 
-    Map<String, Object> avroProps =
-        buildAvroConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
-      streamsProducers.put(EmbeddedFormat.AVRO, buildAvroProducer(avroProps));
+      // Initialize producers for Streams backend.
+      // Avro serialization is not supported by MapR Streams.
+      if(!isImpersonationEnabled){
+          streamsProducers.put(EmbeddedFormat.BINARY, buildBinaryProducer(binaryStreamProps));
+          streamsProducers.put(EmbeddedFormat.JSON, buildJsonProducer(jsonStreamProps));
+      }      
   }
 
   private Map<String, Object> buildStandardConfig(
@@ -200,9 +203,18 @@ public class ProducerPool {
       if (!defaultStreamSet && !topic.contains(":")) {
         throw Errors.topicNotFoundException();
       }
-      restProducer = streamsProducers.get(recordFormat);
       //we enclose it only for streams producer
       //because there can be exception due to permissions
+      if (isImpersonationEnabled) {
+          if (recordFormat.equals(EmbeddedFormat.BINARY)) {
+              restProducer = buildBinaryProducer(binaryStreamProps);
+          } else {
+              restProducer = buildJsonProducer(jsonStreamProps);
+          }
+      } else {
+          restProducer = streamsProducers.get(recordFormat);
+      }
+      
       try {
         restProducer.produce(task, topic, partition, records);
       } catch (RestServerErrorException e){
@@ -213,12 +225,28 @@ public class ProducerPool {
     } else {
       if (!defaultStreamSet) {
         if (topic.contains(":")) {
-          restProducer = streamsProducers.get(recordFormat);
+            if (isImpersonationEnabled) {
+                if (recordFormat.equals(EmbeddedFormat.BINARY)) {
+                    restProducer = buildBinaryProducer(binaryStreamProps);
+                } else {
+                    restProducer = buildJsonProducer(jsonStreamProps);
+                }
+            } else {
+                restProducer = streamsProducers.get(recordFormat);
+            }
         } else {
           restProducer = kafkaProducers.get(recordFormat);
         }
       } else {
-        restProducer = streamsProducers.get(recordFormat);
+          if (isImpersonationEnabled) {
+              if (recordFormat.equals(EmbeddedFormat.BINARY)) {
+                  restProducer = buildBinaryProducer(binaryStreamProps);
+              } else {
+                  restProducer = buildJsonProducer(jsonStreamProps);
+              }
+          } else {
+              restProducer = streamsProducers.get(recordFormat);
+          }
       }
         restProducer.produce(task, topic, partition, records);
     }

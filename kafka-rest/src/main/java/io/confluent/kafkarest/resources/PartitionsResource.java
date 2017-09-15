@@ -20,9 +20,12 @@ import org.eclipse.jetty.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.security.PrivilegedExceptionAction;
+import java.util.Collection;
 import java.util.List;
 import java.util.Vector;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.Consumes;
@@ -36,7 +39,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
 
-import io.confluent.kafkarest.ConsumerManager;
+import io.confluent.kafkarest.*;
 import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.KafkaRestContext;
 import io.confluent.kafkarest.ProducerPool;
@@ -53,6 +56,7 @@ import io.confluent.kafkarest.entities.PartitionProduceRequest;
 import io.confluent.kafkarest.entities.ProduceRecord;
 import io.confluent.kafkarest.entities.ProduceResponse;
 import io.confluent.rest.annotations.PerformanceMetric;
+import org.apache.hadoop.security.UserGroupInformation;
 import kafka.common.KafkaException;
 
 @Path("/topics/{topic}/partitions")
@@ -75,24 +79,41 @@ public class PartitionsResource {
 
   @GET
   @PerformanceMetric("partitions.list")
-  public List<Partition> list(final @PathParam("topic") String topic) {
-    checkTopicExists(topic);
-    return ctx.getAdminClientWrapper().getTopicPartitions(topic);
+  public List<Partition> list(@javax.ws.rs.core.Context HttpServletRequest httpRequest, final @PathParam("topic") String topic) throws Exception {
+      return (List<Partition>) runProxyQuery(new PrivilegedExceptionAction() {
+          @Override
+          public List<Partition> run() throws Exception {
+              checkTopicExists(topic);
+              KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
+              List<Partition> partitions = metadataObserver.getTopicPartitions(topic);
+              if (ctx.isImpersonationEnabled()){
+                  metadataObserver.shutdown();
+              }
+              return partitions;
+          }
+      }, httpRequest.getRemoteUser());
   }
 
   @GET
   @Path("/{partition}")
   @PerformanceMetric("partition.get")
-  public Partition getPartition(
-      final @PathParam("topic") String topic,
-      @PathParam("partition") int partition
-  ) {
-    checkTopicExists(topic);
-    Partition part = ctx.getAdminClientWrapper().getTopicPartition(topic, partition);
-    if (part == null) {
-      throw Errors.partitionNotFoundException();
-    }
-    return part;
+  public Partition getPartition(@javax.ws.rs.core.Context HttpServletRequest httpRequest, final @PathParam("topic") String topic,
+                                @PathParam("partition") final int partition) throws Exception {
+      return (Partition) runProxyQuery(new PrivilegedExceptionAction() {
+          @Override
+          public Partition run() throws Exception {
+              checkTopicExists(topic);
+              KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
+              Partition part = metadataObserver.getTopicPartition(topic, partition);
+              if (ctx.isImpersonationEnabled()){
+                  metadataObserver.shutdown();
+              }
+              if (part == null) {
+                  throw Errors.partitionNotFoundException();
+              }
+              return part;
+          }
+      }, httpRequest.getRemoteUser());
   }
 
 
@@ -104,15 +125,20 @@ public class PartitionsResource {
              Versions.KAFKA_DEFAULT_JSON_WEIGHTED,
              Versions.JSON_WEIGHTED})
   public void consumeBinary(
+      @javax.ws.rs.core.Context HttpServletRequest httpRequest,          
       final @Suspended AsyncResponse asyncResponse,
       final @PathParam("topic") String topicName,
       final @PathParam("partition") int partitionId,
       final @QueryParam("offset") long offset,
       final @QueryParam("count") @DefaultValue("1") long count
   ) {
-
-    consume(asyncResponse, topicName, partitionId, offset, count, EmbeddedFormat.BINARY);
-  }
+      runProxyQuery(new PrivilegedExceptionAction() {
+          @Override
+          public Partition run() throws Exception {
+              consume(asyncResponse, topicName, partitionId, offset, count, EmbeddedFormat.BINARY);
+              return null;
+          }
+      }, httpRequest.getRemoteUser());  }
 
   @GET
   @Path("/{partition}/messages")
@@ -136,15 +162,20 @@ public class PartitionsResource {
   @PerformanceMetric("partition.consume-json")
   @Produces({Versions.KAFKA_V1_JSON_JSON_WEIGHTED_LOW})
   public void consumeJson(
+      @javax.ws.rs.core.Context HttpServletRequest httpRequest,
       final @Suspended AsyncResponse asyncResponse,
       final @PathParam("topic") String topicName,
       final @PathParam("partition") int partitionId,
       final @QueryParam("offset") long offset,
       final @QueryParam("count") @DefaultValue("1") long count
   ) {
-
-    consume(asyncResponse, topicName, partitionId, offset, count, EmbeddedFormat.JSON);
-  }
+      runProxyQuery(new PrivilegedExceptionAction() {
+          @Override
+          public Partition run() throws Exception {
+              consume(asyncResponse, topicName, partitionId, offset, count, EmbeddedFormat.JSON);
+              return null;
+          }
+      }, httpRequest.getRemoteUser());  }
 
   @POST
   @Path("/{partition}")
@@ -152,12 +183,19 @@ public class PartitionsResource {
   @Consumes({Versions.KAFKA_V1_JSON_BINARY, Versions.KAFKA_V1_JSON,
              Versions.KAFKA_DEFAULT_JSON, Versions.JSON, Versions.GENERIC_REQUEST})
   public void produceBinary(
+      @javax.ws.rs.core.Context HttpServletRequest httpRequest,
       final @Suspended AsyncResponse asyncResponse,
       final @PathParam("topic") String topic,
       final @PathParam("partition") int partition,
       @Valid @NotNull PartitionProduceRequest<BinaryProduceRecord> request
   ) {
-    produce(asyncResponse, topic, partition, EmbeddedFormat.BINARY, request);
+      runProxyQuery(new PrivilegedExceptionAction() {
+          @Override
+          public Partition run() throws Exception {
+              produce(asyncResponse, topic, partition, EmbeddedFormat.BINARY, request);
+              return null;
+          }
+      }, httpRequest.getRemoteUser()); 
   }
 
   @POST
@@ -165,12 +203,19 @@ public class PartitionsResource {
   @PerformanceMetric("partition.produce-json")
   @Consumes({Versions.KAFKA_V1_JSON_JSON})
   public void produceJson(
+      @javax.ws.rs.core.Context HttpServletRequest httpRequest,
       final @Suspended AsyncResponse asyncResponse,
       final @PathParam("topic") String topic,
       final @PathParam("partition") int partition,
       @Valid @NotNull PartitionProduceRequest<JsonProduceRecord> request
   ) {
-    produce(asyncResponse, topic, partition, EmbeddedFormat.JSON, request);
+      runProxyQuery(new PrivilegedExceptionAction() {
+          @Override
+          public Partition run() throws Exception {
+              produce(asyncResponse, topic, partition, EmbeddedFormat.JSON, request);
+              return null;
+          }
+      }, httpRequest.getRemoteUser());
   }
 
   @POST
@@ -217,9 +262,10 @@ public class PartitionsResource {
         asyncResponse, topicName, partitionId, offset, count
     );
 
-    ctx.getSimpleConsumerManager().consume(
-        topicName, partitionId, offset, count, embeddedFormat,
-        new ConsumerManager.ReadCallback<K, V>() {
+    SimpleConsumerManager  consumerManager = ctx.getSimpleConsumerManager();
+    consumerManager.consume(
+      topicName, partitionId, offset, count, embeddedFormat,
+      new ConsumerManager.ReadCallback<ClientK, ClientV>() {
           @Override
           public void onCompletion(
               List<? extends ConsumerRecord<K, V>> records,
@@ -231,14 +277,18 @@ public class PartitionsResource {
                 records,
                 e
             );
-            if (e != null) {
-              asyncResponse.resume(e);
-            } else {
-              asyncResponse.resume(records);
-            }
-          }
+                if (e != null) {
+                  asyncResponse.resume(e);
+                } else {
+                  asyncResponse.resume(records);
+                }
+              }
         }
     );
+
+    if(ctx.isImpersonationEnabled()) {
+        consumerManager.shutdown();
+    }
   }
 
   protected <K, V, R extends ProduceRecord<K, V>> void produce(
@@ -305,4 +355,14 @@ public class PartitionsResource {
       throw Errors.topicNotFoundException();
     }
   }
+
+    public Object runProxyQuery(PrivilegedExceptionAction action, String remoteUser) throws Exception {
+        if (ctx.isImpersonationEnabled()){
+            UserGroupInformation ugi = UserGroupInformation.createProxyUser(remoteUser,
+                    UserGroupInformation.getCurrentUser());
+            return ugi.doAs(action);
+        } else {
+            return action.run();
+        }
+    }
 }
