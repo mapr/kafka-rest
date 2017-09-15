@@ -15,9 +15,11 @@
  **/
 package io.confluent.kafkarest.resources;
 
+import java.security.PrivilegedExceptionAction;
 import java.util.Collection;
 import java.util.List;
 import java.util.Vector;
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -28,11 +30,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
 
-import io.confluent.kafkarest.Context;
-import io.confluent.kafkarest.Errors;
-import io.confluent.kafkarest.ProducerPool;
-import io.confluent.kafkarest.RecordMetadataOrException;
-import io.confluent.kafkarest.Versions;
+import io.confluent.kafkarest.*;
 import io.confluent.kafkarest.entities.AvroTopicProduceRecord;
 import io.confluent.kafkarest.entities.BinaryTopicProduceRecord;
 import io.confluent.kafkarest.entities.EmbeddedFormat;
@@ -43,6 +41,7 @@ import io.confluent.kafkarest.entities.Topic;
 import io.confluent.kafkarest.entities.TopicProduceRecord;
 import io.confluent.kafkarest.entities.TopicProduceRequest;
 import io.confluent.rest.annotations.PerformanceMetric;
+import org.apache.hadoop.security.UserGroupInformation;
 
 @Path("/topics")
 @Produces({Versions.KAFKA_V1_JSON_WEIGHTED, Versions.KAFKA_DEFAULT_JSON_WEIGHTED,
@@ -59,15 +58,37 @@ public class TopicsResource {
 
   @GET
   @PerformanceMetric("topics.list")
-  public Collection<String> list() {
-    return ctx.getMetadataObserver().getTopicNames();
+  public Collection<String> list(@javax.ws.rs.core.Context HttpServletRequest httpRequest) throws Exception {
+      return (Collection<String>) runProxyQuery(new PrivilegedExceptionAction() {
+          @Override
+          public Collection<String> run() throws Exception {
+              KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
+              Collection<String> topics = metadataObserver.getTopicNames();
+              if (ctx.isImpersonationEnabled()){
+                  metadataObserver.shutdown();
+              }
+              return topics;
+          }
+      }, httpRequest.getRemoteUser());
   }
 
   @GET
   @Path("/{topic}")
   @PerformanceMetric("topic.get")
-  public Topic getTopic(@PathParam("topic") String topicName) {
-    Topic topic = ctx.getMetadataObserver().getTopic(topicName);
+  public Topic getTopic(@javax.ws.rs.core.Context HttpServletRequest httpRequest, 
+                        @PathParam("topic") final String topicName) throws Exception {
+      Topic topic = (Topic) runProxyQuery(new PrivilegedExceptionAction() {
+          @Override
+          public Topic run() throws Exception {
+              KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
+              Topic topic = metadataObserver.getTopic(topicName);
+              if (ctx.isImpersonationEnabled()){
+                  metadataObserver.shutdown();
+              }
+              return topic;
+          }
+      }, httpRequest.getRemoteUser());
+
     if (topic == null) {
       throw Errors.topicNotFoundException();
     }
@@ -79,20 +100,34 @@ public class TopicsResource {
   @PerformanceMetric("topic.produce-binary")
   @Consumes({Versions.KAFKA_V1_JSON_BINARY, Versions.KAFKA_V1_JSON,
              Versions.KAFKA_DEFAULT_JSON, Versions.JSON, Versions.GENERIC_REQUEST})
-  public void produceBinary(final @Suspended AsyncResponse asyncResponse,
-                            @PathParam("topic") String topicName,
-                            @Valid TopicProduceRequest<BinaryTopicProduceRecord> request) {
-    produce(asyncResponse, topicName, EmbeddedFormat.BINARY, request);
+  public void produceBinary(@javax.ws.rs.core.Context HttpServletRequest httpRequest, final @Suspended AsyncResponse asyncResponse,
+                            @PathParam("topic") final String topicName,
+                            @Valid final TopicProduceRequest<BinaryTopicProduceRecord> request) throws Exception{
+       runProxyQuery(new PrivilegedExceptionAction<Void>() {
+          @Override
+          public Void run() throws Exception {
+              produce(asyncResponse, topicName, EmbeddedFormat.BINARY, request);
+              return null;
+          }
+      }, httpRequest.getRemoteUser());
   }
 
   @POST
   @Path("/{topic}")
   @PerformanceMetric("topic.produce-json")
   @Consumes({Versions.KAFKA_V1_JSON_JSON})
-  public void produceJson(final @Suspended AsyncResponse asyncResponse,
-                          @PathParam("topic") String topicName,
-                          @Valid TopicProduceRequest<JsonTopicProduceRecord> request) {
-    produce(asyncResponse, topicName, EmbeddedFormat.JSON, request);
+  public void produceJson(@javax.ws.rs.core.Context HttpServletRequest httpRequest, final @Suspended AsyncResponse asyncResponse,
+                          @PathParam("topic") final String topicName,
+                          @Valid final TopicProduceRequest<JsonTopicProduceRecord> request) throws Exception
+    {
+        runProxyQuery(new PrivilegedExceptionAction<Void>() {
+            @Override
+            public Void run() throws Exception {
+                produce(asyncResponse, topicName, EmbeddedFormat.JSON, request);
+                return null;
+            }
+        }, httpRequest.getRemoteUser());
+
   }
 
   @POST
@@ -130,7 +165,8 @@ public class TopicsResource {
     if (!ctx.getConfig().isStreams() && !ctx.getMetadataObserver().topicExists(topicName)) {
       throw Errors.topicNotFoundException();
     }
-    ctx.getProducerPool().produce(
+      ProducerPool producerPool = ctx.getProducerPool();
+      producerPool.produce(
         topicName, null, format,
         request,
         request.getRecords(),
@@ -157,6 +193,18 @@ public class TopicsResource {
           }
         }
     );
+    if (ctx.isImpersonationEnabled()){
+        producerPool.shutdown();
+    }
   }
-
+  
+  public Object runProxyQuery(PrivilegedExceptionAction action, String remoteUser) throws Exception {
+      if (ctx.isImpersonationEnabled()){
+          UserGroupInformation ugi = UserGroupInformation.createProxyUser(remoteUser,
+                  UserGroupInformation.getCurrentUser());
+          return ugi.doAs(action);          
+      } else {
+          return action.run();
+      }
+  }
 }

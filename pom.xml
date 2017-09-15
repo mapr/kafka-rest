@@ -67,7 +67,7 @@
             <groupId>io.confluent</groupId>
             <artifactId>rest-utils</artifactId>
             <!-- HTTPS is supported since 3.x confluent release -->
-            <version>3.0.1</version>
+            <version>3.0-mapr</version>
         </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>
@@ -167,6 +167,17 @@
                     <artifactId>jms</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+        <groupId>org.apache.hadoop</groupId>
+        <artifactId>hadoop-common</artifactId>
+        <version>2.7.0-mapr-1607</version>
+        <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.sf.jpam</groupId>
+            <artifactId>jpam</artifactId>
+            <version>1.1</version>
         </dependency>
     </dependencies>
 

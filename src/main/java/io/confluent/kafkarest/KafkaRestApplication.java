@@ -69,6 +69,10 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
                                         SimpleConsumerFactory simpleConsumerFactory,
                                         SimpleConsumerManager simpleConsumerManager) {
     isStreams = appConfig.isStreams();
+      if((appConfig.isImpersonationEnabled()) && 
+              ! appConfig.getString(KafkaRestConfig.AUTHENTICATION_REALM_CONFIG).equals("jpamLogin")){
+          throw new RuntimeException("PAM Authentication must be enabled in order to support MapR Streams impersonation");
+      }
 
     if (isStreams) {
       if (producerPool == null) {
@@ -87,7 +91,7 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
     }
 
     if (mdObserver == null) {
-      mdObserver = new KafkaStreamsMetadataObserver(appConfig, zkUtils, isStreams);
+      mdObserver = new KafkaStreamsMetadataObserver(appConfig, zkUtils, isStreams, appConfig.isImpersonationEnabled());
     }
     if (consumerManager == null) {
       consumerManager = new ConsumerManager(appConfig, mdObserver);
@@ -100,7 +104,8 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
     }
 
     this.zkUtils = zkUtils;
-    context = new Context(appConfig, mdObserver, producerPool, consumerManager, simpleConsumerManager);
+    context = new Context(appConfig, mdObserver, producerPool, consumerManager, simpleConsumerManager, zkUtils, 
+            isStreams, appConfig.isImpersonationEnabled());
     config.register(RootResource.class);
     config.register(new BrokersResource(context));
     config.register(new TopicsResource(context));
