@@ -373,6 +373,10 @@ if $HELP; then
     print_usage
 fi  
 
+if [ -f "$KAFKA_REST_PACKAGE_DIR/conf/.not_configured_yet" ]  ; then
+    rm -f "$KAFKA_REST_PACKAGE_DIR/conf/.not_configured_yet"
+fi
+ 
 if $SECURE; then
     num=3
     IS_SECURE_CONFIG=$(grep -e ssl.key -e listeners  ${KAFKA_REST_PROPERTIES} | wc -l)
