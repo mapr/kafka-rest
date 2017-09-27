@@ -198,7 +198,7 @@ public class KafkaRestConfig extends RestConfig {
                     + " then we refer to Kafka topics if topic name does not contain ':', topics with ':' refer to Streams. "
                     + " If default stream is set to valid value and topic name does not contain ':' then we refer to Streams "
                     + "topic in the default stream. The default value is '" + MAPR_STREAMS_BACKEND + "'.";
-    public static final boolean REST_PROXY_IMPERSONATION_DEFAULT = false;
+    public static final boolean REST_PROXY_IMPERSONATION_DEFAULT = true;
     
   protected static final String SSL_PROTOCOL_DEFAULT_OVERRIDE = "TLSv1.2";
   
@@ -259,7 +259,14 @@ public class KafkaRestConfig extends RestConfig {
         .define(STREAM_BUFFER_MAX_TIME_CONFIG, Type.INT, STREAM_BUFFER_MAX_TIME_DEFAULT,
                 Importance.MEDIUM, STREAM_BUFFER_MAX_TIME_DOC)
         .define(REST_PROXY_IMPERSONATION, Type.BOOLEAN, REST_PROXY_IMPERSONATION_DEFAULT, 
-                Importance.MEDIUM, REST_PROXY_IMPERSONATION_DOC);
+                Importance.MEDIUM, REST_PROXY_IMPERSONATION_DOC)
+        .defineOverride(AUTHENTICATION_METHOD_CONFIG, Type.STRING, AUTHENTICATION_METHOD_BASIC,
+                AUTHENTICATION_METHOD_VALIDATOR, Importance.LOW, AUTHENTICATION_METHOD_DOC)
+        .defineOverride(AUTHENTICATION_REALM_CONFIG, Type.STRING, "jpamLogin",
+                    Importance.LOW, AUTHENTICATION_REALM_DOC)
+        .defineOverride(AUTHENTICATION_ROLES_CONFIG, Type.LIST, AUTHENTICATION_ROLES_DEFAULT,
+                    Importance.LOW, AUTHENTICATION_ROLES_DOC);
+    ;
   }
 
   private Time time;
