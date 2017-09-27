@@ -308,6 +308,12 @@ public class KafkaRestConfig extends RestConfig {
       + " security, etc.";
   private static final boolean ZOOKEEPER_SET_ACL_DEFAULT = false;
   private static final ConfigDef config;
+
+  public static final String REST_PROXY_IMPERSONATION = "rest.proxy.enable.doAs";
+  private static final String
+          REST_PROXY_IMPERSONATION_DOC =
+          "Specifies use impersonation for MapR streams or not.;
+  public static final boolean REST_PROXY_IMPERSONATION_DEFAULT = true;
   protected static final String SSL_PROTOCOL_DEFAULT_OVERRIDE = "TLSv1.2";
     public static final String STREAMS_DEFAULT_STREAM_CONFIG = "streams.default.stream";
     private static final String STREAMS_DEFAULT_STREAM_DOC = "The default stream the consumer should poll messages from and"
@@ -373,7 +379,21 @@ public class KafkaRestConfig extends RestConfig {
         .defineOverride(
             SSL_PROTOCOL_CONFIG, Type.STRING, 
             SSL_PROTOCOL_DEFAULT_OVERRIDE,
-            Importance.MEDIUM, SSL_PROTOCOL_DOC)            
+            Importance.MEDIUM, SSL_PROTOCOL_DOC)
+        .defineOverride(
+            AUTHENTICATION_METHOD_CONFIG,
+            Type.STRING, AUTHENTICATION_METHOD_BASIC,
+            AUTHENTICATION_METHOD_VALIDATOR, 
+            Importance.LOW, AUTHENTICATION_METHOD_DOC
+        )
+        .defineOverride(
+            AUTHENTICATION_REALM_CONFIG,
+            Type.STRING,
+            "jpamLogin",
+            Importance.LOW,
+            AUTHENTICATION_REALM_DOC)
+        .defineOverride(AUTHENTICATION_ROLES_CONFIG, Type.LIST, AUTHENTICATION_ROLES_DEFAULT,
+            Importance.LOW, AUTHENTICATION_ROLES_DOC)
         .define(ID_CONFIG, Type.STRING, ID_DEFAULT, Importance.HIGH, ID_CONFIG_DOC)
         .define(HOST_NAME_CONFIG, Type.STRING, HOST_NAME_DEFAULT, Importance.MEDIUM, HOST_NAME_DOC)
         .define(
