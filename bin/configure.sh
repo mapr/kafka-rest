@@ -320,28 +320,31 @@ function configure_secure_mode() {
 #######################################################################
 
 
-{ OPTS=`getopt -n "$0" -a -o suhR --long secure,unsecure,help,EC -- "$@"`; } 2>/dev/null
+{ OPTS=`getopt -n "$0" -a -o suhR --long secure,unsecure,customSecure,help,EC -- "$@"`; } 2>/dev/null
 eval set -- "$OPTS"
 
 SECURE=false
-INSECURE=false
+CUSTOM=false
 HELP=false
 while true; do
   case "$1" in
     -s | --secure )
-    if ! check_for_options_conflict $INSECURE; then
-        exit 1
-    fi
     SECURE=true;
     shift ;;
 
     -u | --unsecure )
-    if ! check_for_options_conflict $SECURE; then
-        exit 1
-    fi
-    INSECURE=true;
+    SECURE=false;
     shift ;;
-
+    
+    -cs | --customSecure)  
+      if [ -f "$KAFKA_REST_PACKAGE_DIR/conf/.not_configured_yet" ]; then
+        SECURE=true;
+      else
+        SECURE=false;
+        CUSTOM=true;
+      fi
+    shift ;;
+    
     -h | --help ) HELP=true; shift ;;
 
     -R) KAFKA_REST_CORE_IS_RUNNING=true; shift ;;
@@ -356,18 +359,6 @@ while true; do
   esac
 done
 
-# checking for variable-option conflict
-if [ ! -z ${isSecure+x} ]; then # isSecure exists
-    if [ $isSecure -eq 1 ] ; then
-        if $INSECURE ; then
-            logWarn "'isSecure' variable set to '1', but '--unsecure' option was specified. Ignoring 'isSecure'";
-        fi
-      else
-        if $SECURE ; then
-            logWarn "'isSecure' variable set to '0', but '--secure' option was specified. Ignoring 'isSecure'";
-        fi
-    fi
-fi
 
 if $HELP; then
     print_usage
@@ -391,15 +382,15 @@ if $SECURE; then
 	logInfo ''Kafka REST has been already configured to run in secure mode.''
     fi
 else
-    if $INSECURE; then
-        if grep -q ssl "$KAFKA_REST_PROPERTIES"; then
-            configure_insecure_mode
-            logInfo 'Kafka REST successfully configured to run in unsecure mode.'
-        fi
-    else
-        setup_warden_config
-        change_permissions
-        write_kafka_rest_restart
+    setup_warden_config
+    change_permissions
+    write_kafka_rest_restart    
+    if $CUSTOM; then
+        exit 0
+    fi
+    if grep -q ssl "$KAFKA_REST_PROPERTIES"; then
+       configure_insecure_mode
+       logInfo 'Kafka REST successfully configured to run in unsecure mode.'
     fi
 fi
 
