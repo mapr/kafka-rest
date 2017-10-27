@@ -250,10 +250,8 @@ function write_kafka_rest_restart(){
         chown -R ${MAPR_USER} ${MAPR_RESTART_SCRIPTS_DIR}
         chgrp -R ${MAPR_GROUP} ${MAPR_RESTART_SCRIPTS_DIR}
     fi
-
-	cat >${KAFKA_REST_RESTART_SRC} <<-EOF
-	maprcli node services -name kafka-rest -action restart -nodes `hostname`
-	EOF
+    
+    echo -e "#!/bin/bash\nsudo -u $MAPR_USER maprcli node services -action restart -name kafka-rest -nodes `hostname`" > ${KAFKA_REST_RESTART_SRC}
 
     chown ${MAPR_USER} ${KAFKA_REST_RESTART_SRC}
     chgrp ${MAPR_GROUP} ${KAFKA_REST_RESTART_SRC}
@@ -379,7 +377,10 @@ if $SECURE; then
             exit 1
         fi
     else
-	logInfo ''Kafka REST has been already configured to run in secure mode.''
+        change_permissions
+        setup_warden_config
+        write_kafka_rest_restart    
+	    logInfo ''Kafka REST has been already configured to run in secure mode.''
     fi
 else
     setup_warden_config
