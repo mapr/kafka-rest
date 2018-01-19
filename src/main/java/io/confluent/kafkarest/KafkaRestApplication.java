@@ -18,13 +18,10 @@ package io.confluent.kafkarest;
 
 import org.eclipse.jetty.util.StringUtil;
 
-import java.lang.reflect.Proxy;
 import java.util.Properties;
 
 import javax.ws.rs.core.Configurable;
 
-import io.confluent.kafkarest.exceptions.ZkExceptionMapper;
-import io.confluent.kafkarest.extension.ContextInvocationHandler;
 import io.confluent.kafkarest.extension.KafkaRestCleanupFilter;
 import io.confluent.kafkarest.extension.KafkaRestContextProvider;
 import io.confluent.kafkarest.extension.RestResourceExtension;
@@ -110,35 +107,29 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
     }
 
     isStreams = appConfig.isStreams();
-      if((appConfig.isImpersonationEnabled()) && 
-              ! appConfig.getString(KafkaRestConfig.AUTHENTICATION_REALM_CONFIG).equals("jpamLogin")){
-          throw new RuntimeException("PAM Authentication must be enabled in order to support MapR Streams impersonation");
-      }
 
-    if (isStreams) {
-      if (producerPool == null) {
-          producerPool = new ProducerPool(appConfig, null);
-      }
-    } else { // Kafka
-        config.register(new ZkExceptionMapper(appConfig));
-        appConfig.getString(KafkaRestConfig.ZOOKEEPER_CONNECT_CONFIG), 30000, 30000,
-                 JaasUtils.isZkSecurityEnabled());
-      }
-      if (producerPool == null) {
-          producerPool = new ProducerPool(appConfig, zkUtils, null);
-      }
-      
     KafkaRestContextProvider.initialize(zkUtils, appConfig, mdObserver, producerPool,
         consumerManager, simpleConsumerFactory,
         simpleConsumerManager, kafkaConsumerManager, adminClientWrapperInjected
     );
-    ContextInvocationHandler contextInvocationHandler = new ContextInvocationHandler();
+
+    mdObserver = new KafkaStreamsMetadataObserver(appConfig, zkUtils, appConfig.isStreams(), appConfig.isImpersonationEnabled());
+
+    if (consumerManager == null) {
+      consumerManager = new ConsumerManager(appConfig, mdObserver);
+    }
+    if (simpleConsumerFactory == null) {
+      simpleConsumerFactory = new SimpleConsumerFactory(appConfig);
+    }
+    if (simpleConsumerManager == null) {
+      simpleConsumerManager =
+          new SimpleConsumerManager(appConfig, mdObserver, simpleConsumerFactory);
+    }
     KafkaRestContext context =
-        (KafkaRestContext) Proxy.newProxyInstance(
-            KafkaRestContext.class.getClassLoader(),
-            new Class[]{KafkaRestContext.class},
-            contextInvocationHandler
-        );
+        new DefaultKafkaRestContext(appConfig, mdObserver, producerPool, consumerManager,
+            simpleConsumerManager, kafkaConsumerManager, adminClientWrapperInjected, zkUtils,
+            appConfig.isStreams(), appConfig.isImpersonationEnabled());
+    
     config.register(RootResource.class);
     config.register(new BrokersResource(context));
     config.register(new TopicsResource(context));

@@ -26,11 +26,10 @@ import io.confluent.kafkarest.ConsumerManager;
 import io.confluent.kafkarest.DefaultKafkaRestContext;
 import io.confluent.kafkarest.KafkaRestConfig;
 import io.confluent.kafkarest.KafkaRestContext;
-import io.confluent.kafkarest.MetadataObserver;
+import io.confluent.kafkarest.KafkaStreamsMetadataObserver;
 import io.confluent.kafkarest.ProducerPool;
 import io.confluent.kafkarest.SimpleConsumerFactory;
 import io.confluent.kafkarest.SimpleConsumerManager;
-import io.confluent.kafkarest.UnsupportedMetaDataObserver;
 import io.confluent.kafkarest.v2.KafkaConsumerManager;
 import kafka.utils.ZkUtils;
 
@@ -47,7 +46,7 @@ public class KafkaRestContextProvider {
   public static void initialize(
       ZkUtils zkUtils,
       KafkaRestConfig appConfig,
-      MetadataObserver mdObserver,
+      KafkaStreamsMetadataObserver mdObserver,
       ProducerPool producerPool,
       ConsumerManager consumerManager,
       SimpleConsumerFactory simpleConsumerFactory,
@@ -55,7 +54,7 @@ public class KafkaRestContextProvider {
       KafkaConsumerManager kafkaConsumerManager,
       AdminClientWrapper adminClientWrapper
   ) {
-    if (initialized.compareAndSet(false, true)) {
+    if (initialized.compareAndSet(false, true) && !appConfig.isStreams()) {
       if (zkUtils == null
           && StringUtil.isNotBlank(appConfig.getString(KafkaRestConfig.ZOOKEEPER_CONNECT_CONFIG))) {
 
@@ -66,11 +65,9 @@ public class KafkaRestContextProvider {
         );
       }
 
-      if (zkUtils == null) {
-        mdObserver = new UnsupportedMetaDataObserver(zkUtils);
-      } else if (mdObserver == null) {
-        mdObserver = new MetadataObserver(zkUtils);
-      }
+
+      mdObserver = new KafkaStreamsMetadataObserver(appConfig, zkUtils, appConfig.isStreams(), appConfig.isImpersonationEnabled());
+      
 
       if (consumerManager == null) {
         consumerManager = new ConsumerManager(appConfig, mdObserver);
@@ -85,12 +82,16 @@ public class KafkaRestContextProvider {
       defaultZkUtils = zkUtils;
       defaultContext =
           new DefaultKafkaRestContext(appConfig, mdObserver, producerPool, consumerManager,
-              simpleConsumerManager, kafkaConsumerManager, adminClientWrapper
-          );
+              simpleConsumerManager, kafkaConsumerManager, adminClientWrapper, zkUtils, 
+              appConfig.isStreams(), appConfig.isImpersonationEnabled());
       defaultAppConfig = appConfig;
     }
   }
 
+  public KafkaRestConfig getConfig() {
+    return defaultAppConfig;
+  }
+  
   public static ZkUtils getDefaultZkUtils() {
     return defaultZkUtils;
   }

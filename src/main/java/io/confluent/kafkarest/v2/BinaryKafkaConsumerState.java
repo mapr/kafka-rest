@@ -58,7 +58,7 @@ public class BinaryKafkaConsumerState extends KafkaConsumerState<byte[], byte[],
         + (record.value() != null ? record.value().length : 0);
 
     return new ConsumerRecordAndSize<byte[], byte[]>(
-        new BinaryConsumerRecord(record.topic(), record.key(), record.value(), record.partition(),
+        new BinaryConsumerRecord( record.key(), record.value(), record.topic(), record.partition(),
             record.offset()), approxSize);
   }
 }

@@ -16,6 +16,7 @@
 
 package io.confluent.kafkarest;
 
+import io.confluent.kafkarest.entities.*;
 import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.slf4j.Logger;
@@ -35,11 +36,6 @@ import javax.ws.rs.core.Response;
 import io.confluent.kafka.serializers.KafkaAvroDecoder;
 import io.confluent.kafka.serializers.KafkaJsonDecoder;
 import io.confluent.kafkarest.converters.AvroConverter;
-import io.confluent.kafkarest.entities.AvroConsumerRecord;
-import io.confluent.kafkarest.entities.BinaryConsumerRecord;
-import io.confluent.kafkarest.entities.ConsumerRecord;
-import io.confluent.kafkarest.entities.EmbeddedFormat;
-import io.confluent.kafkarest.entities.JsonConsumerRecord;
 import io.confluent.rest.exceptions.RestException;
 import io.confluent.rest.exceptions.RestServerErrorException;
 import kafka.api.PartitionFetchInfo;
@@ -64,7 +60,7 @@ public class SimpleConsumerManager {
   private final int poolInstanceAvailabilityTimeoutMs;
   private final Time time;
 
-  private final MetadataObserver mdObserver;
+  private final KafkaStreamsMetadataObserver mdObserver;
   private final SimpleConsumerFactory simpleConsumerFactory;
 
   private final ConcurrentMap<Broker, SimpleConsumerPool> simpleConsumersPools;
@@ -77,7 +73,7 @@ public class SimpleConsumerManager {
 
   public SimpleConsumerManager(
       final KafkaRestConfig config,
-      final MetadataObserver mdObserver,
+      final KafkaStreamsMetadataObserver mdObserver,
       final SimpleConsumerFactory simpleConsumerFactory
   ) {
 
@@ -139,7 +135,7 @@ public class SimpleConsumerManager {
       final ConsumerManager.ReadCallback callback
   ) {
 
-    List<ConsumerRecord> records = null;
+    List<AbstractConsumerRecord> records = null;
     RestException exception = null;
     SimpleFetcher simpleFetcher = null;
 
@@ -147,7 +143,7 @@ public class SimpleConsumerManager {
       final Broker broker = mdObserver.getLeader(topicName, partitionId);
       simpleFetcher = getSimpleFetcher(broker);
 
-      records = new ArrayList<ConsumerRecord>();
+      records = new ArrayList<AbstractConsumerRecord>();
 
       int fetchIterations = 0;
       while (count > 0) {
@@ -222,9 +218,9 @@ public class SimpleConsumerManager {
             TimestampType.CREATE_TIME
         );
     return new BinaryConsumerRecord(
-        topicName,
         messageAndMetadata.key(),
         messageAndMetadata.message(),
+        topicName,
         partitionId,
         messageAndOffset.offset()
     );
@@ -247,9 +243,9 @@ public class SimpleConsumerManager {
             TimestampType.CREATE_TIME
         );
     return new AvroConsumerRecord(
-        topicName,
         AvroConverter.toJson(messageAndMetadata.key()).json,
         AvroConverter.toJson(messageAndMetadata.message()).json,
+        topicName,
         partitionId,
         messageAndOffset.offset()
     );
@@ -273,15 +269,15 @@ public class SimpleConsumerManager {
             TimestampType.CREATE_TIME
         );
     return new JsonConsumerRecord(
-        topicName,
         messageAndMetadata.key(),
         messageAndMetadata.message(),
+        topicName,
         partitionId,
         messageAndOffset.offset()
     );
   }
 
-  private ConsumerRecord createConsumerRecord(
+  private AbstractConsumerRecord createConsumerRecord(
       final MessageAndOffset messageAndOffset,
       final String topicName,
       final int partitionId,

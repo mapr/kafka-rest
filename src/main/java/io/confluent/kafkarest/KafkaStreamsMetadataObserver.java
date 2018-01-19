@@ -74,7 +74,7 @@ public class KafkaStreamsMetadataObserver extends MetadataObserver {
     
   
   public KafkaStreamsMetadataObserver(KafkaRestConfig config, ZkUtils zkUtils, boolean isStreams, boolean isImpersonationEnabled) {
-    super(config, zkUtils);
+    super(zkUtils);
 
     String bootstrapServers = config.getString(KafkaRestConfig.BOOTSTRAP_SERVERS_CONFIG);
     String defaultStream =  config.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
@@ -86,14 +86,7 @@ public class KafkaStreamsMetadataObserver extends MetadataObserver {
     this.zkUtil = zkUtils;
     streamsMetadataConsumer = new StreamsMetadataConsumer(bootstrapServers, defaultStream);
   }
-
-  @Override
-  public List<Integer> getBrokerIds() {
-    if (isStreams) {
-      throw Errors.notSupportedByMapRStreams();
-    }
-    return super.getBrokerIds();
-  }
+    
 
   @Override
   public Broker getLeader(final String topicName, final int partitionId) {
@@ -199,7 +192,7 @@ public class KafkaStreamsMetadataObserver extends MetadataObserver {
     }
   }
 
-  @Override
+  
   public Topic getTopic(String topicName) {
     if (isStreams || defaultStreamSet) {
       return new Topic(topicName, null, getTopicPartitions(topicName));
@@ -207,7 +200,7 @@ public class KafkaStreamsMetadataObserver extends MetadataObserver {
       if (topicName.startsWith("/") && topicName.contains(":")) {
         return new Topic(topicName, null, getTopicPartitions(topicName));
       } else {
-        return super.getTopic(topicName);
+        return null;
       }
     }
   }
@@ -223,30 +216,6 @@ public class KafkaStreamsMetadataObserver extends MetadataObserver {
         return super.getTopicPartitions(topic);
       }
     }
-  }
-
-  @Override
-  public boolean partitionExists(String topicName, int partition) {
-    if (isStreams || defaultStreamSet) {
-      return (partition >= 0 && partition < streamsMetadataConsumer.partitionsFor(topicName).size());
-    } else {
-      if (topicName.startsWith("/") && topicName.contains(":")) {
-        return (partition >= 0 && partition < streamsMetadataConsumer.partitionsFor(topicName).size());
-      } else {
-        return super.partitionExists(topicName, partition);
-      }
-    }
-  }
-
-  @Override
-  public Partition getTopicPartition(String topic, int partition) {
-    List<Partition> partitions = getTopicPartitions(topic);
-    for (Partition p: partitions) {
-      if (p.getPartition() == partition) {
-        return p;
-      }
-    }
-    return null;
   }
 
   @Override
@@ -271,9 +240,34 @@ public class KafkaStreamsMetadataObserver extends MetadataObserver {
     }
   }
 
+  public Partition getTopicPartition(String topic, int partition) {
+    List<Partition> partitions = getTopicPartitions(topic);
+    for (Partition p : partitions) {
+      if (p.getPartition() == partition) {
+        return p;
+      }
+    }
+    return null;
+  }
+ 
+  public boolean partitionExists(String topicName, int partition) {
+    if (isStreams || defaultStreamSet) {
+      return (partition >= 0 && partition < streamsMetadataConsumer.partitionsFor(topicName)
+          .size());
+    } else {
+      if (topicName.startsWith("/") && topicName.contains(":")) {
+        return (partition >= 0 && partition < streamsMetadataConsumer.partitionsFor(topicName)
+            .size());
+      } else {
+        return false;
+      }
+    }
+  }
+
+
   private static List<Partition> convertPartitions(List<PartitionInfo> partitionInfos) {
     List<Partition> partitions = new ArrayList<>();
-    for(PartitionInfo partitionInfo: partitionInfos) {
+    for (PartitionInfo partitionInfo : partitionInfos) {
       List<PartitionReplica> replicas = new ArrayList<>();
 
       // the leader replica is always in sync
@@ -283,8 +277,8 @@ public class KafkaStreamsMetadataObserver extends MetadataObserver {
       for (Node node: partitionInfo.replicas()) {
         replicas.add(new PartitionReplica(node.id(), false, inSyncReplicas.contains(node)));
       }
-      Partition partition =
-        new Partition(partitionInfo.partition(), partitionInfo.leader().id(), replicas);
+      Partition partition = new Partition(partitionInfo.partition(), partitionInfo.leader().id(), 
+          replicas);
       partitions.add(partition);
     }
     return partitions;

@@ -45,10 +45,7 @@ import io.confluent.kafkarest.JsonConsumerState;
 import io.confluent.kafkarest.UriUtils;
 import io.confluent.kafkarest.Versions;
 import io.confluent.kafkarest.Errors;
-import io.confluent.kafkarest.entities.ConsumerInstanceConfig;
-import io.confluent.kafkarest.entities.ConsumerRecord;
-import io.confluent.kafkarest.entities.CreateConsumerInstanceResponse;
-import io.confluent.kafkarest.entities.TopicPartitionOffset;
+import io.confluent.kafkarest.entities.*;
 import io.confluent.rest.annotations.PerformanceMetric;
 import org.apache.hadoop.security.UserGroupInformation;
 
@@ -102,7 +99,7 @@ public class ConsumersResource {
   public void commitOffsets(@javax.ws.rs.core.Context HttpServletRequest httpRequest,
                             final @Suspended AsyncResponse asyncResponse,
                             final @PathParam("group") String group,
-                            final @PathParam("instance") String instance) { 
+                            final @PathParam("instance") String instance) throws Exception {
       runProxyQuery(new PrivilegedExceptionAction() {
           @Override
           public Object run() throws Exception {
@@ -144,7 +141,7 @@ public class ConsumersResource {
       final @PathParam("instance") String instance,
       final @PathParam("topic") String topic,
       @QueryParam("max_bytes") @DefaultValue("-1") final long maxBytes
-  ) {
+  ) throws Exception {  
       runProxyQuery(new PrivilegedExceptionAction() {
           @Override
           public Object run() throws Exception {
@@ -165,7 +162,7 @@ public class ConsumersResource {
       final @PathParam("instance") String instance,
       final @PathParam("topic") String topic,
       @QueryParam("max_bytes") @DefaultValue("-1") final long maxBytes
-  ) {
+  ) throws Exception  {
       runProxyQuery(new PrivilegedExceptionAction() {
           @Override
           public Object run() throws Exception {
@@ -186,7 +183,7 @@ public class ConsumersResource {
       final @PathParam("topic") String topic,
       @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes
   ) {
-      if (ctx.getMetadataObserver().requestToStreams(topic)) {
+      if (isStreams) {
         throw Errors.notSupportedByMapRStreams();
     }      
     readTopic(asyncResponse, group, instance, topic, maxBytes, AvroConsumerState.class, null);
@@ -209,7 +206,7 @@ public class ConsumersResource {
         new ConsumerManager.ReadCallback<ClientKeyT, ClientValueT>() {
           @Override
           public void onCompletion(
-              List<? extends ConsumerRecord<ClientKeyT, ClientValueT>> records,
+              List<? extends AbstractConsumerRecord<ClientKeyT, ClientValueT>> records,
               Exception e
           ) {
             if (e != null) {

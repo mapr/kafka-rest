@@ -72,7 +72,7 @@ public class DefaultKafkaRestContext implements KafkaRestContext {
     @Override
     public KafkaStreamsMetadataObserver getMetadataObserver() {
         if (isImpersonationEnabled) {
-            return new KafkaStreamsMetadataObserver(config, zkUtils, isStreams);
+            return new KafkaStreamsMetadataObserver(config, zkUtils, isStreams, isImpersonationEnabled);
         } else {
             return metadataObserver;
         }

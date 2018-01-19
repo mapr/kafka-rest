@@ -48,7 +48,7 @@
         <repository>
             <id>confluent</id>
             <name>Confluent</name>
-            <url>${confluent.maven.repo}</url>
+            <url>http://packages.confluent.io/maven/</url>
         </repository>
 
         <!-- MapR repository -->
@@ -58,7 +58,27 @@
             <snapshots><enabled>true</enabled></snapshots>
             <releases><enabled>true</enabled></releases>
         </repository>
+        <!-- Should be removed before release -->
+        <repository>
+            <id>repository_cv</id>
+            <name>Private MapR repo for CyberVision</name>
+            <url>http://23.21.204.176/nexus/content/groups/mapr-public/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>        
     </repositories>
+
+    <pluginRepositories>
+       <pluginRepository>
+            <id>confluent</id>
+            <name>Confluent</name>
+            <url>http://packages.confluent.io/maven/</url>
+       </pluginRepository>
+    </pluginRepositories>
 
     <dependencies>
         <dependency>
@@ -82,12 +102,8 @@
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-clients</artifactId>
-            <version>${kafka.version}-mapr-SNAPSHOT</version>
-            <scope>provided</scope>            
-        </dependency>
-        <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>kafka-clients</artifactId>
+            <scope>provided</scope>
+            <version>1.0.1-mapr-1801</version>         
         </dependency>
         <dependency>
             <groupId>io.confluent</groupId>

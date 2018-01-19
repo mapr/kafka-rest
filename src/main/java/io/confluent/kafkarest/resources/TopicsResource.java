@@ -127,7 +127,7 @@ public class TopicsResource {
   @Path("/{topic}")
   @PerformanceMetric("topic.produce-json")
   @Consumes({Versions.KAFKA_V1_JSON_JSON, Versions.KAFKA_V2_JSON_JSON})
-  public void produceJson((@javax.ws.rs.core.Context HttpServletRequest httpRequest, final @Suspended AsyncResponse asyncResponse,
+  public void produceJson(@javax.ws.rs.core.Context HttpServletRequest httpRequest, final @Suspended AsyncResponse asyncResponse,
                           @PathParam("topic") final String topicName,
                           @Valid final TopicProduceRequest<JsonTopicProduceRecord> request) throws Exception
   {
@@ -149,7 +149,7 @@ public class TopicsResource {
       @PathParam("topic") String topicName,
       @Valid @NotNull TopicProduceRequest<AvroTopicProduceRecord> request
   ) {
-      if (ctx.getMetadataObserver().requestToStreams(topicName)) {
+      if (isStreams) {
         throw Errors.notSupportedByMapRStreams();
     }      
     // Validations we can't do generically since they depend on the data format -- schemas need to
