@@ -1,7 +1,7 @@
 package io.confluent.kafkarest.resources;
 
 
-import io.confluent.kafkarest.Context;
+import io.confluent.kafkarest.KafkaRestContext;
 import io.confluent.kafkarest.Versions;
 import io.confluent.rest.annotations.PerformanceMetric;
 
@@ -22,9 +22,9 @@ import org.apache.hadoop.security.UserGroupInformation;
 @Consumes()
 public class StreamsResource {
 
-  private final Context ctx;
+  private final KafkaRestContext ctx;
 
-  public StreamsResource(Context ctx) {
+  public StreamsResource(KafkaRestContext ctx) {
     this.ctx = ctx;
   }
 

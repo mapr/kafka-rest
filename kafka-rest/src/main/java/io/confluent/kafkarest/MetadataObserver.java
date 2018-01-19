@@ -79,12 +79,12 @@ public class MetadataObserver {
     return false;
   }
 
-  private Collection<String> getTopicNames() {
+  public Collection<String> getTopicNames() {
     Seq<String> topicNames = zkUtils.getAllTopics().sorted(Ordering.String$.MODULE$);
     return JavaConversions.asJavaCollection(topicNames);
   }
 
-  private int getLeaderId(final String topicName, final int partitionId) {
+  public int getLeaderId(final String topicName, final int partitionId) {
     final List<Partition> partitions = getTopicPartitions(topicName);
 
     if (partitions.size() == 0) {
@@ -100,7 +100,7 @@ public class MetadataObserver {
     throw Errors.partitionNotFoundException();
   }
 
-  private Broker getBrokerById(final int brokerId) {
+  public Broker getBrokerById(final int brokerId) {
     Option<Broker> broker = zkUtils.getBrokerInfo(brokerId);
 
     if (broker.isDefined()) {
@@ -110,7 +110,7 @@ public class MetadataObserver {
     }
   }
 
-  private List<Topic> getTopicsData(Seq<String> topicNames) {
+  public List<Topic> getTopicsData(Seq<String> topicNames) {
     Map<String, Map<Object, Seq<Object>>> topicPartitions =
         zkUtils.getPartitionAssignmentForTopics(topicNames);
     List<Topic> topics = new Vector<Topic>(topicNames.size());
@@ -134,11 +134,11 @@ public class MetadataObserver {
     return topics;
   }
 
-  private List<Partition> getTopicPartitions(String topic) {
+  public List<Partition> getTopicPartitions(String topic) {
     return getTopicPartitions(topic, null);
   }
 
-  private List<Partition> getTopicPartitions(String topic, Integer partitionsFilter) {
+  public List<Partition> getTopicPartitions(String topic, Integer partitionsFilter) {
     Map<String, Map<Object, Seq<Object>>> topicPartitions = zkUtils.getPartitionAssignmentForTopics(
         JavaConversions.asScalaBuffer(Arrays.asList(topic)));
     if (!topicPartitions.get(topic).isEmpty()) {
@@ -148,7 +148,7 @@ public class MetadataObserver {
     return null;
   }
 
-  private List<Partition> extractPartitionsFromZkData(
+  public List<Partition> extractPartitionsFromZkData(
       Map<Object, Seq<Object>> parts,
       String topic,
       Integer partitionsFilter

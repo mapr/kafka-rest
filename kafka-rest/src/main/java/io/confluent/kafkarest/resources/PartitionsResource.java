@@ -16,6 +16,7 @@
 
 package io.confluent.kafkarest.resources;
 
+import io.confluent.kafkarest.entities.*;
 import org.eclipse.jetty.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -131,7 +132,7 @@ public class PartitionsResource {
       final @PathParam("partition") int partitionId,
       final @QueryParam("offset") long offset,
       final @QueryParam("count") @DefaultValue("1") long count
-  ) {
+  ) throws Exception {
       runProxyQuery(new PrivilegedExceptionAction() {
           @Override
           public Partition run() throws Exception {
@@ -151,7 +152,7 @@ public class PartitionsResource {
       final @QueryParam("offset") long offset,
       final @QueryParam("count") @DefaultValue("1") long count
   ) {
-    if (ctx.getMetadataObserver().requestToStreams(topicName)) {
+    if (isStreams) {
       throw Errors.notSupportedByMapRStreams();
     }
     consume(asyncResponse, topicName, partitionId, offset, count, EmbeddedFormat.AVRO);
@@ -168,7 +169,7 @@ public class PartitionsResource {
       final @PathParam("partition") int partitionId,
       final @QueryParam("offset") long offset,
       final @QueryParam("count") @DefaultValue("1") long count
-  ) {
+  ) throws Exception {
       runProxyQuery(new PrivilegedExceptionAction() {
           @Override
           public Partition run() throws Exception {
@@ -187,8 +188,8 @@ public class PartitionsResource {
       final @Suspended AsyncResponse asyncResponse,
       final @PathParam("topic") String topic,
       final @PathParam("partition") int partition,
-      @Valid @NotNull PartitionProduceRequest<BinaryProduceRecord> request
-  ) {
+      @Valid @NotNull final PartitionProduceRequest<BinaryProduceRecord> request
+  ) throws Exception {
       runProxyQuery(new PrivilegedExceptionAction() {
           @Override
           public Partition run() throws Exception {
@@ -207,8 +208,8 @@ public class PartitionsResource {
       final @Suspended AsyncResponse asyncResponse,
       final @PathParam("topic") String topic,
       final @PathParam("partition") int partition,
-      @Valid @NotNull PartitionProduceRequest<JsonProduceRecord> request
-  ) {
+      @Valid @NotNull final PartitionProduceRequest<JsonProduceRecord> request
+  ) throws Exception {
       runProxyQuery(new PrivilegedExceptionAction() {
           @Override
           public Partition run() throws Exception {
@@ -228,7 +229,7 @@ public class PartitionsResource {
       final @PathParam("partition") int partition,
       @Valid @NotNull PartitionProduceRequest<AvroProduceRecord> request
   ) {
-      if (ctx.getMetadataObserver().requestToStreams(topic)) {
+      if (isStreams) {
         throw Errors.notSupportedByMapRStreams();
     }      
     // Validations we can't do generically since they depend on the data format -- schemas need to
@@ -265,10 +266,10 @@ public class PartitionsResource {
     SimpleConsumerManager  consumerManager = ctx.getSimpleConsumerManager();
     consumerManager.consume(
       topicName, partitionId, offset, count, embeddedFormat,
-      new ConsumerManager.ReadCallback<ClientK, ClientV>() {
+      new ConsumerManager.ReadCallback<K, V>() {
           @Override
           public void onCompletion(
-              List<? extends ConsumerRecord<K, V>> records,
+              List<? extends AbstractConsumerRecord<K, V>> records,
               Exception e
           ) {
             log.trace(
@@ -347,7 +348,7 @@ public class PartitionsResource {
   }
 
   private boolean topicExists(final String topic) {
-    return ctx.getAdminClientWrapper().topicExists(topic);
+    return ctx.getMetadataObserver().topicExists(topic);
   }
 
   private void checkTopicExists(final String topic) {

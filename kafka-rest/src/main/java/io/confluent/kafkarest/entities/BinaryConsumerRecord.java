@@ -16,24 +16,28 @@
 
 package io.confluent.kafkarest.entities;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Objects;
 
 import io.confluent.rest.validation.ConstraintViolations;
 
-public class BinaryConsumerRecord extends ConsumerRecord<byte[], byte[]> {
+public class BinaryConsumerRecord extends AbstractConsumerRecord<byte[], byte[]> {
 
-  @JsonCreator
-  public BinaryConsumerRecord(@JsonProperty("topic") String topic,
+  public BinaryConsumerRecord(
       @JsonProperty("key") String key, @JsonProperty("value") String value,
-      @JsonProperty("partition") int partition, @JsonProperty("offset") long offset
+      @JsonProperty("topic") String topic, @JsonProperty("partition") int partition,
+      @JsonProperty("offset") long offset
   ) throws IOException {
-    super(topic, decodeBinary(key, "key"), decodeBinary(value, "value"), partition, offset);
-
+    super(topic, partition, offset);
+    try {
+      if (key != null) {
+        this.key = EntityUtils.parseBase64Binary(key);
+      }
+    } catch (IllegalArgumentException e) {
+      throw ConstraintViolations.simpleException("Record key contains invalid base64 encoding");
+    }
     try {
       this.value = EntityUtils.parseBase64Binary(value);
     } catch (IllegalArgumentException e) {
@@ -41,10 +45,11 @@ public class BinaryConsumerRecord extends ConsumerRecord<byte[], byte[]> {
     }
   }
 
-  public BinaryConsumerRecord(String topic, byte[] key, byte[] value, int partition, long offset) {
-    super(topic, key, value, partition, offset);
+  public BinaryConsumerRecord(byte[] key, byte[] value, String topic, int partition, long offset) {
+    super(key, value, topic, partition, offset);
   }
-
+  
+  
   @Override
   @JsonProperty("key")
   public String getJsonKey() {
@@ -71,25 +76,36 @@ public class BinaryConsumerRecord extends ConsumerRecord<byte[], byte[]> {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
+
     BinaryConsumerRecord that = (BinaryConsumerRecord) o;
-    return partition == that.partition
-           && offset == that.offset
-           && Objects.equals(topic, that.topic)
-           && Arrays.equals(key, that.key)
-           && Arrays.equals(value, that.value);
+
+    if (offset != that.offset) {
+      return false;
+    }
+    if (topic != null ? !topic.equals(that.topic) : that.topic != null) {
+      return false;
+    }
+    if (partition != that.partition) {
+      return false;
+    }
+    if (!Arrays.equals(key, that.key)) {
+      return false;
+    }
+    if (!Arrays.equals(value, that.value)) {
+      return false;
+    }
+
+    return true;
   }
 
   @Override
   public int hashCode() {
-    return Arrays.deepHashCode(new Object[] { topic, key, value, partition, offset});
+    int result = key != null ? Arrays.hashCode(key) : 0;
+    result = 31 * result + (value != null ? Arrays.hashCode(value) : 0);
+    result = 31 * result + (topic != null ? topic.hashCode() : 0);
+    result = 31 * result + partition;
+    result = 31 * result + (int) (offset ^ (offset >>> 32));
+    return result;
   }
 
-  private static byte[] decodeBinary(String binary, String field) {
-    try {
-      return binary == null ? null : EntityUtils.parseBase64Binary(binary);
-    } catch (IllegalArgumentException e) {
-      throw ConstraintViolations.simpleException("Record " + field
-                                                 + " contains invalid base64 encoding");
-    }
-  }
 }

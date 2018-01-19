@@ -1,9 +1,15 @@
 diff a/kafka-rest/src/main/java/io/confluent/kafkarest/KafkaRestApplication.java b/kafka-rest/src/main/java/io/confluent/kafkarest/KafkaRestApplication.java	(rejected hunks)
-@@ -45,6 +46,7 @@ import kafka.utils.ZkUtils;
- public class KafkaRestApplication extends Application<KafkaRestConfig> {
+@@ -18,13 +18,10 @@ package io.confluent.kafkarest;
  
-   RestResourceExtension restResourceExtension;
-+  boolean isStreams;
+ import org.eclipse.jetty.util.StringUtil;
  
-   public KafkaRestApplication() throws RestConfigException {
-     this(new Properties());
+-import java.lang.reflect.Proxy;
+ import java.util.Properties;
+ 
+ import javax.ws.rs.core.Configurable;
+ 
+-import io.confluent.kafkarest.exceptions.ZkExceptionMapper;
+-import io.confluent.kafkarest.extension.ContextInvocationHandler;
+ import io.confluent.kafkarest.extension.KafkaRestCleanupFilter;
+ import io.confluent.kafkarest.extension.KafkaRestContextProvider;
+ import io.confluent.kafkarest.extension.RestResourceExtension;

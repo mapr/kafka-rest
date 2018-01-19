@@ -16,6 +16,7 @@
 
 package io.confluent.kafkarest.v2;
 
+import io.confluent.kafkarest.entities.*;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
@@ -44,19 +45,6 @@ import io.confluent.kafkarest.ConsumerWorkerReadCallback;
 import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.KafkaRestConfig;
 import io.confluent.kafkarest.Time;
-import io.confluent.kafkarest.entities.ConsumerAssignmentRequest;
-import io.confluent.kafkarest.entities.ConsumerAssignmentResponse;
-import io.confluent.kafkarest.entities.ConsumerCommittedRequest;
-import io.confluent.kafkarest.entities.ConsumerCommittedResponse;
-import io.confluent.kafkarest.entities.ConsumerInstanceConfig;
-import io.confluent.kafkarest.entities.ConsumerOffsetCommitRequest;
-import io.confluent.kafkarest.entities.ConsumerRecord;
-import io.confluent.kafkarest.entities.ConsumerSeekToOffsetRequest;
-import io.confluent.kafkarest.entities.ConsumerSeekToRequest;
-import io.confluent.kafkarest.entities.ConsumerSubscriptionRecord;
-import io.confluent.kafkarest.entities.ConsumerSubscriptionResponse;
-import io.confluent.kafkarest.entities.TopicPartitionOffset;
-import io.confluent.kafkarest.entities.TopicPartitionOffsetMetadata;
 import io.confluent.rest.exceptions.RestException;
 import io.confluent.rest.exceptions.RestNotFoundException;
 import io.confluent.rest.exceptions.RestServerErrorException;
@@ -281,7 +269,7 @@ public class KafkaConsumerManager {
         new ConsumerWorkerReadCallback<ClientKeyT, ClientValueT>() {
           @Override
           public void onCompletion(
-              List<? extends ConsumerRecord<ClientKeyT, ClientValueT>> records, Exception e
+              List<? extends AbstractConsumerRecord<ClientKeyT, ClientValueT>> records, Exception e
           ) {
             updateExpiration(state);
             if (e != null) {

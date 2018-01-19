@@ -62,7 +62,7 @@ public class AvroKafkaConsumerState extends KafkaConsumerState<Object, Object, J
     AvroConverter.JsonNodeAndSize keyNode = AvroConverter.toJson(record.key());
     AvroConverter.JsonNodeAndSize valueNode = AvroConverter.toJson(record.value());
     return new ConsumerRecordAndSize<JsonNode, JsonNode>(
-        new AvroConsumerRecord(record.topic(), keyNode.json, valueNode.json, record.partition(),
+        new AvroConsumerRecord( keyNode.json, valueNode.json,record.topic(), record.partition(),
             record.offset()),
         keyNode.size + valueNode.size
     );

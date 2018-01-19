@@ -16,6 +16,7 @@
 
 package io.confluent.kafkarest.v2;
 
+import io.confluent.kafkarest.entities.AbstractConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +44,7 @@ import io.confluent.kafkarest.entities.ConsumerRecord;
  * the format returned to the client in the HTTP response. In some cases these may be identical.
  */
 class KafkaConsumerReadTask<KafkaKeyT, KafkaValueT, ClientKeyT, ClientValueT>
-    implements Future<List<ConsumerRecord<ClientKeyT, ClientValueT>>> {
+    implements Future<List<AbstractConsumerRecord<ClientKeyT, ClientValueT>>> {
 
   private static final Logger log = LoggerFactory.getLogger(KafkaConsumerReadTask.class);
 
@@ -54,7 +55,7 @@ class KafkaConsumerReadTask<KafkaKeyT, KafkaValueT, ClientKeyT, ClientValueT>
   private CountDownLatch finished;
 
   private Iterator<org.apache.kafka.clients.consumer.ConsumerRecord<ClientKeyT, ClientValueT>> iter;
-  private List<ConsumerRecord<ClientKeyT, ClientValueT>> messages;
+  private List<AbstractConsumerRecord<ClientKeyT, ClientValueT>> messages;
   private long bytesConsumed = 0;
   private final long started;
 
@@ -189,14 +190,14 @@ class KafkaConsumerReadTask<KafkaKeyT, KafkaValueT, ClientKeyT, ClientValueT>
   }
 
   @Override
-  public List<ConsumerRecord<ClientKeyT, ClientValueT>> get()
+  public List<AbstractConsumerRecord<ClientKeyT, ClientValueT>> get()
       throws InterruptedException, ExecutionException {
     finished.await();
     return messages;
   }
 
   @Override
-  public List<ConsumerRecord<ClientKeyT, ClientValueT>> get(long timeout, TimeUnit unit)
+  public List<AbstractConsumerRecord<ClientKeyT, ClientValueT>> get(long timeout, TimeUnit unit)
       throws InterruptedException, ExecutionException, TimeoutException {
     finished.await(timeout, unit);
     if (finished.getCount() > 0) {

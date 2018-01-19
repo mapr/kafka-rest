@@ -665,7 +665,7 @@ public class KafkaRestConfig extends RestConfig {
         .define(STREAM_BUFFER_MAX_TIME_CONFIG, Type.INT, STREAM_BUFFER_MAX_TIME_DEFAULT,
             Importance.MEDIUM, STREAM_BUFFER_MAX_TIME_DOC)
         .define(REST_PROXY_IMPERSONATION, Type.BOOLEAN, REST_PROXY_IMPERSONATION_DEFAULT,
-            Importance.MEDIUM, REST_PROXY_IMPERSONATION_DOC);            ;
+            Importance.MEDIUM, REST_PROXY_IMPERSONATION_DOC);
   }
 
   private Time time;
