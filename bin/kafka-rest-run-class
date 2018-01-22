@@ -126,6 +126,7 @@ if [ "x$HELP" = "xtrue" ]; then
   exit 0
 fi
 
+export MAPR_IMPERSONATION_ENABLED=true 
 add_streams_paths
 pid="${BASEMAPR:-/opt/mapr}/pid/kafka-rest.pid"
 env=${BASEMAPR:-/opt/mapr}/conf/env.sh

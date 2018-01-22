@@ -30,7 +30,7 @@ initCfgEnv
 #######################################################################
 
 # general
-VERSION=2.0.1
+VERSION=4.0.0
 KAFKA_REST_PORT=8082
 NOW=`date "+%Y%m%d_%H%M%S"`
 KAFKA_REST_NAME=${KAFKA_REST_NAME:-kafka-rest}

@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.confluent</groupId>
         <artifactId>rest-utils-parent</artifactId>
-        <version>4.0.0</version>
+        <version>4.0.0-mapr</version>
     </parent>
 
     <artifactId>kafka-rest</artifactId>
@@ -84,6 +84,7 @@
         <dependency>
             <groupId>io.confluent</groupId>
             <artifactId>rest-utils</artifactId>
+            <version>4.0.0-mapr</version>
         </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>
