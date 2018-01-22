@@ -88,16 +88,13 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
       KafkaConsumerManager kafkaConsumerManager,
       AdminClientWrapper adminClientWrapperInjected
   ) {
-    if (StringUtil.isBlank(appConfig.getString(KafkaRestConfig.BOOTSTRAP_SERVERS_CONFIG))
-        && StringUtil.isBlank(appConfig.getString(KafkaRestConfig.ZOOKEEPER_CONNECT_CONFIG))) {
-      throw new RuntimeException("Atleast one of " + KafkaRestConfig.BOOTSTRAP_SERVERS_CONFIG + " "
-                                 + "or "
-                                    + KafkaRestConfig.ZOOKEEPER_CONNECT_CONFIG
-                                    + " needs to be configured");
-    }
 
     isStreams = appConfig.isStreams();
-
+    if ((appConfig.isImpersonationEnabled()) &&
+                          ! appConfig.getString(KafkaRestConfig.AUTHENTICATION_REALM_CONFIG).equals("jpamLogin")){
+               throw new RuntimeException("PAM Authentication must be enabled in order to support MapR Streams impersonation");
+                }
+          
     KafkaRestContextProvider.initialize(zkUtils, appConfig, mdObserver, producerPool,
         consumerManager, simpleConsumerFactory,
         simpleConsumerManager, kafkaConsumerManager, adminClientWrapperInjected
