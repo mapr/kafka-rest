@@ -47,6 +47,7 @@
     <properties>
         <confluent.maven.repo>http://packages.confluent.io/maven/</confluent.maven.repo>
         <log4j.version>1.7.25</log4j.version>
+        <licenses.version>4.1.0</licenses.version>
     </properties>
 
     <repositories>
@@ -102,7 +103,11 @@
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>exec-maven-plugin</artifactId>
-                    <version>${exec-maven-plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <phase>none</phase>
+                        </execution>
+                    </executions>
                 </plugin>
             </plugins>
         </pluginManagement>

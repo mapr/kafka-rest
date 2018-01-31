@@ -156,14 +156,9 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <executions>
                     <execution>
-                        <goals>
-                            <goal>java</goal>
-                        </goals>
+                        <phase>none</phase>
                     </execution>
                 </executions>
-                <configuration>
-                    <mainClass>io.confluent.kafkarest.KafkaRestMain</mainClass>
-                </configuration>
             </plugin>
 
             <plugin>
