@@ -16,6 +16,7 @@
 
 package io.confluent.kafkarest;
 
+import io.confluent.kafkarest.exceptions.ZkExceptionMapper;
 import org.eclipse.jetty.util.StringUtil;
 
 import java.util.Properties;
@@ -111,7 +112,11 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
     );
 
     mdObserver = new KafkaStreamsMetadataObserver(appConfig, zkUtils, appConfig.isStreams(), appConfig.isImpersonationEnabled());
-
+   
+    if (producerPool == null) {
+     producerPool = new ProducerPool(appConfig, null);
+    }
+      
     if (consumerManager == null) {
       consumerManager = new ConsumerManager(appConfig, mdObserver);
     }

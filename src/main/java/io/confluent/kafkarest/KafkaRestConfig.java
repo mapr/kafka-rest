@@ -801,7 +801,8 @@ public class KafkaRestConfig extends RestConfig {
 
   public String bootstrapBrokers() {
     int zkSessionTimeoutMs = getInt(KAFKACLIENT_ZK_SESSION_TIMEOUT_MS_CONFIG);
-
+    if (isStreams) 
+        return "";
     String bootstrapServersConfig = getString(BOOTSTRAP_SERVERS_CONFIG);
     if (StringUtil.isNotBlank(bootstrapServersConfig)) {
       return bootstrapServersConfig;
