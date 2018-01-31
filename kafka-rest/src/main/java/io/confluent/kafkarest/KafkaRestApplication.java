@@ -101,7 +101,11 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
     );
 
     mdObserver = new KafkaStreamsMetadataObserver(appConfig, zkUtils, appConfig.isStreams(), appConfig.isImpersonationEnabled());
-
+   
+    if (producerPool == null) {
+     producerPool = new ProducerPool(appConfig, null);
+    }
+      
     if (consumerManager == null) {
       consumerManager = new ConsumerManager(appConfig, mdObserver);
     }
