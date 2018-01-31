@@ -42,6 +42,7 @@
     <properties>
         <confluent.maven.repo>http://packages.confluent.io/maven/</confluent.maven.repo>
         <log4j.version>1.7.25</log4j.version>
+        <licenses.version>4.0.0</licenses.version>
     </properties>
 
     <repositories>
@@ -213,17 +214,11 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
-                <version>1.2.1</version>
                 <executions>
                     <execution>
-                        <goals>
-                            <goal>java</goal>
-                        </goals>
+                        <phase>none</phase>
                     </execution>
                 </executions>
-                <configuration>
-                    <mainClass>io.confluent.kafkarest.KafkaRestMain</mainClass>
-                </configuration>
             </plugin>
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
