@@ -402,7 +402,7 @@ public abstract class KafkaConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, Cli
     //reset index
     this.index = 0;
     consumerRecordList = new ArrayList<>();
-    consumerRecords = consumer.poll(0);
+    consumerRecords = consumer.poll(100);
     //drain the iterator and buffer to list
     for (ConsumerRecord<KafkaKeyT, KafkaValueT> consumerRecord : consumerRecords) {
       consumerRecordList.add(consumerRecord);
