@@ -18,6 +18,8 @@ package io.confluent.kafkarest;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.Config;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.clients.admin.DescribeClusterResult;
 import org.apache.kafka.clients.admin.TopicDescription;
@@ -50,6 +52,10 @@ public class AdminClientWrapper {
     Properties properties = new Properties();
     properties.putAll(kafkaRestConfig.getAdminProperties());
     properties.put(KafkaRestConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaRestConfig.bootstrapBrokers());
+    String defaultStream = kafkaRestConfig.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
+    if (!"".equals(defaultStream)) {
+        properties.put(AdminClientConfig.STREAMS_ADMIN_DEFAULT_STREAM_CONFIG, defaultStream);
+    }
     adminClient = AdminClient.create(properties);
     this.initTimeOut = kafkaRestConfig.getInt(KafkaRestConfig.KAFKACLIENT_INIT_TIMEOUT_CONFIG);
   }

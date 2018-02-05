@@ -32,6 +32,8 @@ add_streams_paths(){
   local COMMONS_LIB=$(ls ${MAPR_LIB_DIR}/commons*.jar 2> /dev/null | grep -v "tests.jar$" | tr '\n' ':' )
   local GUAVA_LIB=$(ls ${MAPR_LIB_DIR}/guava*.jar 2> /dev/null | grep -v "tests.jar$")
   local JSON_LIB=$(ls ${MAPR_LIB_DIR}/json*.jar 2> /dev/null | grep -v "tests.jar$" | tr '\n' ':' )
+  local OJAI_LIB=$(ls ${MAPR_LIB_DIR}/ojai-2*.jar 2> /dev/null)
+  local ANTLR_LIB=$(ls ${MAPR_LIB_DIR}/antlr4*.jar 2> /dev/null)
 
   CLASSPATH="${MAPR_STREAMS_LIB}:${CLASSPATH}"
   CLASSPATH="${PROTOBUF_LIB}:${CLASSPATH}"
@@ -42,6 +44,8 @@ add_streams_paths(){
   CLASSPATH="${COMMONS_LIB}:${CLASSPATH}"
   CLASSPATH="${GUAVA_LIB}:${CLASSPATH}"
   CLASSPATH="${JSON_LIB}:${CLASSPATH}"
+  CLASSPATH="${OJAI_LIB}:${CLASSPATH}"
+  CLASSPATH="${ANTLR_LIB}:${CLASSPATH}"
 }
 
 # Development jars. `mvn package` should collect all the required dependency jars here
