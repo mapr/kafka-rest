@@ -17,6 +17,7 @@
 package io.confluent.kafkarest;
 
 import org.eclipse.jetty.util.StringUtil;
+import org.apache.kafka.common.security.JaasUtils;
 
 import java.lang.reflect.Proxy;
 import java.util.List;
@@ -94,12 +95,18 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
                           ! appConfig.getString(KafkaRestConfig.AUTHENTICATION_REALM_CONFIG).equals("jpamLogin")){
                throw new RuntimeException("PAM Authentication must be enabled in order to support MapR Streams impersonation");
                 }
-          
-    KafkaRestContextProvider.initialize(zkUtils, appConfig, mdObserver, producerPool,
-        consumerManager, simpleConsumerFactory,
-        simpleConsumerManager, kafkaConsumerManager, adminClientWrapperInjected
-    );
+      
+    if (!isStreams){
+        if (zkUtils == null
+                && StringUtil.isNotBlank(appConfig.getString(KafkaRestConfig.ZOOKEEPER_CONNECT_CONFIG))) {
 
+            zkUtils = ZkUtils.apply(
+                    appConfig.getString(KafkaRestConfig.ZOOKEEPER_CONNECT_CONFIG), 30000,
+                    30000,
+                    JaasUtils.isZkSecurityEnabled()
+            );
+        }
+    }
     mdObserver = new KafkaStreamsMetadataObserver(appConfig, zkUtils, appConfig.isStreams(), appConfig.isImpersonationEnabled());
    
     if (producerPool == null) {
