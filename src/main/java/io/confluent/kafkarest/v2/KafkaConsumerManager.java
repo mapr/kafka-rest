@@ -18,6 +18,7 @@ package io.confluent.kafkarest.v2;
 
 import io.confluent.kafkarest.entities.*;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
@@ -150,7 +151,13 @@ public class KafkaConsumerManager {
       // intentionally name differently in our own configs).
       //Properties props = (Properties) config.getOriginalProperties().clone();
       Properties props = config.getConsumerProperties();
-      props.setProperty(KafkaRestConfig.BOOTSTRAP_SERVERS_CONFIG, this.bootstrapServers);
+      props.setProperty(KafkaRestConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+      // configure default stream
+      String defaultStream = config.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
+      if (!"".equals(defaultStream)) {
+          props.put(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, defaultStream);
+      }
+
       props.setProperty("group.id", group);
       // This ID we pass here has to be unique, only pass a value along if the deprecated ID field
       // was passed in. This generally shouldn't be used, but is maintained for compatibility.
