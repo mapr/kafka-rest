@@ -166,6 +166,29 @@ public class KafkaRestConfig extends RestConfig {
       + " Use 0 for no timeout";
   public static final String SIMPLE_CONSUMER_POOL_TIMEOUT_MS_DEFAULT = "1000";
 
+  public static final String SIMPLE_CONSUMER_MAX_POLL_TIME_CONFIG = "simpleconsumer.max.poll.time";
+  private static final String
+    SIMPLE_CONSUMER_MAX_POLL_TIME_DOC =
+    "Maximum amount of time to poll for records by a consumer.";
+  public static final int SIMPLE_CONSUMER_MAX_POLL_TIME_DEFAULT = 1000;
+
+  public static final String SIMPLE_CONSUMER_MAX_CACHES_NUM_CONFIG = "simpleconsumer.max.caches.num";
+  private static final String
+    SIMPLE_CONSUMER_MAX_CACHES_NUM_DOC =
+    "Maximum number topic-partition combinations for which records are cached."
+     + " If 0, then caching is disabled and extra records are thrown away."
+     + " Cache improves performance if end user fetches records sequentially"
+     + " increasing offsets.";
+  public static final int SIMPLE_CONSUMER_MAX_CACHES_NUM_DEFAULT = 0;
+
+  public static final String SIMPLE_CONSUMER_CACHE_MAX_RECORDS_CONFIG = "simpleconsumer.cache.max.records";
+  private static final String
+    SIMPLE_CONSUMER_CACHE_MAX_RECORDS_DOC =
+    "Maximum number of records that can be stored for a specific topic-partition combination."
+     + " Records with higher offsets replace records with lower ones"
+     + " Must be greater that 0.";
+  public static final int SIMPLE_CONSUMER_CACHE_MAX_RECORDS_DEFAULT = 1000;
+
 
   public static final String STREAM_BUFFER_MAX_TIME_CONFIG = "producer.streams.buffer.max.time.ms";
   private static final String STREAM_BUFFER_MAX_TIME_DOC = "Messages are buffered in the producer for at most the " 
@@ -420,6 +443,19 @@ public class KafkaRestConfig extends RestConfig {
             Importance.HIGH,
             SCHEMA_REGISTRY_URL_DOC
         )
+        .define(
+            SIMPLE_CONSUMER_MAX_POLL_TIME_CONFIG,
+            Type.INT, SIMPLE_CONSUMER_MAX_POLL_TIME_DEFAULT,
+            Importance.LOW, SIMPLE_CONSUMER_MAX_POLL_TIME_DOC)
+        .define(SIMPLE_CONSUMER_MAX_CACHES_NUM_CONFIG,
+            Type.INT, SIMPLE_CONSUMER_MAX_CACHES_NUM_DEFAULT,
+            Importance.MEDIUM,
+            SIMPLE_CONSUMER_MAX_CACHES_NUM_DOC)
+        .define(SIMPLE_CONSUMER_CACHE_MAX_RECORDS_CONFIG,
+            Type.INT, 
+            SIMPLE_CONSUMER_CACHE_MAX_RECORDS_DEFAULT,
+            Importance.MEDIUM, 
+            SIMPLE_CONSUMER_CACHE_MAX_RECORDS_DOC)            
         .define(
             PRODUCER_THREADS_CONFIG,
             Type.INT,

@@ -192,7 +192,13 @@ public class KafkaStreamsMetadataObserver extends MetadataObserver {
     }
   }
 
-  
+  /**
+   * Check if request for a given topic will be sent to MapR Streams
+   */
+  public boolean requestToStreams(String topic) {
+    return isStreams || defaultStreamSet || topic.startsWith("/") && topic.contains(":");
+  }
+
   public Topic getTopic(String topicName) {
     if (isStreams || defaultStreamSet) {
       return new Topic(topicName, null, getTopicPartitions(topicName));
