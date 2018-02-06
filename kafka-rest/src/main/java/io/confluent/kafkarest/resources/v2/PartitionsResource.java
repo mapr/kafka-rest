@@ -16,12 +16,17 @@
 
 package io.confluent.kafkarest.resources.v2;
 
+import io.confluent.kafkarest.*;
+import io.confluent.kafkarest.entities.*;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.security.PrivilegedExceptionAction;
 import java.util.List;
 import java.util.Vector;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.Consumes;
@@ -33,20 +38,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
 
-import io.confluent.kafkarest.KafkaRestContext;
-import io.confluent.kafkarest.Errors;
-import io.confluent.kafkarest.ProducerPool;
-import io.confluent.kafkarest.RecordMetadataOrException;
-import io.confluent.kafkarest.Versions;
-import io.confluent.kafkarest.entities.AvroProduceRecord;
-import io.confluent.kafkarest.entities.BinaryProduceRecord;
-import io.confluent.kafkarest.entities.EmbeddedFormat;
-import io.confluent.kafkarest.entities.JsonProduceRecord;
-import io.confluent.kafkarest.entities.Partition;
-import io.confluent.kafkarest.entities.PartitionOffset;
-import io.confluent.kafkarest.entities.PartitionProduceRequest;
-import io.confluent.kafkarest.entities.ProduceRecord;
-import io.confluent.kafkarest.entities.ProduceResponse;
 import io.confluent.rest.annotations.PerformanceMetric;
 
 @Path("/topics/{topic}/partitions")
@@ -65,24 +56,38 @@ public class PartitionsResource {
 
   @GET
   @PerformanceMetric("partitions.list+v2")
-  public List<Partition> list(final @PathParam("topic") String topic) {
-    checkTopicExists(topic);
-    return ctx.getAdminClientWrapper().getTopicPartitions(topic);
+  public List<Partition> list(@javax.ws.rs.core.Context HttpServletRequest httpRequest,
+                              final @PathParam("topic") String topic) throws Exception {
+    return (List<Partition>)  runProxyQuery(new PrivilegedExceptionAction() {
+        @Override
+        public List<Partition> run() throws Exception {
+            checkTopicExists(topic);
+            return ctx.getAdminClientWrapper().getTopicPartitions(topic);
+        } 
+    }, httpRequest.getRemoteUser());
+
   }
 
   @GET
   @Path("/{partition}")
   @PerformanceMetric("partition.get+v2")
   public Partition getPartition(
+      @javax.ws.rs.core.Context HttpServletRequest httpRequest,          
       final @PathParam("topic") String topic,
-      @PathParam("partition") int partition
-  ) {
-    checkTopicExists(topic);
-    Partition part = ctx.getAdminClientWrapper().getTopicPartition(topic, partition);
-    if (part == null) {
-      throw Errors.partitionNotFoundException();
-    }
-    return part;
+      final @PathParam("partition") int partition
+  ) throws Exception {
+      return (Partition)  runProxyQuery(new PrivilegedExceptionAction() {
+          @Override
+          public Partition run() throws Exception {
+              checkTopicExists(topic);
+              Partition part = ctx.getAdminClientWrapper().getTopicPartition(topic, partition);
+              if (part == null) {
+                  throw Errors.partitionNotFoundException();
+              }
+              return part;
+          }
+      }, httpRequest.getRemoteUser());      
+
   }
 
 
@@ -91,12 +96,19 @@ public class PartitionsResource {
   @PerformanceMetric("partition.produce-binary+v2")
   @Consumes({Versions.KAFKA_V2_JSON_BINARY})
   public void produceBinary(
+      @javax.ws.rs.core.Context HttpServletRequest httpRequest,
       final @Suspended AsyncResponse asyncResponse,
       final @PathParam("topic") String topic,
       final @PathParam("partition") int partition,
-      @Valid @NotNull PartitionProduceRequest<BinaryProduceRecord> request
-  ) {
-    produce(asyncResponse, topic, partition, EmbeddedFormat.BINARY, request);
+      final @Valid @NotNull PartitionProduceRequest<BinaryProduceRecord> request
+  ) throws Exception {
+       runProxyQuery(new PrivilegedExceptionAction() {
+          @Override
+          public Partition run() throws Exception {
+              produce(asyncResponse, topic, partition, EmbeddedFormat.BINARY, request);
+              return null;
+          }
+      }, httpRequest.getRemoteUser());
   }
 
   @POST
@@ -104,12 +116,19 @@ public class PartitionsResource {
   @PerformanceMetric("partition.produce-json+v2")
   @Consumes({Versions.KAFKA_V2_JSON_JSON})
   public void produceJson(
+      @javax.ws.rs.core.Context HttpServletRequest httpRequest,       
       final @Suspended AsyncResponse asyncResponse,
       final @PathParam("topic") String topic,
       final @PathParam("partition") int partition,
-      @Valid @NotNull PartitionProduceRequest<JsonProduceRecord> request
-  ) {
-    produce(asyncResponse, topic, partition, EmbeddedFormat.JSON, request);
+      final @Valid @NotNull PartitionProduceRequest<JsonProduceRecord> request
+  ) throws Exception {
+      runProxyQuery(new PrivilegedExceptionAction() {
+          @Override
+          public Partition run() throws Exception {
+              produce(asyncResponse, topic, partition, EmbeddedFormat.JSON, request);
+              return null;
+          }
+      }, httpRequest.getRemoteUser());      
   }
 
   @POST
@@ -122,7 +141,10 @@ public class PartitionsResource {
       final @PathParam("partition") int partition,
       @Valid @NotNull PartitionProduceRequest<AvroProduceRecord> request
   ) {
-    // Validations we can't do generically since they depend on the data format -- schemas need to
+    if (ctx.getConfig().isStreams()) {
+        throw Errors.notSupportedByMapRStreams();
+    }
+      // Validations we can't do generically since they depend on the data format -- schemas need to
     // be available if there are any non-null entries
     boolean hasKeys = false;
     boolean hasValues = false;
@@ -206,4 +228,14 @@ public class PartitionsResource {
       throw Errors.topicNotFoundException();
     }
   }
+
+  public Object runProxyQuery(PrivilegedExceptionAction action, String remoteUser) throws Exception {
+    if (ctx.isImpersonationEnabled()){
+      UserGroupInformation ugi = UserGroupInformation.createProxyUser(remoteUser,
+           UserGroupInformation.getCurrentUser());
+      return ugi.doAs(action);
+      } else {
+        return action.run();
+      }
+  }  
 }
