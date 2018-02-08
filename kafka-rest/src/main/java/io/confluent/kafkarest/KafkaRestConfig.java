@@ -335,7 +335,8 @@ public class KafkaRestConfig extends RestConfig {
   public static final String REST_PROXY_IMPERSONATION = "rest.proxy.enable.doAs";
   private static final String
           REST_PROXY_IMPERSONATION_DOC =
-          "Specifies use impersonation for MapR streams or not.;
+          "Set to true if you want impersonations for streams to be enabled, if false - all manipulation will be"
+          + " performed from admin of cluster user";
   public static final boolean REST_PROXY_IMPERSONATION_DEFAULT = true;
   protected static final String SSL_PROTOCOL_DEFAULT_OVERRIDE = "TLSv1.2";
     public static final String STREAMS_DEFAULT_STREAM_CONFIG = "streams.default.stream";
@@ -344,17 +345,6 @@ public class KafkaRestConfig extends RestConfig {
             + "a valid value, then this topic name is looked in the default stream.";
     private static final String STREAMS_DEFAULT_STREAM_DEFAULT = "";
 
-    public static final String REST_PROXY_BACKEND_CONFIG = "rest.proxy.backend";
-    public static final String MAPR_STREAMS_BACKEND = "streams";
-    public static final String HYBRID_BACKEND = "hybrid";
-    private static final String REST_PROXY_BACKEND_DOC =
-                      "Specifies which storage backend is used. Set '" + HYBRID_BACKEND + "' to use"
-                      + " both Kafka and Streams or '" + MAPR_STREAMS_BACKEND + "' to use MapR Streams only."
-                      + " if the value is " + HYBRID_BACKEND + " and " + STREAMS_DEFAULT_STREAM_CONFIG + " is not set "
-                      + " then we refer to Kafka topics if topic name does not contain ':', topics with ':' refer to Streams. "
-                      + " If default stream is set to valid value and topic name does not contain ':' then we refer to Streams "
-                      + "topic in the default stream. The default value is '" + MAPR_STREAMS_BACKEND + "'.";
-  public static final String REST_PROXY_BACKEND_DEFAULT = MAPR_STREAMS_BACKEND;
   public static final String HTTPS = "https";
   public static final String HTTP = "http";
 
@@ -694,8 +684,6 @@ public class KafkaRestConfig extends RestConfig {
             Importance.LOW,
             KAFKA_REST_RESOURCE_EXTENSION_DOC
         )
-        .define(REST_PROXY_BACKEND_CONFIG, Type.STRING, REST_PROXY_BACKEND_DEFAULT,
-            Importance.HIGH, REST_PROXY_BACKEND_DOC)
         .define(STREAMS_DEFAULT_STREAM_CONFIG, Type.STRING, STREAMS_DEFAULT_STREAM_DEFAULT,
             Importance.MEDIUM, STREAMS_DEFAULT_STREAM_DOC)
         .define(STREAM_BUFFER_MAX_TIME_CONFIG, Type.INT, STREAM_BUFFER_MAX_TIME_DEFAULT,
@@ -734,20 +722,7 @@ public class KafkaRestConfig extends RestConfig {
     super(configDef, props);
     this.originalProperties = props;
     this.time = time;
-
-    String restProxyBackend = getString(KafkaRestConfig.REST_PROXY_BACKEND_CONFIG);
-    switch (restProxyBackend) {
-      case HYBRID_BACKEND: {
-        isStreams = false;
-        break;
-      }
-      case MAPR_STREAMS_BACKEND: {
-        isStreams = true;
-        break;
-      }
-      default:
-        throw new RuntimeException("Unknown backend: " + restProxyBackend);
-    }
+    isStreams = true;
 
     this.defaultStreamSet = !STREAMS_DEFAULT_STREAM_DEFAULT.equals(
       getString(STREAMS_DEFAULT_STREAM_CONFIG));
