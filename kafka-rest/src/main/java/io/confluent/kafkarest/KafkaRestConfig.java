@@ -339,11 +339,13 @@ public class KafkaRestConfig extends RestConfig {
           + " performed from admin of cluster user";
   public static final boolean REST_PROXY_IMPERSONATION_DEFAULT = true;
   protected static final String SSL_PROTOCOL_DEFAULT_OVERRIDE = "TLSv1.2";
-    public static final String STREAMS_DEFAULT_STREAM_CONFIG = "streams.default.stream";
-    private static final String STREAMS_DEFAULT_STREAM_DOC = "The default stream the consumer should poll messages from and"
-            + "the producer should send messages to, if the topic name does not specify the stream path and the property has "
-            + "a valid value, then this topic name is looked in the default stream.";
-    private static final String STREAMS_DEFAULT_STREAM_DEFAULT = "";
+  protected static final String SSL_ENABLED_PROTOCOLS_DEFAULT_OVERRIDE = "TLSv1.1,TLSv1.2,TLSv1";
+
+  public static final String STREAMS_DEFAULT_STREAM_CONFIG = "streams.default.stream";
+  private static final String STREAMS_DEFAULT_STREAM_DOC = "The default stream the consumer should poll messages from and"
+           + "the producer should send messages to, if the topic name does not specify the stream path and the property has "
+           + "a valid value, then this topic name is looked in the default stream.";
+  private static final String STREAMS_DEFAULT_STREAM_DEFAULT = "";
 
   public static final String HTTPS = "https";
   public static final String HTTP = "http";
@@ -603,7 +605,7 @@ public class KafkaRestConfig extends RestConfig {
         .define(
             KAFKACLIENT_SSL_ENABLED_PROTOCOLS_CONFIG,
             ConfigDef.Type.STRING,
-            "TLSv1.2,TLSv1.1,TLSv1",
+            SSL_ENABLED_PROTOCOLS_DEFAULT_OVERRIDE,
             ConfigDef.Importance.MEDIUM,
             KAFAKSTORE_SSL_ENABLED_PROTOCOLS_DOC
         )
