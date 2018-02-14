@@ -123,7 +123,9 @@ public class KafkaRestContextProvider {
   public static synchronized void clean() {
     defaultContext.shutdown();
     defaultContext = null;
-    defaultZkUtils.close();
+    if (defaultZkUtils != null) {
+      defaultZkUtils.close();
+    }
     initialized.set(false);
   }
 }
