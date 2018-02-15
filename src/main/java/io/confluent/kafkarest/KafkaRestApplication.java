@@ -46,7 +46,8 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
 
   RestResourceExtension restResourceExtension;
   boolean isStreams;
-
+  KafkaRestContext context;
+  
   public KafkaRestApplication() throws RestConfigException {
     this(new Properties());
   }
@@ -134,7 +135,7 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
       simpleConsumerManager =
           new SimpleConsumerManager(appConfig, mdObserver, simpleConsumerFactory);
     }
-    KafkaRestContext context =
+    context =
         new DefaultKafkaRestContext(appConfig, mdObserver, producerPool, consumerManager,
             simpleConsumerManager, kafkaConsumerManager, adminClientWrapperInjected, zkUtils,
             appConfig.isStreams(), appConfig.isImpersonationEnabled());
@@ -160,6 +161,9 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
     if (restResourceExtension != null) {
       restResourceExtension.clean();
     }
-    KafkaRestContextProvider.clean();
+    context.getConsumerManager().shutdown();
+    context.getProducerPool().shutdown();
+    context.getSimpleConsumerManager().shutdown();
+    context.getMetadataObserver().shutdown();
   }
 }
