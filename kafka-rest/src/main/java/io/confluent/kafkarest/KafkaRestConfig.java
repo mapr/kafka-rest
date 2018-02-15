@@ -339,7 +339,7 @@ public class KafkaRestConfig extends RestConfig {
           + " performed from admin of cluster user";
   public static final boolean REST_PROXY_IMPERSONATION_DEFAULT = true;
   protected static final String SSL_PROTOCOL_DEFAULT_OVERRIDE = "TLSv1.2";
-  protected static final String SSL_ENABLED_PROTOCOLS_DEFAULT_OVERRIDE = "TLSv1.1,TLSv1.2,TLSv1";
+  protected static final String SSL_ENABLED_PROTOCOLS_DEFAULT_OVERRIDE = "TLSv1.1,TLSv1.2";
 
   public static final String STREAMS_DEFAULT_STREAM_CONFIG = "streams.default.stream";
   private static final String STREAMS_DEFAULT_STREAM_DOC = "The default stream the consumer should poll messages from and"
