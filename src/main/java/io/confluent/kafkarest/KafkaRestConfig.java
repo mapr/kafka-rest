@@ -341,7 +341,7 @@ public class KafkaRestConfig extends RestConfig {
   public static final boolean REST_PROXY_IMPERSONATION_DEFAULT = true;
 
   protected static final String SSL_PROTOCOL_DEFAULT_OVERRIDE = "TLSv1.2";
-  protected static final String SSL_ENABLED_PROTOCOLS_DEFAULT_OVERRIDE = "TLSv1.1,TLSv1.2,TLSv1";
+  protected static final String SSL_ENABLED_PROTOCOLS_DEFAULT_OVERRIDE = "TLSv1.1,TLSv1.2";
   private static final ConfigDef config;
 
   static {
