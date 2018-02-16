@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 SERVICE_NAME='Kafka REST'
-TARGET=`ps ax | egrep -i '(kafkarest\.Main)|(kafkarest\.KafkaRestMain)' | grep java | grep -v grep | awk '{print $1}'`
+TARGET=`jps | grep KafkaRestMain | awk '{print $1}'`
 if [ "x$TARGET" = "x" ]; then
   echo "${SERVICE_NAME} not running."
   exit 1
