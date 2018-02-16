@@ -289,7 +289,9 @@ function configure_insecure_mode() {
     create_standard_properties_file
     change_permissions
     setup_warden_config
-    write_kafka_rest_restart    
+    if ! ${KAFKA_REST_INITIAL_RUN}; then
+        write_kafka_rest_restart    
+    fi
     return 0
 }
 
@@ -309,7 +311,9 @@ function configure_secure_mode() {
     fi
     change_permissions
     setup_warden_config
-    write_kafka_rest_restart       
+    if ! ${KAFKA_REST_INITIAL_RUN}; then
+        write_kafka_rest_restart    
+    fi   
     return 0
 }
 
@@ -380,13 +384,11 @@ if $SECURE; then
     else
         change_permissions
         setup_warden_config
-        write_kafka_rest_restart    
 	    logInfo ''Kafka REST has been already configured to run in secure mode.''
     fi
 else
     setup_warden_config
     change_permissions
-    write_kafka_rest_restart    
     if $CUSTOM; then
         exit 0
     fi
