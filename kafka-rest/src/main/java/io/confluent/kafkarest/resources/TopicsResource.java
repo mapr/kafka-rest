@@ -73,11 +73,15 @@ public class TopicsResource {
       return (Collection<String>) runProxyQuery(new PrivilegedExceptionAction() {
           @Override
           public Collection<String> run() throws Exception {
-              KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
+              final KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
               Collection<String> topics = metadataObserver.getTopicNames();
               if (ctx.isImpersonationEnabled()){
-                  metadataObserver.shutdown();
-              }
+                new Thread(){
+                  @Override
+                  public void run() {
+                    metadataObserver.shutdown();
+                  }
+                }.start();              }
               return topics;
           }
       }, httpRequest.getRemoteUser());
@@ -91,11 +95,15 @@ public class TopicsResource {
       Topic topic = (Topic) runProxyQuery(new PrivilegedExceptionAction() {
           @Override
           public Topic run() throws Exception {
-              KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
+              final KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
               Topic topic = metadataObserver.getTopic(topicName);
               if (ctx.isImpersonationEnabled()){
-                  metadataObserver.shutdown();
-              }
+                new Thread(){
+                  @Override
+                  public void run() {
+                    metadataObserver.shutdown();
+                  }
+                }.start();              }
               return topic;
           }
       }, httpRequest.getRemoteUser());
