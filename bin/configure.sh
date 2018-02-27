@@ -134,6 +134,7 @@ function change_permissions() {
     chown -R ${MAPR_USER} ${KAFKA_REST_PACKAGE_DIR}
     chgrp -R ${MAPR_GROUP} ${KAFKA_REST_PACKAGE_DIR}
     chmod u+x ${KAFKA_REST_PACKAGE_DIR}/bin/*
+    chmod 640 ${KAFKA_REST_PROPERTIES}
 }
 
 function check_mapr_cldb_keystore() {
