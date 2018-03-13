@@ -119,13 +119,13 @@ public class TopicsResource {
   @Consumes({Versions.KAFKA_V1_JSON_BINARY, Versions.KAFKA_V1_JSON,
              Versions.KAFKA_DEFAULT_JSON, Versions.JSON, Versions.GENERIC_REQUEST,
              Versions.KAFKA_V2_JSON_BINARY, Versions.KAFKA_V2_JSON})
-  public void produceBinary(@javax.ws.rs.core.Context HttpServletRequest httpRequest, final @Suspended AsyncResponse asyncResponse,
+  public void produceBinary(final @javax.ws.rs.core.Context HttpServletRequest httpRequest, final @Suspended AsyncResponse asyncResponse,
                             @PathParam("topic") final String topicName,
                             @Valid final TopicProduceRequest<BinaryTopicProduceRecord> request) throws Exception{
       runProxyQuery(new PrivilegedExceptionAction<Void>() {
           @Override
           public Void run() throws Exception {
-              produce(asyncResponse, topicName, EmbeddedFormat.BINARY, request);
+              produce(httpRequest.getRemoteUser(), asyncResponse, topicName, EmbeddedFormat.BINARY, request);
               return null;
           }
       }, httpRequest.getRemoteUser());
@@ -135,14 +135,14 @@ public class TopicsResource {
   @Path("/{topic}")
   @PerformanceMetric("topic.produce-json")
   @Consumes({Versions.KAFKA_V1_JSON_JSON, Versions.KAFKA_V2_JSON_JSON})
-  public void produceJson(@javax.ws.rs.core.Context HttpServletRequest httpRequest, final @Suspended AsyncResponse asyncResponse,
+  public void produceJson(final @javax.ws.rs.core.Context HttpServletRequest httpRequest, final @Suspended AsyncResponse asyncResponse,
                           @PathParam("topic") final String topicName,
                           @Valid final TopicProduceRequest<JsonTopicProduceRecord> request) throws Exception
   {
       runProxyQuery(new PrivilegedExceptionAction<Void>() {
           @Override
           public Void run() throws Exception {
-              produce(asyncResponse, topicName, EmbeddedFormat.JSON, request);
+              produce(httpRequest.getRemoteUser(), asyncResponse, topicName, EmbeddedFormat.JSON, request);
               return null;
           }
       }, httpRequest.getRemoteUser());
@@ -175,10 +175,11 @@ public class TopicsResource {
       throw Errors.valueSchemaMissingException();
     }
 
-    produce(asyncResponse, topicName, EmbeddedFormat.AVRO, request);
+    produce(null,asyncResponse, topicName, EmbeddedFormat.AVRO, request);
   }
 
   public <K, V, R extends TopicProduceRecord<K, V>> void produce(
+      final String userName,
       final AsyncResponse asyncResponse,
       final String topicName,
       final EmbeddedFormat format,
@@ -222,11 +223,8 @@ public class TopicsResource {
             );
             asyncResponse.resume(response);
           }
-        }
+        }, userName
     );
-    if (ctx.isImpersonationEnabled()){
-        producerPool.shutdown();
-    }
   }
   
   public Object runProxyQuery(PrivilegedExceptionAction action, String remoteUser) throws Exception {

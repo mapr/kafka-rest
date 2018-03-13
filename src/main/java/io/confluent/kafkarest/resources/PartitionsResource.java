@@ -184,7 +184,7 @@ public class PartitionsResource {
   @Consumes({Versions.KAFKA_V1_JSON_BINARY, Versions.KAFKA_V1_JSON,
              Versions.KAFKA_DEFAULT_JSON, Versions.JSON, Versions.GENERIC_REQUEST})
   public void produceBinary(
-      @javax.ws.rs.core.Context HttpServletRequest httpRequest,
+      final @javax.ws.rs.core.Context HttpServletRequest httpRequest,
       final @Suspended AsyncResponse asyncResponse,
       final @PathParam("topic") String topic,
       final @PathParam("partition") int partition,
@@ -193,7 +193,7 @@ public class PartitionsResource {
       runProxyQuery(new PrivilegedExceptionAction() {
           @Override
           public Partition run() throws Exception {
-              produce(asyncResponse, topic, partition, EmbeddedFormat.BINARY, request);
+              produce(httpRequest.getRemoteUser(),asyncResponse, topic, partition, EmbeddedFormat.BINARY, request);
               return null;
           }
       }, httpRequest.getRemoteUser()); 
@@ -204,7 +204,7 @@ public class PartitionsResource {
   @PerformanceMetric("partition.produce-json")
   @Consumes({Versions.KAFKA_V1_JSON_JSON})
   public void produceJson(
-      @javax.ws.rs.core.Context HttpServletRequest httpRequest,
+      final @javax.ws.rs.core.Context HttpServletRequest httpRequest,
       final @Suspended AsyncResponse asyncResponse,
       final @PathParam("topic") String topic,
       final @PathParam("partition") int partition,
@@ -213,7 +213,7 @@ public class PartitionsResource {
       runProxyQuery(new PrivilegedExceptionAction() {
           @Override
           public Partition run() throws Exception {
-              produce(asyncResponse, topic, partition, EmbeddedFormat.JSON, request);
+              produce(httpRequest.getRemoteUser(), asyncResponse, topic, partition, EmbeddedFormat.JSON, request);
               return null;
           }
       }, httpRequest.getRemoteUser());
@@ -247,7 +247,7 @@ public class PartitionsResource {
       throw Errors.valueSchemaMissingException();
     }
 
-    produce(asyncResponse, topic, partition, EmbeddedFormat.AVRO, request);
+    produce(null, asyncResponse, topic, partition, EmbeddedFormat.AVRO, request);
   }
 
   private <K, V> void consume(
@@ -293,6 +293,7 @@ public class PartitionsResource {
   }
 
   protected <K, V, R extends ProduceRecord<K, V>> void produce(
+      final String userName,
       final AsyncResponse asyncResponse,
       final String topic,
       final int partition,
@@ -336,8 +337,8 @@ public class PartitionsResource {
               );
               asyncResponse.resume(response);
             }
-          }
-      );
+          },
+      userName);
     } catch (KafkaException e) {
       if (StringUtil.startsWithIgnoreCase(e.getMessage(), "Invalid partition")) {
         Errors.partitionNotFoundException();

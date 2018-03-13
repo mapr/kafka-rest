@@ -24,11 +24,10 @@ import  io.confluent.rest.exceptions.RestServerErrorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentMap;
 
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import io.confluent.kafka.serializers.KafkaJsonSerializer;
@@ -48,7 +47,7 @@ public class ProducerPool {
       new HashMap<EmbeddedFormat, RestProducer>();
   private Map<EmbeddedFormat, RestProducer> streamsProducers =
     new HashMap<EmbeddedFormat, RestProducer>();
-
+  private SimpleProducerCache producerCache;
   private boolean isStreams;
   private boolean defaultStreamSet;
   private boolean isImpersonationEnabled;
@@ -95,7 +94,9 @@ public class ProducerPool {
       if(!isImpersonationEnabled){
           streamsProducers.put(EmbeddedFormat.BINARY, buildBinaryProducer(binaryStreamProps));
           streamsProducers.put(EmbeddedFormat.JSON, buildJsonProducer(jsonStreamProps));
-      }      
+      } else {
+          producerCache = new SimpleProducerCache(appConfig);
+      }
   }
 
   private Map<String, Object> buildStandardConfig(
@@ -193,7 +194,8 @@ public class ProducerPool {
       EmbeddedFormat recordFormat,
       SchemaHolder schemaHolder,
       Collection<? extends ProduceRecord<K, V>> records,
-      ProduceRequestCallback callback
+      ProduceRequestCallback callback,
+      String userName
   ) {
     ProduceTask task = new ProduceTask(schemaHolder, records.size(), callback);
     log.trace("Starting produce task " + task.toString());
@@ -207,48 +209,20 @@ public class ProducerPool {
       //because there can be exception due to permissions
       if (isImpersonationEnabled) {
           if (recordFormat.equals(EmbeddedFormat.BINARY)) {
-              restProducer = buildBinaryProducer(binaryStreamProps);
+             restProducer = producerCache.getBinaryProducer(userName);
           } else {
-              restProducer = buildJsonProducer(jsonStreamProps);
+             restProducer = producerCache.getJsonProducer(userName);
           }
       } else {
           restProducer = streamsProducers.get(recordFormat);
       }
-      
+
       try {
         restProducer.produce(task, topic, partition, records);
       } catch (RestServerErrorException e){
         log.warn("Producer error "+ e);
         throw Errors.topicPermissionException();
       }
-
-    } else {
-      if (!defaultStreamSet) {
-        if (topic.contains(":")) {
-            if (isImpersonationEnabled) {
-                if (recordFormat.equals(EmbeddedFormat.BINARY)) {
-                    restProducer = buildBinaryProducer(binaryStreamProps);
-                } else {
-                    restProducer = buildJsonProducer(jsonStreamProps);
-                }
-            } else {
-                restProducer = streamsProducers.get(recordFormat);
-            }
-        } else {
-          restProducer = kafkaProducers.get(recordFormat);
-        }
-      } else {
-          if (isImpersonationEnabled) {
-              if (recordFormat.equals(EmbeddedFormat.BINARY)) {
-                  restProducer = buildBinaryProducer(binaryStreamProps);
-              } else {
-                  restProducer = buildJsonProducer(jsonStreamProps);
-              }
-          } else {
-              restProducer = streamsProducers.get(recordFormat);
-          }
-      }
-        restProducer.produce(task, topic, partition, records);
     }
   }
 
@@ -258,6 +232,9 @@ public class ProducerPool {
     }
     for (RestProducer restProducer : streamsProducers.values()) {
       restProducer.close();
+    }
+    if (producerCache != null){
+        producerCache.shutdown();
     }
   }
 
@@ -275,4 +252,88 @@ public class ProducerPool {
         List<RecordMetadataOrException> results
     );
   }
+
+    class SimpleProducerCache {
+        private final int maxCachesNum;
+
+        /**
+         * Stores insertion order of producer caches.
+         */
+        private Queue<String> binaryOldestCache;
+        private Queue<String> jsonOldestCache;
+
+        private ConcurrentMap<String, RestProducer> binaryHighLevelCache;
+        private ConcurrentMap<String, RestProducer> jsonHighLevelCache;
+
+
+         SimpleProducerCache(final KafkaRestConfig config) {
+            this.maxCachesNum = config.getInt(KafkaRestConfig.PRODUCERS_MAX_CACHES_NUM_CONFIG);
+
+            this.binaryHighLevelCache = new ConcurrentHashMap<>(maxCachesNum);
+            this.jsonHighLevelCache = new ConcurrentHashMap<>(maxCachesNum);
+
+            this.binaryOldestCache = new ConcurrentLinkedQueue<>();
+            this.jsonOldestCache = new ConcurrentLinkedQueue<>();
+        }
+
+
+         RestProducer getBinaryProducer(final String userName) {
+            if (maxCachesNum > 0) {
+                RestProducer cache;
+                cache = binaryHighLevelCache.get(userName);
+
+
+                if (cache == null) {
+                    if (binaryHighLevelCache.size() >= maxCachesNum) {
+                        // remove eldest element from the cache
+                        String eldest = binaryOldestCache.poll();
+                        binaryHighLevelCache.remove(eldest).close();
+                    }
+
+                    // add new entry
+                    cache = ProducerPool.this.buildBinaryProducer(binaryStreamProps);
+                    binaryHighLevelCache.put(userName, cache);
+                    binaryOldestCache.add(userName);
+                }
+                return cache;
+            } else {
+                // caching is disabled. Create producer for each request.
+                return ProducerPool.this.buildBinaryProducer(binaryStreamProps);
+            }
+        }
+
+        RestProducer getJsonProducer(final String userName) {
+            if (maxCachesNum > 0) {
+                RestProducer cache;
+                cache = jsonHighLevelCache.get(userName);
+
+                if (cache == null) {
+                    if (jsonHighLevelCache.size() >= maxCachesNum) {
+                        // remove eldest element from the cache
+                        String eldest = jsonOldestCache.poll();
+                        jsonHighLevelCache.remove(eldest).close();
+                    }
+
+                    // add new entry
+                    cache = ProducerPool.this.buildJsonProducer(binaryStreamProps);
+                    jsonHighLevelCache.put(userName, cache);
+                    jsonOldestCache.add(userName);
+                }
+                return cache;
+            } else {
+                // caching is disabled. Create producer for each request.
+                return ProducerPool.this.buildJsonProducer(binaryStreamProps);
+            }
+        }
+
+        void shutdown(){
+            for (RestProducer binaryRestProducer : binaryHighLevelCache.values()) {
+                binaryRestProducer.close();
+            }
+            for (RestProducer jsonRestProducer : jsonHighLevelCache.values()) {
+                jsonRestProducer.close();
+            }
+        }
+
+    }
 }
