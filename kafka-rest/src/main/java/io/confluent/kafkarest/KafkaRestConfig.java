@@ -341,6 +341,15 @@ public class KafkaRestConfig extends RestConfig {
   protected static final String SSL_PROTOCOL_DEFAULT_OVERRIDE = "TLSv1.2";
   protected static final String SSL_ENABLED_PROTOCOLS_DEFAULT_OVERRIDE = "TLSv1.1,TLSv1.2";
 
+
+  public static final String PRODUCERS_MAX_CACHES_NUM_CONFIG = "producers.max.caches.num";
+  private static final String
+          PRODUCERS_MAX_CACHES_NUM_DOC =
+          "Maximum number user names for which producers are cached. "
+                  + "If 0, then caching is disabled and producer will be created for each request.";
+
+  public static final int PRODUCERS_MAX_CACHES_NUM_DEFAULT = 20;
+
   public static final String STREAMS_DEFAULT_STREAM_CONFIG = "streams.default.stream";
   private static final String STREAMS_DEFAULT_STREAM_DOC = "The default stream the consumer should poll messages from and"
            + "the producer should send messages to, if the topic name does not specify the stream path and the property has "
@@ -691,7 +700,9 @@ public class KafkaRestConfig extends RestConfig {
         .define(STREAM_BUFFER_MAX_TIME_CONFIG, Type.INT, STREAM_BUFFER_MAX_TIME_DEFAULT,
             Importance.MEDIUM, STREAM_BUFFER_MAX_TIME_DOC)
         .define(REST_PROXY_IMPERSONATION, Type.BOOLEAN, REST_PROXY_IMPERSONATION_DEFAULT,
-            Importance.MEDIUM, REST_PROXY_IMPERSONATION_DOC);
+            Importance.MEDIUM, REST_PROXY_IMPERSONATION_DOC)
+        .define(PRODUCERS_MAX_CACHES_NUM_CONFIG, Type.INT, PRODUCERS_MAX_CACHES_NUM_DEFAULT,
+            Importance.MEDIUM, PRODUCERS_MAX_CACHES_NUM_DOC);
   }
 
   private Time time;

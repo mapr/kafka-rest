@@ -80,11 +80,7 @@ public class DefaultKafkaRestContext implements KafkaRestContext {
 
     @Override
     public ProducerPool getProducerPool() {
-        if (isImpersonationEnabled) {
-            return new ProducerPool(config);
-        } else {
             return producerPool;
-        }
     }
 
     @Override
