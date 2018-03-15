@@ -48,11 +48,12 @@ public class AdminClientWrapper {
   private AdminClient adminClient;
   private int initTimeOut;
   private boolean isDefaultStreamSet;
+  private String defaultStream;
   public AdminClientWrapper(KafkaRestConfig kafkaRestConfig) {
     Properties properties = new Properties();
     properties.putAll(kafkaRestConfig.getAdminProperties());
     properties.put(KafkaRestConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaRestConfig.bootstrapBrokers());
-    String defaultStream = kafkaRestConfig.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
+    this.defaultStream = kafkaRestConfig.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
     isDefaultStreamSet = !"".equals(defaultStream);
     if (isDefaultStreamSet) {
         properties.put(AdminClientConfig.STREAMS_ADMIN_DEFAULT_STREAM_CONFIG, defaultStream);
@@ -184,8 +185,14 @@ public class AdminClientWrapper {
 
   private TopicDescription getTopicDescription(String topicName) throws RestServerErrorException {
     try {
-      return adminClient.describeTopics(ImmutableList.<String>of(topicName))
-          .values().get(topicName).get(initTimeOut, TimeUnit.MILLISECONDS);
+      if (isDefaultStreamSet) {
+        return adminClient.describeTopics(ImmutableList.<String>of(topicName))
+                .values().get(defaultStream + ":" + topicName).get(initTimeOut, TimeUnit.MILLISECONDS);
+      } else {
+        return adminClient.describeTopics(ImmutableList.<String>of(topicName))
+                .values().get(topicName).get(initTimeOut, TimeUnit.MILLISECONDS);
+      }
+
     } catch (InterruptedException | ExecutionException | TimeoutException e) {
       throw new RestServerErrorException(Errors.KAFKA_ERROR_MESSAGE,
           Errors.KAFKA_ERROR_ERROR_CODE, e
