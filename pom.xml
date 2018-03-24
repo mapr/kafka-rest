@@ -105,7 +105,7 @@
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-clients</artifactId>
             <scope>provided</scope>
-            <version>1.0.1-mapr-1801-SNAPSHOT</version>         
+            <version>1.0.1-mapr-1803</version>         
         </dependency>
         <dependency>
             <groupId>io.confluent</groupId>
