@@ -20,9 +20,9 @@ add_streams_paths(){
   local MAPR_LIB_DIR="${BASEMAPR:-/opt/mapr}/lib"
   local MAPR_STREAMS_LIB=$(ls ${MAPR_LIB_DIR}/mapr-streams*.jar 2> /dev/null | grep -v "tests.jar$" )
   local PROTOBUF_LIB=$(ls ${MAPR_LIB_DIR}/protobuf-java*.jar 2> /dev/null)
-  local MAPRFS_LIB=$(ls ${MAPR_LIB_DIR}/maprfs-6*SNAPSHOT.jar 2> /dev/null)
+  local MAPRFS_LIB=$(ls ${MAPR_LIB_DIR}/maprfs-6*mapr.jar 2> /dev/null)
   local STREAMS_CLIENTS_LIB=$(ls ${MAPR_LIB_DIR}/kafka-clients*.jar 2> /dev/null)
-  local MAPRDB_LIB=$(ls ${MAPR_LIB_DIR}/maprdb-6*SNAPSHOT.jar 2> /dev/null| grep -v "tests.jar$" | tr '\n' ':')
+  local MAPRDB_LIB=$(ls ${MAPR_LIB_DIR}/maprdb-6*mapr.jar 2> /dev/null| grep -v "tests.jar$" | tr '\n' ':')
 
   local HADOOP_LIB=$(ls ${MAPR_LIB_DIR}/hadoop*.jar 2> /dev/null | grep -v "tests.jar$" | tr '\n' ':' )
   local COMMONS_LIB=$(ls ${MAPR_LIB_DIR}/commons*.jar 2> /dev/null | grep -v "tests.jar$" | tr '\n' ':' )
