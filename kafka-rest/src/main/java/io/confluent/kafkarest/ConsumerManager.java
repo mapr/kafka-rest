@@ -169,10 +169,7 @@ public class ConsumerManager {
       if (instanceConfig.getId() != null) {
         props.setProperty("consumer.id", instanceConfig.getId());
       }
-      // To support the old consumer interface with broken peek()/missing poll(timeout)
-      // functionality, we always use a timeout. This can't perfectly guarantee a total request
-      // timeout, but can get as close as this timeout's value
-      props.setProperty("consumer.timeout.ms", Integer.toString(iteratorTimeoutMs));
+
       if (instanceConfig.getAutoCommitEnable() != null) {
         props.setProperty("enable.auto.commit", instanceConfig.getAutoCommitEnable());
       } else {
@@ -187,7 +184,6 @@ public class ConsumerManager {
             props.put(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, defaultStream);
         }
         
-      ConsumerConnector consumer;
       try {
         ConsumerState state = EmbeddedFormat.createConsumerState(instanceConfig.getFormat(),
                 this.config, cid, props, consumerFactory);
@@ -199,7 +195,6 @@ public class ConsumerManager {
         }
         succeeded = true;
         return name;
-      }
       } catch (InvalidConfigException e) {
         throw Errors.invalidConsumerConfigException(e);
       }

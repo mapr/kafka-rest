@@ -20,7 +20,6 @@ base_dir=$(dirname $0)/..
 # This will set MAPR_HOME, etc.
 source `which mapr-config.sh` # Both "mapr" and "mapr-config.sh" are symlinked in "/usr/bin"
 
-export MAPR_IMPERSONATION_ENABLED=true
 add_streams_paths(){
   local MAPR_LIB_DIR="${BASEMAPR:-/opt/mapr}/lib"
   local MAPR_STREAMS_LIB=$(ls ${MAPR_LIB_DIR}/mapr-streams*.jar 2> /dev/null | grep -v "tests.jar$" )

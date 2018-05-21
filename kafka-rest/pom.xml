@@ -22,7 +22,7 @@
         <repository>
             <id>confluent</id>
             <name>Confluent</name>
-            <url>${confluent.maven.repo}</url>
+            <url>http://packages.confluent.io/maven/</url>
         </repository>
 
         <!-- MapR repository -->
@@ -38,7 +38,7 @@
         <dependency>
             <groupId>io.confluent</groupId>
             <artifactId>rest-utils</artifactId>
-            <version>4.1.0-mapr</version>
+            <version>4.0.0-mapr</version>
         </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>
