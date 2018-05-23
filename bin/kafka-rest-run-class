@@ -26,18 +26,20 @@ add_streams_paths(){
   local PROTOBUF_LIB=$(ls ${MAPR_LIB_DIR}/protobuf-java*.jar 2> /dev/null | grep -v "tests.jar$" )
   local MAPRFS_LIB=$(ls ${MAPR_LIB_DIR}/maprfs-*.jar 2> /dev/null | grep -v "maprfs-diagnostic-tools" | grep -v "tests.jar$" )
   local STREAMS_CLIENTS_LIB=$(ls ${MAPR_LIB_DIR}/kafka-clients*.jar 2> /dev/null | grep -v "tests.jar$" )
+  local MAPRDB_LIB=$(ls ${MAPR_LIB_DIR}/maprdb-*.jar 2> /dev/null| grep -v "tests.jar$" | tr '\n' ':')
 
   local HADOOP_LIB=$(ls ${MAPR_LIB_DIR}/hadoop*.jar 2> /dev/null | grep -v "tests.jar$" | tr '\n' ':' )
   local COMMONS_LIB=$(ls ${MAPR_LIB_DIR}/commons*.jar 2> /dev/null | grep -v "tests.jar$" | tr '\n' ':' )
   local GUAVA_LIB=$(ls ${MAPR_LIB_DIR}/guava*.jar 2> /dev/null | grep -v "tests.jar$")
   local JSON_LIB=$(ls ${MAPR_LIB_DIR}/json*.jar 2> /dev/null | grep -v "tests.jar$" | tr '\n' ':' )
-  local OJAI_LIB=$(ls ${MAPR_LIB_DIR}/ojai-2*.jar 2> /dev/null)
+  local OJAI_LIB=$(ls ${MAPR_LIB_DIR}/ojai-3*.jar 2> /dev/null)
   local ANTLR_LIB=$(ls ${MAPR_LIB_DIR}/antlr4*.jar 2> /dev/null)
 
   CLASSPATH="${MAPR_STREAMS_LIB}:${CLASSPATH}"
   CLASSPATH="${PROTOBUF_LIB}:${CLASSPATH}"
   CLASSPATH="${MAPRFS_LIB}:${CLASSPATH}"
   CLASSPATH="${STREAMS_CLIENTS_LIB}:${CLASSPATH}"
+  CLASSPATH="${MAPRDB_LIB}:${CLASSPATH}"
 
   CLASSPATH="${HADOOP_LIB}:${CLASSPATH}"
   CLASSPATH="${COMMONS_LIB}:${CLASSPATH}"
@@ -77,7 +79,6 @@ fi
 
 # Add native library path to LD_LIBRARY_PATH
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$(get_hadoop_libpath)" # function in mapr-config.sh
-
 
 # JMX settings
 if [ -z "$KAFKAREST_JMX_OPTS" ]; then
