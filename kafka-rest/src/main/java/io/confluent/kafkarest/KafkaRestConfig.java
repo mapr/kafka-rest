@@ -418,6 +418,10 @@ public class KafkaRestConfig extends RestConfig {
             AUTHENTICATION_REALM_DOC)
         .defineOverride(AUTHENTICATION_ROLES_CONFIG, Type.LIST, AUTHENTICATION_ROLES_DEFAULT,
             Importance.LOW, AUTHENTICATION_ROLES_DOC)
+        .defineOverride(
+            SSL_ENABLED_PROTOCOLS_CONFIG, Type.LIST,
+            SSL_ENABLED_PROTOCOLS_DEFAULT_OVERRIDE,
+            Importance.MEDIUM, SSL_ENABLED_PROTOCOLS_DOC)
         .define(ID_CONFIG, Type.STRING, ID_DEFAULT, Importance.HIGH, ID_CONFIG_DOC)
         .define(HOST_NAME_CONFIG, Type.STRING, HOST_NAME_DEFAULT, Importance.MEDIUM, HOST_NAME_DOC)
         .define(

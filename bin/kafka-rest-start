@@ -15,4 +15,3 @@
 # limitations under the License.
 
 nohup $(dirname $0)/kafka-rest-run-class io.confluent.kafkarest.KafkaRestMain "$@" </dev/null >/dev/null 2>&1 &
-nohup $(dirname $0)/kafka-rest-run-class io.confluent.kafkarest.KafkaRestMain "$@" </dev/null >/dev/null 2>&1 &
