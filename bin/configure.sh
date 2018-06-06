@@ -383,6 +383,9 @@ if $SECURE; then
             exit 1
         fi
     else
+        if [ ! -d ${KAFKA_REST_CERTIFICATES_DIR} ]; then
+        	generate_cert_and_key
+    	fi
         change_permissions
         setup_warden_config
 	    logInfo ''Kafka REST has been already configured to run in secure mode.''
