@@ -38,6 +38,7 @@ KAFKA_REST_HOME=${NEW_MYPKG_CONF_FILE:-${MAPR_HOME}/${KAFKA_REST_NAME}}
 KAFKA_REST_PACKAGE_DIR=${KAFKA_REST_PACKAGE_DIR:-${KAFKA_REST_HOME}/${KAFKA_REST_NAME}-${VERSION}}
 KAFKA_REST_VERSION_FILE=${KAFKA_REST_VERSION_FILE:-${KAFKA_REST_HOME}/kafkarestversion}
 KAFKA_REST_PROPERTIES=${KAFKA_REST_PROPERTIES:-${KAFKA_REST_PACKAGE_DIR}/config/${KAFKA_REST_NAME}.properties}
+base_dir=$(dirname $0)
 
 # directory contains saved user's configs
 KAFKA_REST_SAVED_PROPS_DIR=${KAFKA_REST_SAVED_PROPS_DIR:-${KAFKA_REST_PACKAGE_DIR}/config/saved}
@@ -64,19 +65,11 @@ KAFKA_REST_RESTART_SRC=${KAFKA_REST_RESTART_SRC:-${MAPR_RESTART_SCRIPTS_DIR}/${K
 KAFKA_REST_CERTIFICATES_DIR=${KAFKA_REST_CERTIFICATES_DIR:-${KAFKA_REST_PACKAGE_DIR}/certs}
 KAFKA_REST_CERT=${KAFKA_CERT:-${KAFKA_REST_CERTIFICATES_DIR}/cert.pem}
 KAFKA_REST_DEST_STORE=${KAFKA_REST_DEST_STORE:-${KAFKA_REST_CERTIFICATES_DIR}/keystore.p12}
-KAFKA_REST_DEST_STORE_PASSWD=${KAFKA_REST_DEST_STORE_PASSWD:-'mapr123'}
 KAFKA_REST_OPENSSL_KEY=${KAFKA_REST_OPENSSL_KEY:-${KAFKA_REST_CERTIFICATES_DIR}/key.pem}
-
-MAPR_CLDB_SSL_KEYSTORE=${MAPR_CLDB_SSL_KEYSTORE:-${MAPR_HOME}/conf/ssl_keystore}
-MAPR_CLDB_SSL_TRUSTSTORE=${MAPR_CLDB_SSL_TRUSTSTORE:-${MAPR_HOME}/conf/ssl_truststore}
-KAFKA_REST_MAPR_CLDB_SSL_KEYSTORE_PASSWD=${KAFKA_REST_MAPR_CLDB_SSL_KEYSTORE_PASSWD:-'mapr123'}
-KAFKA_REST_MAPR_CLDB_SSL_TRUSTSTORE_PASSWD=${KAFKA_REST_MAPR_CLDB_SSL_TRUSTSTORE_PASSWD:-'mapr123'}
 
 # Warden-specific
 KAFKA_REST_WARDEN_CONF=${KAFKA_REST_WARDEN_CONF:-${KAFKA_REST_PACKAGE_DIR}/config/warden.kafka-rest.conf}
 KAFKA_REST_WARDEN_DEST_CONF=${KAFKA_REST_WARDEN_DEST_CONF:-${MAPR_HOME}/conf/conf.d/warden.kafka-rest.conf}
-
-
 
 #######################################################################
 # Functions definition
@@ -174,6 +167,7 @@ function delete_certs_dir() {
 }
 
 function create_properties_file_with_ssl_config() {
+    serverKeyPassword=`exec $base_dir/kafka-run-class io.confluent.kafkarest.KafkaRestSSLPropertiesCLI serverKeyPassword 2>/dev/null`
         cat >>${KAFKA_REST_PROPERTIES} <<-EOL
 		listeners=https://0.0.0.0:${KAFKA_REST_PORT}
 		ssl.keystore.location=${MAPR_CLDB_SSL_KEYSTORE}
@@ -188,7 +182,6 @@ function create_standard_properties_file() {
 }
 
 function generate_cert_and_key() {
-
     { ALIAS="$(getClusterName)"; } 2>/dev/null
     mkdir -p "${KAFKA_REST_CERTIFICATES_DIR}"
     keytool -v -exportcert -alias "${ALIAS}" -keystore "${MAPR_CLDB_SSL_TRUSTSTORE}" -rfc -file "${KAFKA_REST_CERT}" \
@@ -202,7 +195,7 @@ function generate_cert_and_key() {
         -srckeystore "${MAPR_CLDB_SSL_KEYSTORE}" -destkeystore "${KAFKA_REST_DEST_STORE}" \
         -srcstoretype JKS -deststoretype PKCS12 \
         -srcstorepass "${KAFKA_REST_MAPR_CLDB_SSL_KEYSTORE_PASSWD}" \
-        -deststorepass "${KAFKA_REST_DEST_STORE_PASSWD}" 2>/dev/null
+        -deststorepass "${KAFKA_REST_MAPR_CLDB_SSL_KEYSTORE_PASSWD}" 2>/dev/null
 
     if [ $? -ne 0 ] ; then
         logWarn 'Warning: No keystore has been imported due to keytool error.'
@@ -212,7 +205,7 @@ function generate_cert_and_key() {
     fi
 
     openssl pkcs12 -in "${KAFKA_REST_DEST_STORE}" -nodes -nocerts -out "${KAFKA_REST_OPENSSL_KEY}" \
-        -passin "pass:${KAFKA_REST_DEST_STORE_PASSWD}" 2>/dev/null
+        -passin "pass:${KAFKA_REST_MAPR_CLDB_SSL_KEYSTORE_PASSWD}" 2>/dev/null
     if [ $? -ne 0 ] ; then
         logWarn 'Warning: No PKCS12 has been converted due to openssl error.'
         return 1
@@ -224,6 +217,10 @@ function generate_cert_and_key() {
 }
 
 function enable_ssl() {
+    if [ -f "${MAPR_HOME}/conf/mapruserticket" ]; then
+        export MAPR_TICKETFILE_LOCATION="${MAPR_HOME}/conf/mapruserticket"
+    fi
+
     if ! check_mapr_cldb_keystore; then
         return 1
     fi
@@ -231,6 +228,11 @@ function enable_ssl() {
     if ! check_mapr_cldb_truststore; then
         return 1
     fi
+
+    MAPR_CLDB_SSL_KEYSTORE=`exec $base_dir/kafka-rest-run-class io.confluent.kafkarest.KafkaRestSSLPropertiesCLI keystoreFile`
+    MAPR_CLDB_SSL_TRUSTSTORE=`exec $base_dir/kafka-rest-run-class io.confluent.kafkarest.KafkaRestSSLPropertiesCLI truststoreFile`
+    KAFKA_REST_MAPR_CLDB_SSL_KEYSTORE_PASSWD=`exec $base_dir/kafka-rest-run-class io.confluent.kafkarest.KafkaRestSSLPropertiesCLI keystorePass`
+    KAFKA_REST_MAPR_CLDB_SSL_TRUSTSTORE_PASSWD=`exec $base_dir/kafka-rest-run-class io.confluent.kafkarest.KafkaRestSSLPropertiesCLI truststorePassword`
 
     save_current_properties
     create_properties_file_with_ssl_config
