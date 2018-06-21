@@ -71,6 +71,10 @@ KAFKA_REST_OPENSSL_KEY=${KAFKA_REST_OPENSSL_KEY:-${KAFKA_REST_CERTIFICATES_DIR}/
 KAFKA_REST_WARDEN_CONF=${KAFKA_REST_WARDEN_CONF:-${KAFKA_REST_PACKAGE_DIR}/config/warden.kafka-rest.conf}
 KAFKA_REST_WARDEN_DEST_CONF=${KAFKA_REST_WARDEN_DEST_CONF:-${MAPR_HOME}/conf/conf.d/warden.kafka-rest.conf}
 
+# Hadoop Credential Provider files
+KAFKA_REST_CREDENTIALS_FILE="/user/${MAPR_USER}/kafkarest.jceks"
+KAFKA_REST_CREDENTIALS_PROP="jceks://maprfs/user/${MAPR_USER}/kafkarest.jceks"
+
 #######################################################################
 # Functions definition
 #######################################################################
@@ -167,12 +171,17 @@ function delete_certs_dir() {
 }
 
 function create_properties_file_with_ssl_config() {
-    serverKeyPassword=`exec $base_dir/kafka-run-class io.confluent.kafkarest.KafkaRestSSLPropertiesCLI serverKeyPassword 2>/dev/null`
+    serverKeyPassword=`exec ${base_dir}/kafka-rest-run-class io.confluent.kafkarest.KafkaRestSSLPropertiesCLI serverKeyPassword 2>/dev/null`
+
+    if ! hadoop fs -test -f "$KAFKA_REST_CREDENTIALS_FILE"; then
+        sudo -u "$MAPR_USER" hadoop credential create "ssl.keystore.password" -value "$KAFKA_REST_MAPR_CLDB_SSL_KEYSTORE_PASSWD" -provider "$KAFKA_REST_CREDENTIALS_PROP"
+        sudo -u "$MAPR_USER" hadoop credential create "ssl.key.password" -value "$serverKeyPassword" -provider "$KAFKA_REST_CREDENTIALS_PROP"
+    fi
+
         cat >>${KAFKA_REST_PROPERTIES} <<-EOL
 		listeners=https://0.0.0.0:${KAFKA_REST_PORT}
 		ssl.keystore.location=${MAPR_CLDB_SSL_KEYSTORE}
-		ssl.keystore.password=${KAFKA_REST_MAPR_CLDB_SSL_KEYSTORE_PASSWD}
-		ssl.key.password=${KAFKA_REST_MAPR_CLDB_SSL_KEYSTORE_PASSWD}
+		rest.hadoop.security.credential.provider.path=${KAFKA_REST_CREDENTIALS_PROP}
 		EOL
 }
 
@@ -375,7 +384,7 @@ if [ -f "$KAFKA_REST_PACKAGE_DIR/conf/.not_configured_yet" ]  ; then
 fi
  
 if $SECURE; then
-    num=3
+    num=2
     IS_SECURE_CONFIG=$(grep -e ssl.key -e listeners  ${KAFKA_REST_PROPERTIES} | wc -l)
     if [ $IS_SECURE_CONFIG -lt $num ]; then
         if configure_secure_mode; then
