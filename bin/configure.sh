@@ -225,10 +225,19 @@ function generate_cert_and_key() {
     return 0
 }
 
-function enable_ssl() {
+function get_ssl_properties() {
     if [ -f "${MAPR_HOME}/conf/mapruserticket" ]; then
         export MAPR_TICKETFILE_LOCATION="${MAPR_HOME}/conf/mapruserticket"
     fi
+
+    MAPR_CLDB_SSL_KEYSTORE=`exec $base_dir/kafka-rest-run-class io.confluent.kafkarest.KafkaRestSSLPropertiesCLI keystoreFile`
+    MAPR_CLDB_SSL_TRUSTSTORE=`exec $base_dir/kafka-rest-run-class io.confluent.kafkarest.KafkaRestSSLPropertiesCLI truststoreFile`
+    KAFKA_REST_MAPR_CLDB_SSL_KEYSTORE_PASSWD=`exec $base_dir/kafka-rest-run-class io.confluent.kafkarest.KafkaRestSSLPropertiesCLI keystorePass`
+    KAFKA_REST_MAPR_CLDB_SSL_TRUSTSTORE_PASSWD=`exec $base_dir/kafka-rest-run-class io.confluent.kafkarest.KafkaRestSSLPropertiesCLI truststorePassword`
+}
+
+function enable_ssl() {
+    get_ssl_properties
 
     if ! check_mapr_cldb_keystore; then
         return 1
@@ -237,11 +246,6 @@ function enable_ssl() {
     if ! check_mapr_cldb_truststore; then
         return 1
     fi
-
-    MAPR_CLDB_SSL_KEYSTORE=`exec $base_dir/kafka-rest-run-class io.confluent.kafkarest.KafkaRestSSLPropertiesCLI keystoreFile`
-    MAPR_CLDB_SSL_TRUSTSTORE=`exec $base_dir/kafka-rest-run-class io.confluent.kafkarest.KafkaRestSSLPropertiesCLI truststoreFile`
-    KAFKA_REST_MAPR_CLDB_SSL_KEYSTORE_PASSWD=`exec $base_dir/kafka-rest-run-class io.confluent.kafkarest.KafkaRestSSLPropertiesCLI keystorePass`
-    KAFKA_REST_MAPR_CLDB_SSL_TRUSTSTORE_PASSWD=`exec $base_dir/kafka-rest-run-class io.confluent.kafkarest.KafkaRestSSLPropertiesCLI truststorePassword`
 
     save_current_properties
     create_properties_file_with_ssl_config
@@ -395,6 +399,7 @@ if $SECURE; then
         fi
     else
         if [ ! -d ${KAFKA_REST_CERTIFICATES_DIR} ]; then
+            get_ssl_properties
         	generate_cert_and_key
     	fi
         change_permissions
