@@ -173,9 +173,13 @@ function delete_certs_dir() {
 function create_properties_file_with_ssl_config() {
     serverKeyPassword=`exec ${base_dir}/kafka-rest-run-class io.confluent.kafkarest.KafkaRestSSLPropertiesCLI serverKeyPassword 2>/dev/null`
 
-    if ! hadoop fs -test -f "$KAFKA_REST_CREDENTIALS_FILE"; then
-        sudo -u "$MAPR_USER" hadoop credential create "ssl.keystore.password" -value "$KAFKA_REST_MAPR_CLDB_SSL_KEYSTORE_PASSWD" -provider "$KAFKA_REST_CREDENTIALS_PROP"
-        sudo -u "$MAPR_USER" hadoop credential create "ssl.key.password" -value "$serverKeyPassword" -provider "$KAFKA_REST_CREDENTIALS_PROP"
+    if [ -z "$MAPR_TICKETFILE_LOCATION" ] && [ -e "${MAPR_HOME}/conf/mapruserticket" ]; then
+        export MAPR_TICKETFILE_LOCATION="${MAPR_HOME}/conf/mapruserticket"
+    fi
+
+    if ! sudo -u $MAPR_USER -E hadoop fs -test -f "$KAFKA_REST_CREDENTIALS_FILE"; then
+        sudo -u "$MAPR_USER" -E hadoop credential create "ssl.keystore.password" -value "$KAFKA_REST_MAPR_CLDB_SSL_KEYSTORE_PASSWD" -provider "$KAFKA_REST_CREDENTIALS_PROP"
+        sudo -u "$MAPR_USER" -E hadoop credential create "ssl.key.password" -value "$serverKeyPassword" -provider "$KAFKA_REST_CREDENTIALS_PROP"
     fi
 
         cat >>${KAFKA_REST_PROPERTIES} <<-EOL
