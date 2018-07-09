@@ -190,7 +190,7 @@ function create_properties_file_with_ssl_config() {
 }
 
 function create_standard_properties_file() {
-        TMP_CONFIG=$(sed '/^listeners/d' ${KAFKA_REST_PROPERTIES} | sed '/^ssl.key/d')
+        TMP_CONFIG=$(sed '/^listeners/d' ${KAFKA_REST_PROPERTIES} | sed '/^ssl.key/d' | sed '/^rest.hadoop.security.credential/d')
         echo "$TMP_CONFIG" > ${KAFKA_REST_PROPERTIES}
 }
 
