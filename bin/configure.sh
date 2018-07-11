@@ -38,7 +38,6 @@ KAFKA_REST_HOME=${NEW_MYPKG_CONF_FILE:-${MAPR_HOME}/${KAFKA_REST_NAME}}
 KAFKA_REST_PACKAGE_DIR=${KAFKA_REST_PACKAGE_DIR:-${KAFKA_REST_HOME}/${KAFKA_REST_NAME}-${VERSION}}
 KAFKA_REST_VERSION_FILE=${KAFKA_REST_VERSION_FILE:-${KAFKA_REST_HOME}/kafka-restversion}
 KAFKA_REST_PROPERTIES=${KAFKA_REST_PROPERTIES:-${KAFKA_REST_PACKAGE_DIR}/config/${KAFKA_REST_NAME}.properties}
-base_dir=$(dirname $0)
 
 # directory contains saved user's configs
 KAFKA_REST_SAVED_PROPS_DIR=${KAFKA_REST_SAVED_PROPS_DIR:-${KAFKA_REST_PACKAGE_DIR}/config/saved}
@@ -61,19 +60,9 @@ fi
 MAPR_RESTART_SCRIPTS_DIR=${MAPR_RESTART_SCRIPTS_DIR:-${MAPR_HOME}/conf/restart}
 KAFKA_REST_RESTART_SRC=${KAFKA_REST_RESTART_SRC:-${MAPR_RESTART_SCRIPTS_DIR}/${KAFKA_REST_NAME}-${VERSION}.restart}
 
-# SSL-specific
-KAFKA_REST_CERTIFICATES_DIR=${KAFKA_REST_CERTIFICATES_DIR:-${KAFKA_REST_PACKAGE_DIR}/certs}
-KAFKA_REST_CERT=${KAFKA_CERT:-${KAFKA_REST_CERTIFICATES_DIR}/cert.pem}
-KAFKA_REST_DEST_STORE=${KAFKA_REST_DEST_STORE:-${KAFKA_REST_CERTIFICATES_DIR}/keystore.p12}
-KAFKA_REST_OPENSSL_KEY=${KAFKA_REST_OPENSSL_KEY:-${KAFKA_REST_CERTIFICATES_DIR}/key.pem}
-
 # Warden-specific
 KAFKA_REST_WARDEN_CONF=${KAFKA_REST_WARDEN_CONF:-${KAFKA_REST_PACKAGE_DIR}/config/warden.kafka-rest.conf}
 KAFKA_REST_WARDEN_DEST_CONF=${KAFKA_REST_WARDEN_DEST_CONF:-${MAPR_HOME}/conf/conf.d/warden.kafka-rest.conf}
-
-# Hadoop Credential Provider files
-KAFKA_REST_CREDENTIALS_FILE="/user/${MAPR_USER}/kafkarest.jceks"
-KAFKA_REST_CREDENTIALS_PROP="jceks://maprfs/user/${MAPR_USER}/kafkarest.jceks"
 
 #######################################################################
 # Functions definition
@@ -83,8 +72,7 @@ function print_usage() {
     cat <<EOM
 Usage: $(basename $0) [-s|--secure || -u|--unsecure] [-R] [--EC] [-h|--help]
 Options:
-    --secure    Configure Kafka REST for secure cluster. Enables SSL for Kafka REST and generates certificate, client
-                key at '${KAFKA_REST_CERTIFICATES_DIR}'.
+    --secure    Configure Kafka REST for secure cluster. Enables SSL for Kafka REST.
 
     --unsecure  Configure Kafka REST for unsecure cluster. SSL for Kafka REST won't be enabled.
 
@@ -134,26 +122,6 @@ function change_permissions() {
     chmod 640 ${KAFKA_REST_PROPERTIES}
 }
 
-function check_mapr_cldb_keystore() {
-    if [ ! -f $MAPR_CLDB_SSL_KEYSTORE ]; then
-        logErr "Error: Can not enable Kafka REST SSL since MapR keystore file '$MAPR_HOME/conf/ssl_keystore' does not" \
-        "exist. It seems that cluster is configured in non-secure way."
-        return 1
-    fi
-
-    return 0
-}
-
-function check_mapr_cldb_truststore() {
-    if [ ! -f $MAPR_CLDB_SSL_TRUSTSTORE ]; then
-        logErr "Error: Can not enable Kafka REST SSL since MapR truststore file '$MAPR_CLDB_SSL_TRUSTSTORE' does not" \
-        "exist. It seems that cluster is configured in non-secure way."
-        return 1
-    fi
-
-    return 0
-}
-
 function save_current_properties() {
     cp -p $KAFKA_REST_PROPERTIES ${KAFKA_REST_SAVED_PROPS_DIR}/${KAFKA_REST_NAME}.properties.${NOW}
 }
@@ -164,102 +132,22 @@ function create_saved_properties_directory() {
     fi
 }
 
-function delete_certs_dir() {
-    if [ -d $KAFKA_REST_CERTIFICATES_DIR ]; then
-        rm -Rf ${KAFKA_REST_CERTIFICATES_DIR}
-    fi
-}
-
 function create_properties_file_with_ssl_config() {
-    serverKeyPassword=`exec ${base_dir}/kafka-rest-run-class io.confluent.kafkarest.KafkaRestSSLPropertiesCLI serverKeyPassword 2>/dev/null`
-
-    if [ -z "$MAPR_TICKETFILE_LOCATION" ] && [ -e "${MAPR_HOME}/conf/mapruserticket" ]; then
-        export MAPR_TICKETFILE_LOCATION="${MAPR_HOME}/conf/mapruserticket"
-    fi
-
-    if ! sudo -u $MAPR_USER -E hadoop fs -test -f "$KAFKA_REST_CREDENTIALS_FILE"; then
-        sudo -u "$MAPR_USER" -E hadoop credential create "ssl.keystore.password" -value "$KAFKA_REST_MAPR_CLDB_SSL_KEYSTORE_PASSWD" -provider "$KAFKA_REST_CREDENTIALS_PROP"
-        sudo -u "$MAPR_USER" -E hadoop credential create "ssl.key.password" -value "$serverKeyPassword" -provider "$KAFKA_REST_CREDENTIALS_PROP"
-    fi
 
         cat >>${KAFKA_REST_PROPERTIES} <<-EOL
 		listeners=https://0.0.0.0:${KAFKA_REST_PORT}
-		ssl.keystore.location=${MAPR_CLDB_SSL_KEYSTORE}
-		rest.hadoop.security.credential.provider.path=${KAFKA_REST_CREDENTIALS_PROP}
 		EOL
 }
 
 function create_standard_properties_file() {
-        TMP_CONFIG=$(sed '/^listeners/d' ${KAFKA_REST_PROPERTIES} | sed '/^ssl.key/d' | sed '/^rest.hadoop.security.credential/d')
+        TMP_CONFIG=$(sed '/^listeners/d' ${KAFKA_REST_PROPERTIES})
         echo "$TMP_CONFIG" > ${KAFKA_REST_PROPERTIES}
 }
 
-function generate_cert_and_key() {
-    { ALIAS="$(getClusterName)"; } 2>/dev/null
-    mkdir -p "${KAFKA_REST_CERTIFICATES_DIR}"
-    keytool -v -exportcert -alias "${ALIAS}" -keystore "${MAPR_CLDB_SSL_TRUSTSTORE}" -rfc -file "${KAFKA_REST_CERT}" \
-        -storepass "${KAFKA_REST_MAPR_CLDB_SSL_TRUSTSTORE_PASSWD}" 2>/dev/null
-    if [ $? -ne 0 ] ; then
-        logWarn 'Warning: No certificate has been generated due to keytool error.'
-        return 1
-    fi
-
-    keytool -importkeystore -noprompt \
-        -srckeystore "${MAPR_CLDB_SSL_KEYSTORE}" -destkeystore "${KAFKA_REST_DEST_STORE}" \
-        -srcstoretype JKS -deststoretype PKCS12 \
-        -srcstorepass "${KAFKA_REST_MAPR_CLDB_SSL_KEYSTORE_PASSWD}" \
-        -deststorepass "${KAFKA_REST_MAPR_CLDB_SSL_KEYSTORE_PASSWD}" 2>/dev/null
-
-    if [ $? -ne 0 ] ; then
-        logWarn 'Warning: No keystore has been imported due to keytool error.'
-        return 1
-      else
-        logInfo "Keystore has been imported from JKS to PKCS12 at '${KAFKA_REST_DEST_STORE}'"
-    fi
-
-    openssl pkcs12 -in "${KAFKA_REST_DEST_STORE}" -nodes -nocerts -out "${KAFKA_REST_OPENSSL_KEY}" \
-        -passin "pass:${KAFKA_REST_MAPR_CLDB_SSL_KEYSTORE_PASSWD}" 2>/dev/null
-    if [ $? -ne 0 ] ; then
-        logWarn 'Warning: No PKCS12 has been converted due to openssl error.'
-        return 1
-      else
-        logInfo "PKCS12 has been converted to pem using OpenSSL at '${KAFKA_REST_OPENSSL_KEY}'"
-    fi
-
-    return 0
-}
-
-function get_ssl_properties() {
-    if [ -f "${MAPR_HOME}/conf/mapruserticket" ]; then
-        export MAPR_TICKETFILE_LOCATION="${MAPR_HOME}/conf/mapruserticket"
-    fi
-
-    MAPR_CLDB_SSL_KEYSTORE=`exec $base_dir/kafka-rest-run-class io.confluent.kafkarest.KafkaRestSSLPropertiesCLI keystoreFile`
-    MAPR_CLDB_SSL_TRUSTSTORE=`exec $base_dir/kafka-rest-run-class io.confluent.kafkarest.KafkaRestSSLPropertiesCLI truststoreFile`
-    KAFKA_REST_MAPR_CLDB_SSL_KEYSTORE_PASSWD=`exec $base_dir/kafka-rest-run-class io.confluent.kafkarest.KafkaRestSSLPropertiesCLI keystorePass`
-    KAFKA_REST_MAPR_CLDB_SSL_TRUSTSTORE_PASSWD=`exec $base_dir/kafka-rest-run-class io.confluent.kafkarest.KafkaRestSSLPropertiesCLI truststorePassword`
-}
-
 function enable_ssl() {
-    get_ssl_properties
-
-    if ! check_mapr_cldb_keystore; then
-        return 1
-    fi
-
-    if ! check_mapr_cldb_truststore; then
-        return 1
-    fi
 
     save_current_properties
     create_properties_file_with_ssl_config
-
-    if ! generate_cert_and_key; then
-        return 1
-    fi
-
-    chown -R ${MAPR_USER} ${KAFKA_REST_CERTIFICATES_DIR}
-    chgrp -R ${MAPR_GROUP} ${KAFKA_REST_CERTIFICATES_DIR}
 
     return 0
 }
@@ -299,7 +187,6 @@ function register_port_if_available() {
 function configure_insecure_mode() {
     logInfo 'This is initial run of Kafka REST configure.sh';
     create_saved_properties_directory
-    delete_certs_dir
     write_version_file
     if ! register_port_if_available $KAFKA_REST_PORT; then
         logErr "Can not register port '$KAFKA_REST_PORT' for Kafka REST since it is not available."
@@ -318,7 +205,6 @@ function configure_insecure_mode() {
 function configure_secure_mode() {
     logInfo 'This is initial run of Kafka REST configure.sh';
     create_saved_properties_directory
-    delete_certs_dir
     write_version_file
 
     if ! register_port_if_available $KAFKA_REST_PORT; then
@@ -392,8 +278,8 @@ if [ -f "$KAFKA_REST_PACKAGE_DIR/conf/.not_configured_yet" ]  ; then
 fi
  
 if $SECURE; then
-    num=2
-    IS_SECURE_CONFIG=$(grep -e ssl.key -e listeners  ${KAFKA_REST_PROPERTIES} | wc -l)
+    num=1
+    IS_SECURE_CONFIG=$(grep -e listeners  ${KAFKA_REST_PROPERTIES} | wc -l)
     if [ $IS_SECURE_CONFIG -lt $num ]; then
         if configure_secure_mode; then
             logInfo 'Kafka REST successfully configured to run in secure mode.'
@@ -402,10 +288,7 @@ if $SECURE; then
             exit 1
         fi
     else
-        if [ ! -d ${KAFKA_REST_CERTIFICATES_DIR} ]; then
-            get_ssl_properties
-        	generate_cert_and_key
-    	fi
+
         change_permissions
         setup_warden_config
 	    logInfo ''Kafka REST has been already configured to run in secure mode.''
