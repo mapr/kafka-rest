@@ -43,17 +43,14 @@ import io.confluent.kafkarest.entities.SchemaHolder;
 public class ProducerPool {
 
   private static final Logger log = LoggerFactory.getLogger(ProducerPool.class);
-  private Map<EmbeddedFormat, RestProducer> kafkaProducers =
-      new HashMap<EmbeddedFormat, RestProducer>();
-  private Map<EmbeddedFormat, RestProducer> streamsProducers =
-    new HashMap<EmbeddedFormat, RestProducer>();
+  private Map<EmbeddedFormat, RestProducer> producers = new HashMap<>();
   private SimpleProducerCache producerCache;
   private boolean isStreams;
   private boolean defaultStreamSet;
   private boolean isImpersonationEnabled;
-  private Map<String, Object> binaryStreamProps;
-  private Map<String, Object> jsonStreamProps;
-  
+  private Map<String, Object> standardConfig;
+  private Map<String, Object> avroConfig;
+
   public ProducerPool(KafkaRestConfig appConfig) {
     this(appConfig, null);
   }
@@ -74,26 +71,14 @@ public class ProducerPool {
       this.defaultStreamSet = appConfig.isDefaultStreamSet();
       this.isImpersonationEnabled = appConfig.isImpersonationEnabled();
 
-      if (!isStreams) {
-          // initialize producers for kafka backend
-          Map<String, Object> binaryProps = buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
-          kafkaProducers.put(EmbeddedFormat.BINARY, buildBinaryProducer(binaryProps));
-
-          Map<String, Object> jsonProps = buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
-          kafkaProducers.put(EmbeddedFormat.JSON, buildJsonProducer(jsonProps));
-
-          Map<String, Object> avroProps = buildAvroConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
-          kafkaProducers.put(EmbeddedFormat.AVRO, buildAvroProducer(avroProps));
-      }
-
-      binaryStreamProps = buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
-      jsonStreamProps = buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
+      standardConfig = buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
+      avroConfig = buildAvroConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
 
       // Initialize producers for Streams backend.
       // Avro serialization is not supported by MapR Streams.
       if(!isImpersonationEnabled){
-          streamsProducers.put(EmbeddedFormat.BINARY, buildBinaryProducer(binaryStreamProps));
-          streamsProducers.put(EmbeddedFormat.JSON, buildJsonProducer(jsonStreamProps));
+          producers.put(EmbeddedFormat.BINARY, buildBinaryProducer(standardConfig));
+          producers.put(EmbeddedFormat.JSON, buildJsonProducer(standardConfig));
       } else {
           producerCache = new SimpleProducerCache(appConfig);
       }
@@ -104,10 +89,10 @@ public class ProducerPool {
       String bootstrapBrokers,
       Properties producerConfigOverrides
   ) {
-    Map<String, Object> props = new HashMap<String, Object>();
+    Map<String, Object> props = new HashMap<>();
     props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapBrokers);
 
-    Properties producerProps = (Properties) appConfig.getProducerProperties();
+    Properties producerProps = appConfig.getProducerProperties();
     // configure default stream
     String defaultStream = appConfig.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
     if (!"".equals(defaultStream)) {
@@ -119,27 +104,23 @@ public class ProducerPool {
     return buildConfig(props, producerProps, producerConfigOverrides);
   }
 
-  private NoSchemaRestProducer<byte[], byte[]> buildBinaryProducer(
-      Map<String, Object>
-          binaryProps
-  ) {
-    return buildNoSchemaProducer(binaryProps, new ByteArraySerializer(), new ByteArraySerializer());
+  private NoSchemaRestProducer<byte[], byte[]> buildBinaryProducer(Map<String, Object> config) {
+    return buildNoSchemaProducer(config, new ByteArraySerializer(), new ByteArraySerializer());
   }
 
-  private NoSchemaRestProducer<Object, Object> buildJsonProducer(Map<String, Object> jsonProps) {
-    return buildNoSchemaProducer(jsonProps, new KafkaJsonSerializer(), new KafkaJsonSerializer());
+  private NoSchemaRestProducer<Object, Object> buildJsonProducer(Map<String, Object> config) {
+    return buildNoSchemaProducer(config, new KafkaJsonSerializer<>(), new KafkaJsonSerializer<>());
   }
 
   private <K, V> NoSchemaRestProducer<K, V> buildNoSchemaProducer(
-      Map<String, Object> props,
+      Map<String, Object> config,
       Serializer<K> keySerializer,
       Serializer<V> valueSerializer
   ) {
-    keySerializer.configure(props, true);
-    valueSerializer.configure(props, false);
-    KafkaProducer<K, V> producer =
-        new KafkaProducer<K, V>(props, keySerializer, valueSerializer);
-    return new NoSchemaRestProducer<K, V>(producer);
+    keySerializer.configure(config, true);
+    valueSerializer.configure(config, false);
+    KafkaProducer<K, V> producer = new KafkaProducer<>(config, keySerializer, valueSerializer);
+    return new NoSchemaRestProducer<>(producer);
   }
 
   private Map<String, Object> buildAvroConfig(
@@ -147,24 +128,24 @@ public class ProducerPool {
       String bootstrapBrokers,
       Properties producerConfigOverrides
   ) {
-    Map<String, Object> avroDefaults = new HashMap<String, Object>();
+    Map<String, Object> avroDefaults = new HashMap<>();
     avroDefaults.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapBrokers);
     avroDefaults.put(
         "schema.registry.url",
         appConfig.getString(KafkaRestConfig.SCHEMA_REGISTRY_URL_CONFIG)
     );
 
-    Properties producerProps = (Properties) appConfig.getProducerProperties();
+    Properties producerProps = appConfig.getProducerProperties();
     return buildConfig(avroDefaults, producerProps, producerConfigOverrides);
   }
 
-  private AvroRestProducer buildAvroProducer(Map<String, Object> avroProps) {
+  private AvroRestProducer buildAvroProducer(Map<String, Object> config) {
     final KafkaAvroSerializer avroKeySerializer = new KafkaAvroSerializer();
-    avroKeySerializer.configure(avroProps, true);
+    avroKeySerializer.configure(config, true);
     final KafkaAvroSerializer avroValueSerializer = new KafkaAvroSerializer();
-    avroValueSerializer.configure(avroProps, false);
+    avroValueSerializer.configure(config, false);
     KafkaProducer<Object, Object> avroProducer
-        = new KafkaProducer<Object, Object>(avroProps, avroKeySerializer, avroValueSerializer);
+        = new KafkaProducer<>(config, avroKeySerializer, avroValueSerializer);
     return new AvroRestProducer(avroProducer, avroKeySerializer, avroValueSerializer);
   }
 
@@ -176,7 +157,7 @@ public class ProducerPool {
     // Note careful ordering: built-in values we look up automatically first, then configs
     // specified by user with initial KafkaRestConfig, and finally explicit overrides passed to
     // this method (only used for tests)
-    Map<String, Object> config = new HashMap<String, Object>(defaults);
+    Map<String, Object> config = new HashMap<>(defaults);
     for (String propName : userProps.stringPropertyNames()) {
       config.put(propName, userProps.getProperty(propName));
     }
@@ -200,7 +181,7 @@ public class ProducerPool {
     ProduceTask task = new ProduceTask(schemaHolder, records.size(), callback);
     log.trace("Starting produce task " + task.toString());
 
-    RestProducer restProducer = null;
+    RestProducer restProducer;
     if (isStreams) {
       if (!defaultStreamSet && !topic.contains(":")) {
         throw Errors.topicNotFoundException();
@@ -214,7 +195,7 @@ public class ProducerPool {
              restProducer = producerCache.getJsonProducer(userName);
           }
       } else {
-          restProducer = streamsProducers.get(recordFormat);
+          restProducer = producers.get(recordFormat);
       }
 
       try {
@@ -227,10 +208,7 @@ public class ProducerPool {
   }
 
   public void shutdown() {
-    for (RestProducer restProducer : kafkaProducers.values()) {
-      restProducer.close();
-    }
-    for (RestProducer restProducer : streamsProducers.values()) {
+    for (RestProducer restProducer : producers.values()) {
       restProducer.close();
     }
     if (producerCache != null){
@@ -246,7 +224,7 @@ public class ProducerPool {
      * @param results list of responses, in the same order as the request. Each entry can be either
      *                a RecordAndMetadata for successful responses or an exception
      */
-    public void onCompletion(
+    void onCompletion(
         Integer keySchemaId,
         Integer valueSchemaId,
         List<RecordMetadataOrException> results
@@ -291,14 +269,14 @@ public class ProducerPool {
                     }
 
                     // add new entry
-                    cache = ProducerPool.this.buildBinaryProducer(binaryStreamProps);
+                    cache = ProducerPool.this.buildBinaryProducer(standardConfig);
                     binaryHighLevelCache.put(userName, cache);
                     binaryOldestCache.add(userName);
                 }
                 return cache;
             } else {
                 // caching is disabled. Create producer for each request.
-                return ProducerPool.this.buildBinaryProducer(binaryStreamProps);
+                return ProducerPool.this.buildBinaryProducer(standardConfig);
             }
         }
 
@@ -315,14 +293,14 @@ public class ProducerPool {
                     }
 
                     // add new entry
-                    cache = ProducerPool.this.buildJsonProducer(binaryStreamProps);
+                    cache = ProducerPool.this.buildJsonProducer(standardConfig);
                     jsonHighLevelCache.put(userName, cache);
                     jsonOldestCache.add(userName);
                 }
                 return cache;
             } else {
                 // caching is disabled. Create producer for each request.
-                return ProducerPool.this.buildJsonProducer(binaryStreamProps);
+                return ProducerPool.this.buildJsonProducer(standardConfig);
             }
         }
 
