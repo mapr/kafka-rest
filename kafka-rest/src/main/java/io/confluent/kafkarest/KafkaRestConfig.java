@@ -101,9 +101,15 @@ public class KafkaRestConfig extends RestConfig {
       + "in case a server is down).";
   public static final String BOOTSTRAP_SERVERS_DEFAULT = "";
 
-  public static final String SCHEMA_REGISTRY_URL_CONFIG = "schema.registry.url";
+  public static final String SCHEMA_REGISTRY_ENABLE_CONFIG = "schema.registry.enable";
+  private static final String SCHEMA_REGISTRY_ENABLE_DOC =
+      "Flag for enabling Avro serialization and deserialization support with Schema Registry.";
+  private static final String SCHEMA_REGISTRY_ENABLE_DEFAULT = "false";
+
   private static final String SCHEMA_REGISTRY_URL_DOC =
-      "The base URL for the schema registry that should be used by the Avro serializer.";
+      "The base URL for the schema registry that should be used by the Avro serializer. " +
+          "NOTE: this setting will be ignored if `schema.registry.enable` is set to false.";
+  public static final String SCHEMA_REGISTRY_URL_CONFIG = "schema.registry.url";
   private static final String SCHEMA_REGISTRY_URL_DEFAULT = "http://localhost:8081";
 
   public static final String PRODUCER_THREADS_CONFIG = "producer.threads";
@@ -437,6 +443,13 @@ public class KafkaRestConfig extends RestConfig {
             BOOTSTRAP_SERVERS_DEFAULT,
             Importance.HIGH,
             BOOTSTRAP_SERVERS_DOC
+        )
+        .define(
+            SCHEMA_REGISTRY_ENABLE_CONFIG,
+            Type.BOOLEAN,
+            SCHEMA_REGISTRY_ENABLE_DEFAULT,
+            Importance.HIGH,
+            SCHEMA_REGISTRY_ENABLE_DOC
         )
         .define(
             SCHEMA_REGISTRY_URL_CONFIG,

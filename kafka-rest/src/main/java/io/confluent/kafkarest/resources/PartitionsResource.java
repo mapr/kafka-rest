@@ -22,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.security.PrivilegedExceptionAction;
-import java.util.Collection;
 import java.util.List;
 import java.util.Vector;
 
@@ -48,7 +47,6 @@ import io.confluent.kafkarest.RecordMetadataOrException;
 import io.confluent.kafkarest.Versions;
 import io.confluent.kafkarest.entities.AvroProduceRecord;
 import io.confluent.kafkarest.entities.BinaryProduceRecord;
-import io.confluent.kafkarest.entities.ConsumerRecord;
 import io.confluent.kafkarest.entities.EmbeddedFormat;
 import io.confluent.kafkarest.entities.JsonProduceRecord;
 import io.confluent.kafkarest.entities.Partition;
@@ -56,6 +54,7 @@ import io.confluent.kafkarest.entities.PartitionOffset;
 import io.confluent.kafkarest.entities.PartitionProduceRequest;
 import io.confluent.kafkarest.entities.ProduceRecord;
 import io.confluent.kafkarest.entities.ProduceResponse;
+import io.confluent.kafkarest.extension.SchemaRegistryEnabled;
 import io.confluent.rest.annotations.PerformanceMetric;
 import org.apache.hadoop.security.UserGroupInformation;
 import kafka.common.KafkaException;
@@ -221,17 +220,16 @@ public class PartitionsResource {
 
   @POST
   @Path("/{partition}")
+  @SchemaRegistryEnabled
   @PerformanceMetric("partition.produce-avro")
   @Consumes({Versions.KAFKA_V1_JSON_AVRO})
   public void produceAvro(
+      final @javax.ws.rs.core.Context HttpServletRequest httpRequest,
       final @Suspended AsyncResponse asyncResponse,
       final @PathParam("topic") String topic,
       final @PathParam("partition") int partition,
-      @Valid @NotNull PartitionProduceRequest<AvroProduceRecord> request
-  ) {
-      if (isStreams) {
-        throw Errors.notSupportedByMapRStreams();
-    }      
+      final @Valid @NotNull PartitionProduceRequest<AvroProduceRecord> request
+  ) throws Exception {
     // Validations we can't do generically since they depend on the data format -- schemas need to
     // be available if there are any non-null entries
     boolean hasKeys = false;
@@ -247,7 +245,15 @@ public class PartitionsResource {
       throw Errors.valueSchemaMissingException();
     }
 
-    produce(null, asyncResponse, topic, partition, EmbeddedFormat.AVRO, request);
+    final String remoteUser = httpRequest.getRemoteUser();
+    PrivilegedExceptionAction action = new PrivilegedExceptionAction() {
+      @Override
+      public Object run() {
+        produce(remoteUser, asyncResponse, topic, partition, EmbeddedFormat.AVRO, request);
+        return null;
+      }
+    };
+    runProxyQuery(action, remoteUser);
   }
 
   private <K, V> void consume(

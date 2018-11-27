@@ -35,6 +35,8 @@ import io.confluent.kafkarest.entities.EmbeddedFormat;
 import io.confluent.kafkarest.entities.ProduceRecord;
 import io.confluent.kafkarest.entities.SchemaHolder;
 
+import javax.ws.rs.core.Response;
+
 /**
  * Shared pool of Kafka producers used to send messages. The pool manages batched sends, tracking
  * all required acks for a batch and managing timeouts. Currently this pool only contains one
@@ -74,11 +76,10 @@ public class ProducerPool {
       standardConfig = buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
       avroConfig = buildAvroConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
 
-      // Initialize producers for Streams backend.
-      // Avro serialization is not supported by MapR Streams.
       if(!isImpersonationEnabled){
           producers.put(EmbeddedFormat.BINARY, buildBinaryProducer(standardConfig));
           producers.put(EmbeddedFormat.JSON, buildJsonProducer(standardConfig));
+          producers.put(EmbeddedFormat.AVRO, buildAvroProducer(avroConfig));
       } else {
           producerCache = new SimpleProducerCache(appConfig);
       }
@@ -189,13 +190,24 @@ public class ProducerPool {
       //we enclose it only for streams producer
       //because there can be exception due to permissions
       if (isImpersonationEnabled) {
-          if (recordFormat.equals(EmbeddedFormat.BINARY)) {
-             restProducer = producerCache.getBinaryProducer(userName);
-          } else {
-             restProducer = producerCache.getJsonProducer(userName);
-          }
+        switch (recordFormat) {
+          case AVRO:
+            restProducer = producerCache.getAvroProducer(userName);
+            break;
+          case BINARY:
+            restProducer = producerCache.getBinaryProducer(userName);
+            break;
+          case JSON:
+            restProducer = producerCache.getJsonProducer(userName);
+            break;
+          default:
+            throw new RestServerErrorException(
+                "Invalid embedded format for new producer.",
+                Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()
+            );
+        }
       } else {
-          restProducer = producers.get(recordFormat);
+        restProducer = producers.get(recordFormat);
       }
 
       try {
@@ -237,9 +249,11 @@ public class ProducerPool {
         /**
          * Stores insertion order of producer caches.
          */
+        private Queue<String> avroOldestCache;
         private Queue<String> binaryOldestCache;
         private Queue<String> jsonOldestCache;
 
+        private ConcurrentMap<String, RestProducer> avroHighLevelCache;
         private ConcurrentMap<String, RestProducer> binaryHighLevelCache;
         private ConcurrentMap<String, RestProducer> jsonHighLevelCache;
 
@@ -247,18 +261,44 @@ public class ProducerPool {
          SimpleProducerCache(final KafkaRestConfig config) {
             this.maxCachesNum = config.getInt(KafkaRestConfig.PRODUCERS_MAX_CACHES_NUM_CONFIG);
 
+            this.avroHighLevelCache = new ConcurrentHashMap<>(maxCachesNum);
             this.binaryHighLevelCache = new ConcurrentHashMap<>(maxCachesNum);
             this.jsonHighLevelCache = new ConcurrentHashMap<>(maxCachesNum);
 
+            this.avroOldestCache = new ConcurrentLinkedQueue<>();
             this.binaryOldestCache = new ConcurrentLinkedQueue<>();
             this.jsonOldestCache = new ConcurrentLinkedQueue<>();
         }
 
 
-         RestProducer getBinaryProducer(final String userName) {
-            if (maxCachesNum > 0) {
-                RestProducer cache;
-                cache = binaryHighLevelCache.get(userName);
+    RestProducer getAvroProducer(String userName) {
+      RestProducer cache;
+      if (maxCachesNum > 0) {
+        cache = avroHighLevelCache.get(userName);
+
+        if (cache == null) {
+          if (avroHighLevelCache.size() >= maxCachesNum) {
+            // remove eldest element from the cache
+            String eldest = avroOldestCache.poll();
+            avroHighLevelCache.remove(eldest).close();
+          }
+
+          // add new entry
+          cache = ProducerPool.this.buildAvroProducer(avroConfig);
+          avroHighLevelCache.put(userName, cache);
+          avroOldestCache.add(userName);
+        }
+      } else {
+        // caching is disabled. Create producer for each request.
+        cache = ProducerPool.this.buildAvroProducer(avroConfig);
+      }
+      return cache;
+    }
+
+    RestProducer getBinaryProducer(final String userName) {
+      if (maxCachesNum > 0) {
+        RestProducer cache;
+        cache = binaryHighLevelCache.get(userName);
 
 
                 if (cache == null) {

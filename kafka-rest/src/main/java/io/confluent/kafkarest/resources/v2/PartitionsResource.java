@@ -16,6 +16,8 @@
 
 package io.confluent.kafkarest.resources.v2;
 
+import static io.confluent.kafkarest.KafkaRestConfig.SCHEMA_REGISTRY_ENABLE_CONFIG;
+
 import io.confluent.kafkarest.*;
 import io.confluent.kafkarest.entities.*;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -38,6 +40,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
 
+import io.confluent.kafkarest.extension.SchemaRegistryEnabled;
 import io.confluent.rest.annotations.PerformanceMetric;
 
 @Path("/topics/{topic}/partitions")
@@ -133,17 +136,16 @@ public class PartitionsResource {
 
   @POST
   @Path("/{partition}")
+  @SchemaRegistryEnabled
   @PerformanceMetric("partition.produce-avro+v2")
   @Consumes({Versions.KAFKA_V2_JSON_AVRO})
   public void produceAvro(
+      final @javax.ws.rs.core.Context HttpServletRequest httpRequest,
       final @Suspended AsyncResponse asyncResponse,
       final @PathParam("topic") String topic,
       final @PathParam("partition") int partition,
-      @Valid @NotNull PartitionProduceRequest<AvroProduceRecord> request
-  ) {
-    if (ctx.getConfig().isStreams()) {
-        throw Errors.notSupportedByMapRStreams();
-    }
+      final @Valid @NotNull PartitionProduceRequest<AvroProduceRecord> request
+  ) throws Exception {
       // Validations we can't do generically since they depend on the data format -- schemas need to
     // be available if there are any non-null entries
     boolean hasKeys = false;
@@ -159,7 +161,15 @@ public class PartitionsResource {
       throw Errors.valueSchemaMissingException();
     }
 
-    produce(null, asyncResponse, topic, partition, EmbeddedFormat.AVRO, request);
+    final String remoteUser = httpRequest.getRemoteUser();
+    PrivilegedExceptionAction action = new PrivilegedExceptionAction() {
+      @Override
+      public Object run() {
+        produce(remoteUser, asyncResponse, topic, partition, EmbeddedFormat.AVRO, request);
+        return null;
+      }
+    };
+    runProxyQuery(action, remoteUser);
   }
 
   protected <K, V, R extends ProduceRecord<K, V>> void produce(

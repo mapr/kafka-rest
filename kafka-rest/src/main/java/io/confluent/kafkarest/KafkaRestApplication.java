@@ -30,6 +30,7 @@ import io.confluent.kafkarest.extension.ContextInvocationHandler;
 import io.confluent.kafkarest.extension.KafkaRestCleanupFilter;
 import io.confluent.kafkarest.extension.KafkaRestContextProvider;
 import io.confluent.kafkarest.extension.RestResourceExtension;
+import io.confluent.kafkarest.extension.SchemaRegistryEnabledRequestFilter;
 import io.confluent.kafkarest.resources.BrokersResource;
 import io.confluent.kafkarest.resources.ConsumersResource;
 import io.confluent.kafkarest.resources.PartitionsResource;
@@ -139,6 +140,7 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
     config.register(new io.confluent.kafkarest.resources.v2.ConsumersResource(context));
     config.register(new io.confluent.kafkarest.resources.v2.PartitionsResource(context));
     config.register(KafkaRestCleanupFilter.class);
+    config.register(new SchemaRegistryEnabledRequestFilter(context));
 
     for (RestResourceExtension restResourceExtension : restResourceExtensions) {
       restResourceExtension.register(config, appConfig);

@@ -16,6 +16,8 @@
 
 package io.confluent.kafkarest.resources;
 
+import static io.confluent.kafkarest.KafkaRestConfig.SCHEMA_REGISTRY_ENABLE_CONFIG;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +35,6 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
 
@@ -47,6 +48,7 @@ import io.confluent.kafkarest.entities.ProduceResponse;
 import io.confluent.kafkarest.entities.Topic;
 import io.confluent.kafkarest.entities.TopicProduceRecord;
 import io.confluent.kafkarest.entities.TopicProduceRequest;
+import io.confluent.kafkarest.extension.SchemaRegistryEnabled;
 import io.confluent.rest.annotations.PerformanceMetric;
 import org.apache.hadoop.security.UserGroupInformation;
 
@@ -151,15 +153,14 @@ public class TopicsResource {
   @POST
   @Path("/{topic}")
   @PerformanceMetric("topic.produce-avro")
+  @SchemaRegistryEnabled
   @Consumes({Versions.KAFKA_V1_JSON_AVRO, Versions.KAFKA_V2_JSON_AVRO})
   public void produceAvro(
+      final @javax.ws.rs.core.Context HttpServletRequest httpRequest,
       final @Suspended AsyncResponse asyncResponse,
-      @PathParam("topic") String topicName,
-      @Valid @NotNull TopicProduceRequest<AvroTopicProduceRecord> request
-  ) {
-      if (isStreams) {
-        throw Errors.notSupportedByMapRStreams();
-    }      
+      final @PathParam("topic") String topicName,
+      final @Valid @NotNull TopicProduceRequest<AvroTopicProduceRecord> request
+  ) throws Exception {
     // Validations we can't do generically since they depend on the data format -- schemas need to
     // be available if there are any non-null entries
     boolean hasKeys = false;
@@ -175,7 +176,15 @@ public class TopicsResource {
       throw Errors.valueSchemaMissingException();
     }
 
-    produce(null,asyncResponse, topicName, EmbeddedFormat.AVRO, request);
+    final String remoteUser = httpRequest.getRemoteUser();
+    PrivilegedExceptionAction action = new PrivilegedExceptionAction() {
+      @Override
+      public Object run() {
+        produce(remoteUser, asyncResponse, topicName, EmbeddedFormat.AVRO, request);
+        return null;
+      }
+    };
+    runProxyQuery(action, remoteUser);
   }
 
   public <K, V, R extends TopicProduceRecord<K, V>> void produce(
