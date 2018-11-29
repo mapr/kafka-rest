@@ -82,7 +82,11 @@ export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$(get_hadoop_libpath)" # function in ma
 
 # JMX settings
 if [ -z "$KAFKAREST_JMX_OPTS" ]; then
-  KAFKAREST_JMX_OPTS="-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false "
+  KAFKAREST_JMX_OPTS="-Dcom.sun.management.jmxremote \
+                      -Dcom.sun.management.jmxremote.authenticate=true \
+                      -Dcom.sun.management.jmxremote.password.file=$MAPR_CONF/jmxremote.password \
+                      -Dcom.sun.management.jmxremote.access.file=$MAPR_CONF/jmxremote.access \
+                      -Dcom.sun.management.jmxremote.ssl=false"
 fi
 
 # JMX port to use
