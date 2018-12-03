@@ -52,6 +52,7 @@ import io.confluent.kafkarest.entities.ConsumerSubscriptionRecord;
 import io.confluent.kafkarest.entities.ConsumerSubscriptionResponse;
 import io.confluent.kafkarest.entities.CreateConsumerInstanceResponse;
 import io.confluent.kafkarest.entities.TopicPartitionOffset;
+import io.confluent.kafkarest.extension.SchemaRegistryEnabled;
 import io.confluent.kafkarest.v2.AvroKafkaConsumerState;
 import io.confluent.kafkarest.v2.BinaryKafkaConsumerState;
 import io.confluent.kafkarest.v2.JsonKafkaConsumerState;
@@ -233,6 +234,7 @@ public class ConsumersResource {
 
   @GET
   @Path("/{group}/instances/{instance}/records")
+  @SchemaRegistryEnabled
   @PerformanceMetric("consumer.records.read-avro+v2")
   @Produces({Versions.KAFKA_V2_JSON_AVRO_WEIGHTED_LOW})
   // Using low weight ensures binary is default

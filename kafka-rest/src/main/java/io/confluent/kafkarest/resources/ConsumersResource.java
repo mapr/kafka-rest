@@ -19,7 +19,6 @@ package io.confluent.kafkarest.resources;
 import java.security.PrivilegedExceptionAction;
 
 import java.util.List;
-import java.util.Objects;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
@@ -44,8 +43,8 @@ import io.confluent.kafkarest.KafkaRestContext;
 import io.confluent.kafkarest.JsonConsumerState;
 import io.confluent.kafkarest.UriUtils;
 import io.confluent.kafkarest.Versions;
-import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.entities.*;
+import io.confluent.kafkarest.extension.SchemaRegistryEnabled;
 import io.confluent.rest.annotations.PerformanceMetric;
 import org.apache.hadoop.security.UserGroupInformation;
 
@@ -61,11 +60,9 @@ import org.apache.hadoop.security.UserGroupInformation;
 public class ConsumersResource {
 
   private final KafkaRestContext ctx;
-  private final boolean isStreams;
 
   public ConsumersResource(KafkaRestContext ctx) {
     this.ctx = ctx;
-    this.isStreams = ctx.getConfig().isStreams();
   }
 
   @POST
@@ -174,6 +171,7 @@ public class ConsumersResource {
 
   @GET
   @Path("/{group}/instances/{instance}/topics/{topic}")
+  @SchemaRegistryEnabled
   @PerformanceMetric("consumer.topic.read-avro")
   @Produces({Versions.KAFKA_V1_JSON_AVRO_WEIGHTED_LOW})// Using low weight ensures binary is default
   public void readTopicAvro(
@@ -183,9 +181,6 @@ public class ConsumersResource {
       final @PathParam("topic") String topic,
       @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes
   ) {
-      if (isStreams) {
-        throw Errors.notSupportedByMapRStreams();
-    }      
     readTopic(asyncResponse, group, instance, topic, maxBytes, AvroConsumerState.class, null);
   }
 

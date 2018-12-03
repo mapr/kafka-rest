@@ -70,11 +70,9 @@ public class PartitionsResource {
   private static final Logger log = LoggerFactory.getLogger(PartitionsResource.class);
 
   private final KafkaRestContext ctx;
-  private final boolean isStreams;
 
   public PartitionsResource(KafkaRestContext ctx) {
     this.ctx = ctx;
-    this.isStreams = ctx.getConfig().isStreams();
   }
 
   @GET
@@ -142,6 +140,7 @@ public class PartitionsResource {
 
   @GET
   @Path("/{partition}/messages")
+  @SchemaRegistryEnabled
   @PerformanceMetric("partition.consume-avro")
   @Produces({Versions.KAFKA_V1_JSON_AVRO_WEIGHTED_LOW})
   public void consumeAvro(
@@ -151,9 +150,6 @@ public class PartitionsResource {
       final @QueryParam("offset") long offset,
       final @QueryParam("count") @DefaultValue("1") long count
   ) {
-    if (isStreams) {
-      throw Errors.notSupportedByMapRStreams();
-    }
     consume(asyncResponse, topicName, partitionId, offset, count, EmbeddedFormat.AVRO);
   }
 
