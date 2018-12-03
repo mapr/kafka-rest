@@ -21,6 +21,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.config.ConfigException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -201,8 +202,8 @@ public class KafkaConsumerManager {
         } else {
           consumer = consumerFactory.createConsumer(props);
         }
-      } catch (Exception e) {
-        log.debug("ignoring this", e);
+      } catch (ConfigException e) {
+        throw Errors.invalidConsumerConfigException(e);
       }
 
       KafkaConsumerState state = null;
