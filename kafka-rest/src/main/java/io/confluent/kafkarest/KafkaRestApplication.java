@@ -16,6 +16,7 @@
 package io.confluent.kafkarest;
 
 import org.eclipse.jetty.util.StringUtil;
+import org.apache.kafka.common.security.JaasUtils;
 
 import java.lang.reflect.Proxy;
 import java.util.List;
@@ -23,16 +24,17 @@ import java.util.Properties;
 
 import javax.ws.rs.core.Configurable;
 
-import io.confluent.kafkarest.exceptions.ZkExceptionMapper;
 import io.confluent.kafkarest.extension.ContextInvocationHandler;
 import io.confluent.kafkarest.extension.KafkaRestCleanupFilter;
 import io.confluent.kafkarest.extension.KafkaRestContextProvider;
 import io.confluent.kafkarest.extension.RestResourceExtension;
+import io.confluent.kafkarest.extension.SchemaRegistryEnabledRequestFilter;
 import io.confluent.kafkarest.resources.BrokersResource;
 import io.confluent.kafkarest.resources.ConsumersResource;
 import io.confluent.kafkarest.resources.PartitionsResource;
 import io.confluent.kafkarest.resources.RootResource;
 import io.confluent.kafkarest.resources.TopicsResource;
+import io.confluent.kafkarest.resources.StreamsResource;
 import io.confluent.kafkarest.v2.KafkaConsumerManager;
 import io.confluent.rest.Application;
 import io.confluent.rest.RestConfigException;
@@ -77,7 +79,8 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
    */
   protected void setupInjectedResources(
       Configurable<?> config, KafkaRestConfig appConfig,
-      ZkUtils zkUtils, MetadataObserver mdObserver,
+      ZkUtils zkUtils,
+      KafkaStreamsMetadataObserver mdObserver,
       ProducerPool producerPool,
       ConsumerManager consumerManager,
       SimpleConsumerFactory simpleConsumerFactory,
@@ -85,20 +88,50 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
       KafkaConsumerManager kafkaConsumerManager,
       AdminClientWrapper adminClientWrapperInjected
   ) {
-    if (StringUtil.isBlank(appConfig.getString(KafkaRestConfig.BOOTSTRAP_SERVERS_CONFIG))
-        && StringUtil.isBlank(appConfig.getString(KafkaRestConfig.ZOOKEEPER_CONNECT_CONFIG))) {
-      throw new RuntimeException("Atleast one of " + KafkaRestConfig.BOOTSTRAP_SERVERS_CONFIG + " "
-                                 + "or "
-                                    + KafkaRestConfig.ZOOKEEPER_CONNECT_CONFIG
-                                    + " needs to be configured");
-    }
 
-    config.register(new ZkExceptionMapper(appConfig));
+    boolean impersonationEnabled = appConfig.isImpersonationEnabled();
+    String authenticationRealm = appConfig.getString(KafkaRestConfig.AUTHENTICATION_REALM_CONFIG);
+
+    if (impersonationEnabled && !"jpamLogin".equals(authenticationRealm)) {
+      throw new RuntimeException("PAM Authentication must be enabled in order to support MapR Streams impersonation");
+    }
 
     KafkaRestContextProvider.initialize(zkUtils, appConfig, mdObserver, producerPool,
         consumerManager, simpleConsumerFactory,
         simpleConsumerManager, kafkaConsumerManager, adminClientWrapperInjected
     );
+//    if (false){
+//        if (zkUtils == null
+//                && StringUtil.isNotBlank(appConfig.getString(KafkaRestConfig.ZOOKEEPER_CONNECT_CONFIG))) {
+//
+//            zkUtils = ZkUtils.apply(
+//                    appConfig.getString(KafkaRestConfig.ZOOKEEPER_CONNECT_CONFIG), 30000,
+//                    30000,
+//                    JaasUtils.isZkSecurityEnabled()
+//            );
+//        }
+//    }
+
+//    KafkaStreamsMetadataObserver mdObserver = new KafkaStreamsMetadataObserver(appConfig, zkUtils);
+//
+//    if (producerPool == null) {
+//     producerPool = new ProducerPool(appConfig, null);
+//    }
+//
+//    if (consumerManager == null) {
+//      consumerManager = new ConsumerManager(appConfig, mdObserver);
+//    }
+//    if (simpleConsumerFactory == null) {
+//      simpleConsumerFactory = new SimpleConsumerFactory(appConfig);
+//    }
+//    if (simpleConsumerManager == null) {
+//      simpleConsumerManager =
+//          new SimpleConsumerManager(appConfig, mdObserver, simpleConsumerFactory);
+//    }
+//    context =
+//        new DefaultKafkaRestContext(appConfig, mdObserver, producerPool, consumerManager,
+//            simpleConsumerManager, kafkaConsumerManager, adminClientWrapperInjected, zkUtils
+//        );
     ContextInvocationHandler contextInvocationHandler = new ContextInvocationHandler();
     KafkaRestContext context =
         (KafkaRestContext) Proxy.newProxyInstance(
@@ -111,9 +144,12 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
     config.register(new TopicsResource(context));
     config.register(new PartitionsResource(context));
     config.register(new ConsumersResource(context));
+    config.register(new StreamsResource(context));
+    config.register(new io.confluent.kafkarest.resources.v2.StreamsResource((context)));
     config.register(new io.confluent.kafkarest.resources.v2.ConsumersResource(context));
     config.register(new io.confluent.kafkarest.resources.v2.PartitionsResource(context));
     config.register(KafkaRestCleanupFilter.class);
+    config.register(new SchemaRegistryEnabledRequestFilter(context));
 
     for (RestResourceExtension restResourceExtension : restResourceExtensions) {
       restResourceExtension.register(config, appConfig);

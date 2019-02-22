@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.confluent</groupId>
         <artifactId>rest-utils-parent</artifactId>
-        <version>5.1.2</version>
+        <version>5.1.2.0-mapr-SNAPSHOT</version>
     </parent>
 
     <artifactId>kafka-rest-parent</artifactId>
@@ -47,6 +47,7 @@
     <properties>
         <confluent.maven.repo>http://packages.confluent.io/maven/</confluent.maven.repo>
         <log4j.version>1.7.25</log4j.version>
+        <licenses.version>4.1.0</licenses.version>
         <checkstyle.suppressions.location>checkstyle/suppressions.xml</checkstyle.suppressions.location>
     </properties>
 
@@ -54,9 +55,25 @@
         <repository>
             <id>confluent</id>
             <name>Confluent</name>
-            <url>${confluent.maven.repo}</url>
+            <url>http://packages.confluent.io/maven/</url>
+        </repository>
+
+        <!-- MapR repository -->
+        <repository>
+            <id>mapr-releases</id>
+            <url>http://repository.mapr.com/nexus/content/repositories/releases</url>
+            <snapshots><enabled>true</enabled></snapshots>
+            <releases><enabled>true</enabled></releases>
         </repository>
     </repositories>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>confluent</id>
+            <name>Confluent</name>
+            <url>http://packages.confluent.io/maven/</url>
+        </pluginRepository>
+    </pluginRepositories>
 
     <dependencies>
         <dependency>

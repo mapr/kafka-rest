@@ -15,7 +15,13 @@
 
 package io.confluent.kafkarest;
 
-import kafka.javaapi.consumer.SimpleConsumer;
+import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,16 +65,42 @@ public class SimpleConsumerFactory {
     return id.toString();
   }
 
-  public SimpleConsumer createConsumer(final String host, final int port) {
+  public ConsumerProvider createConsumer() {
 
     final String clientId = nextClientId();
 
-    log.debug("Creating SimpleConsumer with id {} (host:{}, port:{})", clientId, host, + port);
-    return new SimpleConsumer(
-        host, port,
-        simpleConsumerConfig.socketTimeoutMs(),
-        simpleConsumerConfig.socketReceiveBufferBytes(),
-        clientId);
+    log.debug("Creating SimpleConsumer with id " + clientId);
+    Properties properties = new Properties();
+
+    properties.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
+        config.getString(KafkaRestConfig.BOOTSTRAP_SERVERS_CONFIG));
+    properties.setProperty("client.id", clientId);
+    String defaultStream = config.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
+    if (!"".equals(defaultStream)) {
+      properties.setProperty(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, defaultStream);
+    }
+
+    Consumer<byte[], byte[]> consumer =  new KafkaConsumer<byte[], byte[]>(properties,
+      new ByteArrayDeserializer(),
+      new ByteArrayDeserializer());
+    return new ConsumerProvider(consumer, clientId);
   }
 
+    public static class ConsumerProvider {
+        private Consumer<byte[], byte[]> consumer;
+        private String clientId;
+
+        public ConsumerProvider(Consumer<byte[], byte[]> consumer, String clientId) {
+            this.consumer = consumer;
+            this.clientId = clientId;
+        }
+
+        public Consumer<byte[], byte[]> consumer() {
+            return consumer;
+        }
+
+        public String clientId() {
+            return clientId;
+        }
+    }
 }

@@ -21,7 +21,7 @@ public interface KafkaRestContext {
   public KafkaRestConfig getConfig();
 
   @Deprecated
-  public MetadataObserver getMetadataObserver();
+  public KafkaStreamsMetadataObserver getMetadataObserver();
 
   public ProducerPool getProducerPool();
 

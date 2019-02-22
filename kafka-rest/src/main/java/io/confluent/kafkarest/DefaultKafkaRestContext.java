@@ -16,6 +16,7 @@
 package io.confluent.kafkarest;
 
 import io.confluent.kafkarest.v2.KafkaConsumerManager;
+import kafka.utils.ZkUtils;
 
 /**
  * Shared, global state for the REST proxy server, including configuration and connection pools.
@@ -25,22 +26,24 @@ import io.confluent.kafkarest.v2.KafkaConsumerManager;
 public class DefaultKafkaRestContext implements KafkaRestContext {
 
   private final KafkaRestConfig config;
-  private final MetadataObserver metadataObserver;
+  private final KafkaStreamsMetadataObserver metadataObserver;
   private ProducerPool producerPool;
   private final ConsumerManager consumerManager;
   private KafkaConsumerManager kafkaConsumerManager;
   private final SimpleConsumerManager simpleConsumerManager;
   private AdminClientWrapper adminClientWrapper;
+  private final ZkUtils zkUtils;
 
 
   public DefaultKafkaRestContext(
       KafkaRestConfig config,
-      MetadataObserver metadataObserver,
+      KafkaStreamsMetadataObserver metadataObserver,
       ProducerPool producerPool,
       ConsumerManager consumerManager,
       SimpleConsumerManager simpleConsumerManager,
       KafkaConsumerManager kafkaConsumerManager,
-      AdminClientWrapper adminClientWrapper
+      AdminClientWrapper adminClientWrapper,
+      ZkUtils zkUtils
   ) {
 
     this.config = config;
@@ -50,6 +53,7 @@ public class DefaultKafkaRestContext implements KafkaRestContext {
     this.simpleConsumerManager = simpleConsumerManager;
     this.kafkaConsumerManager = kafkaConsumerManager;
     this.adminClientWrapper = adminClientWrapper;
+    this.zkUtils = zkUtils;
   }
 
 
@@ -59,15 +63,16 @@ public class DefaultKafkaRestContext implements KafkaRestContext {
   }
 
   @Override
-  public MetadataObserver getMetadataObserver() {
-    return metadataObserver;
+  public KafkaStreamsMetadataObserver getMetadataObserver() {
+    if (config.isImpersonationEnabled()) {
+      return new KafkaStreamsMetadataObserver(config, zkUtils);
+    } else {
+      return metadataObserver;
+    }
   }
 
   @Override
   public ProducerPool getProducerPool() {
-    if (producerPool == null) {
-      producerPool = new ProducerPool(config);
-    }
     return producerPool;
   }
 
@@ -78,7 +83,12 @@ public class DefaultKafkaRestContext implements KafkaRestContext {
 
   @Override
   public SimpleConsumerManager getSimpleConsumerManager() {
-    return simpleConsumerManager;
+      if (config.isImpersonationEnabled()) {
+          return new SimpleConsumerManager(config, getMetadataObserver(),
+                  new SimpleConsumerFactory(config));
+      } else {
+          return simpleConsumerManager;
+      }
   }
 
   @Override

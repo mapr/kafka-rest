@@ -22,6 +22,7 @@ import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.Time;
 import io.confluent.kafkarest.KafkaRestConfig;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigException;
@@ -33,11 +34,13 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.Vector;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -47,15 +50,23 @@ import java.util.concurrent.Delayed;
 import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.ws.rs.core.Response;
 
+import io.confluent.kafkarest.ConsumerInstanceId;
+import io.confluent.kafkarest.ConsumerWorkerReadCallback;
+import io.confluent.kafkarest.Errors;
+import io.confluent.kafkarest.KafkaRestConfig;
+import io.confluent.kafkarest.Time;
+import io.confluent.kafkarest.entities.ConsumerRecord;
 import io.confluent.kafkarest.entities.ConsumerAssignmentRequest;
 import io.confluent.kafkarest.entities.ConsumerAssignmentResponse;
 import io.confluent.kafkarest.entities.ConsumerCommittedRequest;
 import io.confluent.kafkarest.entities.ConsumerCommittedResponse;
 import io.confluent.kafkarest.entities.ConsumerInstanceConfig;
 import io.confluent.kafkarest.entities.ConsumerOffsetCommitRequest;
+import io.confluent.kafkarest.entities.ConsumerRecord;
 import io.confluent.kafkarest.entities.ConsumerSeekToOffsetRequest;
 import io.confluent.kafkarest.entities.ConsumerSeekToRequest;
 import io.confluent.kafkarest.entities.ConsumerSubscriptionRecord;
@@ -194,6 +205,12 @@ public class KafkaConsumerManager {
       Properties props = config.getConsumerProperties();
       props.setProperty(KafkaRestConfig.BOOTSTRAP_SERVERS_CONFIG, this.bootstrapServers);
       props.setProperty(MAX_POLL_RECORDS_CONFIG, MAX_POLL_RECORDS_VALUE);
+      // configure default stream
+      String defaultStream = config.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
+      if (!"".equals(defaultStream)) {
+          props.put(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, defaultStream);
+      }
+
       props.setProperty("group.id", group);
       // This ID we pass here has to be unique, only pass a value along if the deprecated ID field
       // was passed in. This generally shouldn't be used, but is maintained for compatibility.
@@ -262,8 +279,8 @@ public class KafkaConsumerManager {
   }
 
   private KafkaConsumerState createConsumerState(
-          ConsumerInstanceConfig instanceConfig,
-          ConsumerInstanceId cid, Consumer consumer
+      ConsumerInstanceConfig instanceConfig,
+      ConsumerInstanceId cid, Consumer consumer
   ) throws RestServerErrorException {
     KafkaRestConfig newConfig = ConsumerManager.newConsumerConfig(this.config, instanceConfig);
 
@@ -276,9 +293,9 @@ public class KafkaConsumerManager {
         return new JsonKafkaConsumerState(newConfig, cid, consumer);
       default:
         throw new RestServerErrorException(
-                String.format("Invalid embedded format %s for new consumer.",
-                    instanceConfig.getFormat()),
-                Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()
+            String.format("Invalid embedded format %s for new consumer.",
+                instanceConfig.getFormat()),
+            Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()
         );
     }
   }

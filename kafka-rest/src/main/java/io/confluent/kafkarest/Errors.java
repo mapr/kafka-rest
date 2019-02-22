@@ -63,6 +63,12 @@ public class Errors {
         LEADER_NOT_AVAILABLE_ERROR_CODE
     );
   }
+  public static RestException topicPermissionException() {
+      return new RestNotFoundException(TOPIC_PERMISSION_MESSAGE, TOPIC_PERMISSION_MESSAGE_ERROR_CODE);
+  }
+
+  public final static String TOPIC_PERMISSION_MESSAGE = "Topic not found or you have not permission to access.";
+  public final static int TOPIC_PERMISSION_MESSAGE_ERROR_CODE = 40405;
 
   public static final String CONSUMER_FORMAT_MISMATCH_MESSAGE =
       "The requested embedded data format does not match the deserializer for this consumer "
@@ -164,7 +170,7 @@ public class Errors {
   }
 
   public static RestConstraintViolationException invalidConsumerConfigException(
-          ConfigException e
+      ConfigException e
   ) {
     return new RestConstraintViolationException(
         INVALID_CONSUMER_CONFIG_MESSAGE + e.getMessage(),
@@ -264,6 +270,21 @@ public class Errors {
                                          RestServerErrorException.DEFAULT_ERROR_CODE, e
       );
     }
+  }
+
+
+  public final static String NOT_SUPPORTED_API_BY_STREAMS_ERROR_MESSAGE =
+    "MapR Streams do not currently support this API ";
+  public final static int NOT_SUPPORTED_API_BY_STREAMS_ERROR_CODE = 80001;
+
+  public static RestConstraintViolationException notSupportedByMapRStreams() {
+    return new RestConstraintViolationException(NOT_SUPPORTED_API_BY_STREAMS_ERROR_MESSAGE,
+      NOT_SUPPORTED_API_BY_STREAMS_ERROR_CODE);
+  }
+
+  public static RestConstraintViolationException notSupportedByMapRStreams(String message) {
+    return new RestConstraintViolationException(NOT_SUPPORTED_API_BY_STREAMS_ERROR_MESSAGE + message,
+      NOT_SUPPORTED_API_BY_STREAMS_ERROR_CODE);
   }
 
 }

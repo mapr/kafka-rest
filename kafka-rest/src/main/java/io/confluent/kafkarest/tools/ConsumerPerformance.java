@@ -15,16 +15,17 @@
 
 package io.confluent.kafkarest.tools;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Random;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.confluent.common.utils.AbstractPerformanceTest;
 import io.confluent.common.utils.PerformanceStats;
 import io.confluent.kafkarest.Versions;
@@ -76,7 +77,7 @@ public class ConsumerPerformance extends AbstractPerformanceTest {
 
     // Create consumer instance
     ConsumerInstanceConfig consumerConfig = new ConsumerInstanceConfig();
-    consumerConfig.setAutoOffsetReset("smallest");
+    consumerConfig.setAutoOffsetReset("earliest");
     byte[] createPayload = serializer.writeValueAsBytes(consumerConfig);
     CreateConsumerInstanceResponse createResponse = (CreateConsumerInstanceResponse) request(
         baseUrl + "/consumers/" + groupId, "POST", createPayload,
@@ -85,9 +86,10 @@ public class ConsumerPerformance extends AbstractPerformanceTest {
         }
     );
 
+    String encodedTopic = URLEncoder.encode(topic, StandardCharsets.UTF_8.name());
     targetUrl =
         baseUrl + "/consumers/" + groupId + "/instances/" + createResponse.getInstanceId()
-        + "/topics/" + topic;
+        + "/topics/" + encodedTopic;
     deleteUrl = baseUrl + "/consumers/" + groupId + "/instances/" + createResponse.getInstanceId();
 
     // Run a single read request and ignore the result to get started. This makes sure the

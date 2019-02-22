@@ -15,12 +15,15 @@
 
 package io.confluent.kafkarest.resources;
 
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.security.PrivilegedExceptionAction;
 import java.util.Collection;
 import java.util.List;
 import java.util.Vector;
+import javax.servlet.http.HttpServletRequest;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
@@ -35,6 +38,7 @@ import javax.ws.rs.container.Suspended;
 
 import io.confluent.kafkarest.KafkaRestContext;
 import io.confluent.kafkarest.Errors;
+import io.confluent.kafkarest.KafkaStreamsMetadataObserver;
 import io.confluent.kafkarest.ProducerPool;
 import io.confluent.kafkarest.RecordMetadataOrException;
 import io.confluent.kafkarest.Versions;
@@ -47,7 +51,9 @@ import io.confluent.kafkarest.entities.ProduceResponse;
 import io.confluent.kafkarest.entities.Topic;
 import io.confluent.kafkarest.entities.TopicProduceRecord;
 import io.confluent.kafkarest.entities.TopicProduceRequest;
+import io.confluent.kafkarest.extension.SchemaRegistryEnabled;
 import io.confluent.rest.annotations.PerformanceMetric;
+import org.apache.hadoop.security.UserGroupInformation;
 
 @Path("/topics")
 @Produces({Versions.KAFKA_V1_JSON_WEIGHTED, Versions.KAFKA_DEFAULT_JSON_WEIGHTED,
@@ -66,15 +72,26 @@ public class TopicsResource {
 
   @GET
   @PerformanceMetric("topics.list")
-  public Collection<String> list() {
-    return ctx.getAdminClientWrapper().getTopicNames();
+  public Collection<String> list(@javax.ws.rs.core.Context HttpServletRequest httpRequest) throws Exception {
+      return runProxyQuery(new PrivilegedExceptionAction<Collection<String>>() {
+        @Override
+        public Collection<String> run() throws Exception {
+          return ctx.getMetadataObserver().getTopicNames();
+        }
+      }, httpRequest.getRemoteUser());
   }
 
   @GET
   @Path("/{topic}")
   @PerformanceMetric("topic.get")
-  public Topic getTopic(@PathParam("topic") String topicName) {
-    Topic topic = ctx.getAdminClientWrapper().getTopic(topicName);
+  public Topic getTopic(@javax.ws.rs.core.Context HttpServletRequest httpRequest,
+                        @PathParam("topic") final String topicName) throws Exception {
+      Topic topic = runProxyQuery(new PrivilegedExceptionAction<Topic>() {
+          @Override
+          public Topic run() throws Exception {
+            return ctx.getMetadataObserver().getTopic(topicName);
+          }
+      }, httpRequest.getRemoteUser());
     if (topic == null) {
       throw Errors.topicNotFoundException();
     }
@@ -87,35 +104,46 @@ public class TopicsResource {
   @Consumes({Versions.KAFKA_V1_JSON_BINARY, Versions.KAFKA_V1_JSON,
              Versions.KAFKA_DEFAULT_JSON, Versions.JSON, Versions.GENERIC_REQUEST,
              Versions.KAFKA_V2_JSON_BINARY, Versions.KAFKA_V2_JSON})
-  public void produceBinary(
-      final @Suspended AsyncResponse asyncResponse,
-      @PathParam("topic") String topicName,
-      @Valid @NotNull TopicProduceRequest<BinaryTopicProduceRecord> request
-  ) {
-    produce(asyncResponse, topicName, EmbeddedFormat.BINARY, request);
+  public void produceBinary(final @javax.ws.rs.core.Context HttpServletRequest httpRequest, final @Suspended AsyncResponse asyncResponse,
+                            @PathParam("topic") final String topicName,
+                            @Valid final TopicProduceRequest<BinaryTopicProduceRecord> request) throws Exception{
+      runProxyQuery(new PrivilegedExceptionAction<Void>() {
+          @Override
+          public Void run() throws Exception {
+              produce(httpRequest.getRemoteUser(), asyncResponse, topicName, EmbeddedFormat.BINARY, request);
+              return null;
+          }
+      }, httpRequest.getRemoteUser());
   }
 
   @POST
   @Path("/{topic}")
   @PerformanceMetric("topic.produce-json")
   @Consumes({Versions.KAFKA_V1_JSON_JSON, Versions.KAFKA_V2_JSON_JSON})
-  public void produceJson(
-      final @Suspended AsyncResponse asyncResponse,
-      @PathParam("topic") String topicName,
-      @Valid @NotNull TopicProduceRequest<JsonTopicProduceRecord> request
-  ) {
-    produce(asyncResponse, topicName, EmbeddedFormat.JSON, request);
+  public void produceJson(final @javax.ws.rs.core.Context HttpServletRequest httpRequest, final @Suspended AsyncResponse asyncResponse,
+                          @PathParam("topic") final String topicName,
+                          @Valid final TopicProduceRequest<JsonTopicProduceRecord> request) throws Exception
+  {
+      runProxyQuery(new PrivilegedExceptionAction<Void>() {
+          @Override
+          public Void run() throws Exception {
+              produce(httpRequest.getRemoteUser(), asyncResponse, topicName, EmbeddedFormat.JSON, request);
+              return null;
+          }
+      }, httpRequest.getRemoteUser());
   }
 
   @POST
   @Path("/{topic}")
   @PerformanceMetric("topic.produce-avro")
+  @SchemaRegistryEnabled
   @Consumes({Versions.KAFKA_V1_JSON_AVRO, Versions.KAFKA_V2_JSON_AVRO})
   public void produceAvro(
+      final @javax.ws.rs.core.Context HttpServletRequest httpRequest,
       final @Suspended AsyncResponse asyncResponse,
-      @PathParam("topic") String topicName,
-      @Valid @NotNull TopicProduceRequest<AvroTopicProduceRecord> request
-  ) {
+      final @PathParam("topic") String topicName,
+      final @Valid @NotNull TopicProduceRequest<AvroTopicProduceRecord> request
+  ) throws Exception {
     // Validations we can't do generically since they depend on the data format -- schemas need to
     // be available if there are any non-null entries
     boolean hasKeys = false;
@@ -131,10 +159,19 @@ public class TopicsResource {
       throw Errors.valueSchemaMissingException();
     }
 
-    produce(asyncResponse, topicName, EmbeddedFormat.AVRO, request);
+    final String remoteUser = httpRequest.getRemoteUser();
+    PrivilegedExceptionAction action = new PrivilegedExceptionAction() {
+      @Override
+      public Object run() {
+        produce(remoteUser, asyncResponse, topicName, EmbeddedFormat.AVRO, request);
+        return null;
+      }
+    };
+    runProxyQuery(action, remoteUser);
   }
 
   public <K, V, R extends TopicProduceRecord<K, V>> void produce(
+      final String userName,
       final AsyncResponse asyncResponse,
       final String topicName,
       final EmbeddedFormat format,
@@ -143,7 +180,8 @@ public class TopicsResource {
     log.trace("Executing topic produce request id={} topic={} format={} request={}",
               asyncResponse, topicName, format, request
     );
-    ctx.getProducerPool().produce(
+      ProducerPool producerPool = ctx.getProducerPool();
+      producerPool.produce(
         topicName, null, format,
         request,
         request.getRecords(),
@@ -174,8 +212,17 @@ public class TopicsResource {
             );
             asyncResponse.resume(response);
           }
-        }
+        }, userName
     );
   }
-
+  
+  private <T> T runProxyQuery(PrivilegedExceptionAction<T> action, String remoteUser) throws Exception {
+      if (ctx.getConfig().isImpersonationEnabled()){
+          UserGroupInformation ugi = UserGroupInformation.createProxyUser(remoteUser,
+                  UserGroupInformation.getCurrentUser());
+          return ugi.doAs(action);          
+      } else {
+          return action.run();
+      }
+  }
 }

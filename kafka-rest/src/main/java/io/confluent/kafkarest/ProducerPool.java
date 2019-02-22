@@ -19,20 +19,22 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.Serializer;
+import  io.confluent.rest.exceptions.RestServerErrorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentMap;
 
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import io.confluent.kafka.serializers.KafkaJsonSerializer;
 import io.confluent.kafkarest.entities.EmbeddedFormat;
 import io.confluent.kafkarest.entities.ProduceRecord;
 import io.confluent.kafkarest.entities.SchemaHolder;
+
+import javax.ws.rs.core.Response;
 
 /**
  * Shared pool of Kafka producers used to send messages. The pool manages batched sends, tracking
@@ -44,6 +46,11 @@ public class ProducerPool {
   private static final Logger log = LoggerFactory.getLogger(ProducerPool.class);
   private Map<EmbeddedFormat, RestProducer> producers =
       new HashMap<EmbeddedFormat, RestProducer>();
+  private SimpleProducerCache producerCache;
+  private boolean defaultStreamSet;
+  private boolean isImpersonationEnabled;
+  private Map<String, Object> standardProps;
+  private Map<String, Object> avroProps;
 
   public ProducerPool(KafkaRestConfig appConfig) {
     this(appConfig, null);
@@ -61,18 +68,19 @@ public class ProducerPool {
       String bootstrapBrokers,
       Properties producerConfigOverrides
   ) {
+      this.defaultStreamSet = appConfig.isDefaultStreamSet();
+      this.isImpersonationEnabled = appConfig.isImpersonationEnabled();
 
-    Map<String, Object> binaryProps =
-        buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
-    producers.put(EmbeddedFormat.BINARY, buildBinaryProducer(binaryProps));
+      standardProps = buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
+      avroProps = buildAvroConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
 
-    Map<String, Object> jsonProps =
-        buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
-    producers.put(EmbeddedFormat.JSON, buildJsonProducer(jsonProps));
-
-    Map<String, Object> avroProps =
-        buildAvroConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
-    producers.put(EmbeddedFormat.AVRO, buildAvroProducer(avroProps));
+      if(!isImpersonationEnabled){
+          producers.put(EmbeddedFormat.BINARY, buildBinaryProducer(standardProps));
+          producers.put(EmbeddedFormat.JSON, buildJsonProducer(standardProps));
+          producers.put(EmbeddedFormat.AVRO, buildAvroProducer(avroProps));
+      } else {
+          producerCache = new SimpleProducerCache(appConfig);
+      }
   }
 
   private Map<String, Object> buildStandardConfig(
@@ -84,6 +92,14 @@ public class ProducerPool {
     props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapBrokers);
 
     Properties producerProps = (Properties) appConfig.getProducerProperties();
+    // configure default stream
+    String defaultStream = appConfig.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
+    if (!"".equals(defaultStream)) {
+        props.put(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG, defaultStream);
+    }
+    int streamBuffer = appConfig.getInt(KafkaRestConfig.STREAM_BUFFER_MAX_TIME_CONFIG);
+    props.put(ProducerConfig.STREAMS_BUFFER_TIME_CONFIG, streamBuffer);
+      
     return buildConfig(props, producerProps, producerConfigOverrides);
   }
 
@@ -126,13 +142,13 @@ public class ProducerPool {
     return buildConfig(avroDefaults, producerProps, producerConfigOverrides);
   }
 
-  private AvroRestProducer buildAvroProducer(Map<String, Object> avroProps) {
+  private AvroRestProducer buildAvroProducer(Map<String, Object> config) {
     final KafkaAvroSerializer avroKeySerializer = new KafkaAvroSerializer();
-    avroKeySerializer.configure(avroProps, true);
+    avroKeySerializer.configure(config, true);
     final KafkaAvroSerializer avroValueSerializer = new KafkaAvroSerializer();
-    avroValueSerializer.configure(avroProps, false);
+    avroValueSerializer.configure(config, false);
     KafkaProducer<Object, Object> avroProducer
-        = new KafkaProducer<Object, Object>(avroProps, avroKeySerializer, avroValueSerializer);
+        = new KafkaProducer<>(config, avroKeySerializer, avroValueSerializer);
     return new AvroRestProducer(avroProducer, avroKeySerializer, avroValueSerializer);
   }
 
@@ -144,7 +160,7 @@ public class ProducerPool {
     // Note careful ordering: built-in values we look up automatically first, then configs
     // specified by user with initial KafkaRestConfig, and finally explicit overrides passed to
     // this method (only used for tests)
-    Map<String, Object> config = new HashMap<String, Object>(defaults);
+    Map<String, Object> config = new HashMap<>(defaults);
     for (String propName : userProps.stringPropertyNames()) {
       config.put(propName, userProps.getProperty(propName));
     }
@@ -162,17 +178,55 @@ public class ProducerPool {
       EmbeddedFormat recordFormat,
       SchemaHolder schemaHolder,
       Collection<? extends ProduceRecord<K, V>> records,
-      ProduceRequestCallback callback
+      ProduceRequestCallback callback,
+      String userName
   ) {
     ProduceTask task = new ProduceTask(schemaHolder, records.size(), callback);
     log.trace("Starting produce task " + task.toString());
-    RestProducer restProducer = producers.get(recordFormat);
-    restProducer.produce(task, topic, partition, records);
+
+    RestProducer restProducer;
+    if (true) {
+      if (!defaultStreamSet && !topic.contains(":")) {
+        throw Errors.topicNotFoundException();
+      }
+      //we enclose it only for streams producer
+      //because there can be exception due to permissions
+      if (isImpersonationEnabled) {
+        switch (recordFormat) {
+          case AVRO:
+            restProducer = producerCache.getAvroProducer(userName);
+            break;
+          case BINARY:
+            restProducer = producerCache.getBinaryProducer(userName);
+            break;
+          case JSON:
+            restProducer = producerCache.getJsonProducer(userName);
+            break;
+          default:
+            throw new RestServerErrorException(
+                "Invalid embedded format for new producer.",
+                Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()
+            );
+        }
+      } else {
+        restProducer = producers.get(recordFormat);
+      }
+
+      try {
+        restProducer.produce(task, topic, partition, records);
+      } catch (RestServerErrorException e){
+        log.warn("Producer error "+ e);
+        throw Errors.topicPermissionException();
+      }
+    }
   }
 
   public void shutdown() {
     for (RestProducer restProducer : producers.values()) {
       restProducer.close();
+    }
+    if (producerCache != null){
+        producerCache.shutdown();
     }
   }
 
@@ -189,5 +243,117 @@ public class ProducerPool {
         Integer valueSchemaId,
         List<RecordMetadataOrException> results
     );
+  }
+
+  class SimpleProducerCache {
+    private final int maxCachesNum;
+
+    /**
+     * Stores insertion order of producer caches.
+     */
+    private Queue<String> avroOldestCache;
+    private Queue<String> binaryOldestCache;
+    private Queue<String> jsonOldestCache;
+
+    private ConcurrentMap<String, RestProducer> avroHighLevelCache;
+    private ConcurrentMap<String, RestProducer> binaryHighLevelCache;
+    private ConcurrentMap<String, RestProducer> jsonHighLevelCache;
+
+
+    SimpleProducerCache(final KafkaRestConfig config) {
+      this.maxCachesNum = config.getInt(KafkaRestConfig.PRODUCERS_MAX_CACHES_NUM_CONFIG);
+
+      this.avroHighLevelCache = new ConcurrentHashMap<>(maxCachesNum);
+      this.binaryHighLevelCache = new ConcurrentHashMap<>(maxCachesNum);
+      this.jsonHighLevelCache = new ConcurrentHashMap<>(maxCachesNum);
+
+      this.avroOldestCache = new ConcurrentLinkedQueue<>();
+      this.binaryOldestCache = new ConcurrentLinkedQueue<>();
+      this.jsonOldestCache = new ConcurrentLinkedQueue<>();
+    }
+
+
+    RestProducer getAvroProducer(String userName) {
+      RestProducer cache;
+      if (maxCachesNum > 0) {
+        cache = avroHighLevelCache.get(userName);
+
+        if (cache == null) {
+          if (avroHighLevelCache.size() >= maxCachesNum) {
+            // remove eldest element from the cache
+            String eldest = avroOldestCache.poll();
+            avroHighLevelCache.remove(eldest).close();
+          }
+
+          // add new entry
+          cache = buildAvroProducer(avroProps);
+          avroHighLevelCache.put(userName, cache);
+          avroOldestCache.add(userName);
+        }
+      } else {
+        // caching is disabled. Create producer for each request.
+        cache = buildAvroProducer(avroProps);
+      }
+      return cache;
+    }
+
+    RestProducer getBinaryProducer(final String userName) {
+      if (maxCachesNum > 0) {
+        RestProducer cache;
+        cache = binaryHighLevelCache.get(userName);
+
+
+        if (cache == null) {
+          if (binaryHighLevelCache.size() >= maxCachesNum) {
+            // remove eldest element from the cache
+            String eldest = binaryOldestCache.poll();
+            binaryHighLevelCache.remove(eldest).close();
+          }
+
+          // add new entry
+          cache = buildBinaryProducer(standardProps);
+          binaryHighLevelCache.put(userName, cache);
+          binaryOldestCache.add(userName);
+        }
+        return cache;
+      } else {
+        // caching is disabled. Create producer for each request.
+        return buildBinaryProducer(standardProps);
+      }
+    }
+
+    RestProducer getJsonProducer(final String userName) {
+      if (maxCachesNum > 0) {
+        RestProducer cache;
+        cache = jsonHighLevelCache.get(userName);
+
+        if (cache == null) {
+          if (jsonHighLevelCache.size() >= maxCachesNum) {
+            // remove eldest element from the cache
+            String eldest = jsonOldestCache.poll();
+            jsonHighLevelCache.remove(eldest).close();
+          }
+
+          // add new entry
+          cache = buildJsonProducer(standardProps);
+          jsonHighLevelCache.put(userName, cache);
+          jsonOldestCache.add(userName);
+        }
+        return cache;
+      } else {
+        // caching is disabled. Create producer for each request.
+        return buildJsonProducer(standardProps);
+      }
+    }
+
+    void shutdown(){
+      for (RestProducer binaryRestProducer : binaryHighLevelCache.values()) {
+        binaryRestProducer.close();
+      }
+      for (RestProducer jsonRestProducer : jsonHighLevelCache.values()) {
+        jsonRestProducer.close();
+      }
+    }
+
   }
 }

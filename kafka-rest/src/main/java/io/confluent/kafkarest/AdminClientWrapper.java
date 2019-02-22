@@ -17,6 +17,8 @@ package io.confluent.kafkarest;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.Config;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.clients.admin.DescribeClusterResult;
 import org.apache.kafka.clients.admin.TopicDescription;
@@ -45,11 +47,18 @@ public class AdminClientWrapper {
 
   private AdminClient adminClient;
   private int initTimeOut;
+  private boolean isDefaultStreamSet;
+  private String defaultStream;
 
   public AdminClientWrapper(KafkaRestConfig kafkaRestConfig) {
     Properties properties = new Properties();
     properties.putAll(kafkaRestConfig.getAdminProperties());
     properties.put(KafkaRestConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaRestConfig.bootstrapBrokers());
+    this.defaultStream = kafkaRestConfig.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
+    isDefaultStreamSet = !"".equals(defaultStream);
+    if (isDefaultStreamSet) {
+        properties.put(AdminClientConfig.STREAMS_ADMIN_DEFAULT_STREAM_CONFIG, defaultStream);
+    }
     adminClient = AdminClient.create(properties);
     this.initTimeOut = kafkaRestConfig.getInt(KafkaRestConfig.KAFKACLIENT_INIT_TIMEOUT_CONFIG);
   }
@@ -80,9 +89,31 @@ public class AdminClientWrapper {
     return allTopics;
   }
 
+  public Collection<String> getTopicNames(String streamName) {
+      Collection<String> allTopics;
+      try {
+          allTopics = new TreeSet<>(
+                  adminClient.listTopics(streamName).names().get(initTimeOut, TimeUnit.MILLISECONDS));
+      } catch (InterruptedException | ExecutionException | TimeoutException e) {
+          throw new RestServerErrorException(
+              Errors.KAFKA_ERROR_MESSAGE,
+              Errors.KAFKA_ERROR_ERROR_CODE,
+              e);
+      }
+      return allTopics;
+  }
+
   public boolean topicExists(String topic) {
-    Collection<String> allTopics = getTopicNames();
-    return allTopics.contains(topic);
+      Collection<String> allTopics;
+      if(!isDefaultStreamSet && isStreamTopic(topic)){
+          String streamName = topic.substring(0,topic.indexOf(":"));
+          String topicName = topic.substring(topic.indexOf(":") + 1);
+          allTopics = getTopicNames(streamName);
+          return allTopics.contains(topicName);
+      } else {
+          allTopics = getTopicNames();
+      }
+      return allTopics.contains(topic);
   }
 
   public Topic getTopic(String topicName) {
@@ -116,22 +147,10 @@ public class AdminClientWrapper {
   }
 
   private Topic buildTopic(String topicName, TopicDescription topicDescription) {
-    try {
       List<Partition> partitions = buildPartitonsData(topicDescription.partitions(), null);
-
-      ConfigResource topicResource = new ConfigResource(ConfigResource.Type.TOPIC, topicName);
-      Config config = adminClient.describeConfigs(
-          Collections.unmodifiableList(Arrays.asList(topicResource))
-      ).values().get(topicResource).get();
       Properties topicProps = new Properties();
-      for (ConfigEntry configEntry : config.entries()) {
-        topicProps.put(configEntry.name(), configEntry.value());
-      }
       Topic topic = new Topic(topicName, topicProps, partitions);
       return topic;
-    } catch (InterruptedException | ExecutionException e) {
-      throw Errors.kafkaErrorException(e);
-    }
   }
 
   private List<Partition> buildPartitonsData(
@@ -163,11 +182,20 @@ public class AdminClientWrapper {
 
   private TopicDescription getTopicDescription(String topicName) throws RestServerErrorException {
     try {
-      return adminClient.describeTopics(Collections.unmodifiableList(Arrays.asList(topicName)))
-          .values().get(topicName).get(initTimeOut, TimeUnit.MILLISECONDS);
+      if (isDefaultStreamSet) {
+        return adminClient.describeTopics(Collections.unmodifiableList(Arrays.asList(topicName)))
+                .values().get(defaultStream + ":" + topicName).get(initTimeOut, TimeUnit.MILLISECONDS);
+      } else {
+        return adminClient.describeTopics(Collections.unmodifiableList(Arrays.asList(topicName)))
+            .values().get(topicName).get(initTimeOut, TimeUnit.MILLISECONDS);
+      }
     } catch (InterruptedException | ExecutionException | TimeoutException e) {
       throw Errors.kafkaErrorException(e);
     }
+  }
+
+  private boolean isStreamTopic(String topicName){
+      return topicName.startsWith("/") && topicName.contains(":");
   }
 
   public void shutdown() {

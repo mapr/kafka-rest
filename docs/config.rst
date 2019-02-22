@@ -84,6 +84,12 @@ General
 
 
 
+``producer.streams.buffer.max.time.ms``
+  Messages are buffered in the producer for at most the specified time. A thread will flush all the messages that have been buffered for more than the time specified
+  * Type: int
+  * Default: 1
+  * Importance: medium
+
 ``access.control.allow.methods``
   Set value to Jetty Access-Control-Allow-Origin header for specified methods
 

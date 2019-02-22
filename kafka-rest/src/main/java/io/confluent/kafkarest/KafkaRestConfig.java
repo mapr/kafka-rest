@@ -112,9 +112,15 @@ public class KafkaRestConfig extends RestConfig {
       + "in case a server is down).";
   public static final String BOOTSTRAP_SERVERS_DEFAULT = "";
 
-  public static final String SCHEMA_REGISTRY_URL_CONFIG = "schema.registry.url";
+  public static final String SCHEMA_REGISTRY_ENABLE_CONFIG = "schema.registry.enable";
+  private static final String SCHEMA_REGISTRY_ENABLE_DOC =
+      "Flag for enabling Avro serialization and deserialization support with Schema Registry.";
+  private static final String SCHEMA_REGISTRY_ENABLE_DEFAULT = "false";
+
   private static final String SCHEMA_REGISTRY_URL_DOC =
-      "The base URL for the schema registry that should be used by the Avro serializer.";
+      "The base URL for the schema registry that should be used by the Avro serializer. " +
+          "NOTE: this setting will be ignored if `schema.registry.enable` is set to false.";
+  public static final String SCHEMA_REGISTRY_URL_CONFIG = "schema.registry.url";
   private static final String SCHEMA_REGISTRY_URL_DEFAULT = "http://localhost:8081";
 
   public static final String PROXY_FETCH_MIN_BYTES_CONFIG =
@@ -154,7 +160,7 @@ public class KafkaRestConfig extends RestConfig {
   private static final String CONSUMER_REQUEST_TIMEOUT_MS_DOC =
       "The maximum total time to wait for messages for a "
       + "request if the maximum number of messages has not yet been reached.";
-  public static final String CONSUMER_REQUEST_TIMEOUT_MS_DEFAULT = "1000";
+  public static final String CONSUMER_REQUEST_TIMEOUT_MS_DEFAULT = "1";
 
   public static final String CONSUMER_REQUEST_MAX_BYTES_CONFIG = "consumer.request.max.bytes";
   private static final String CONSUMER_REQUEST_MAX_BYTES_DOC =
@@ -184,6 +190,36 @@ public class KafkaRestConfig extends RestConfig {
       "Amount of time to wait for an available SimpleConsumer from the pool before failing."
       + " Use 0 for no timeout";
   public static final String SIMPLE_CONSUMER_POOL_TIMEOUT_MS_DEFAULT = "1000";
+
+  public static final String SIMPLE_CONSUMER_MAX_POLL_TIME_CONFIG = "simpleconsumer.max.poll.time";
+  private static final String
+    SIMPLE_CONSUMER_MAX_POLL_TIME_DOC =
+    "Maximum amount of time to poll for records by a consumer.";
+  public static final int SIMPLE_CONSUMER_MAX_POLL_TIME_DEFAULT = 1000;
+
+  public static final String SIMPLE_CONSUMER_MAX_CACHES_NUM_CONFIG = "simpleconsumer.max.caches.num";
+  private static final String
+    SIMPLE_CONSUMER_MAX_CACHES_NUM_DOC =
+    "Maximum number topic-partition combinations for which records are cached."
+     + " If 0, then caching is disabled and extra records are thrown away."
+     + " Cache improves performance if end user fetches records sequentially"
+     + " increasing offsets.";
+  public static final int SIMPLE_CONSUMER_MAX_CACHES_NUM_DEFAULT = 0;
+
+  public static final String SIMPLE_CONSUMER_CACHE_MAX_RECORDS_CONFIG = "simpleconsumer.cache.max.records";
+  private static final String
+    SIMPLE_CONSUMER_CACHE_MAX_RECORDS_DOC =
+    "Maximum number of records that can be stored for a specific topic-partition combination."
+     + " Records with higher offsets replace records with lower ones"
+     + " Must be greater that 0.";
+  public static final int SIMPLE_CONSUMER_CACHE_MAX_RECORDS_DEFAULT = 1000;
+
+
+  public static final String STREAM_BUFFER_MAX_TIME_CONFIG = "producer.streams.buffer.max.time.ms";
+  private static final String STREAM_BUFFER_MAX_TIME_DOC = "Messages are buffered in the producer for at most the "
+    + "specified time. A thread will flush all the messages that have been buffered for more than the time specified";
+
+  public static final String STREAM_BUFFER_MAX_TIME_DEFAULT = "1";
 
   // TODO: change this to "http://0.0.0.0:8082" when PORT_CONFIG is deleted.
   private static final String KAFKAREST_LISTENERS_DEFAULT = "";
@@ -319,6 +355,30 @@ public class KafkaRestConfig extends RestConfig {
   private static final boolean ZOOKEEPER_SET_ACL_DEFAULT = false;
   private static final ConfigDef config;
 
+  public static final String REST_PROXY_IMPERSONATION = "rest.proxy.enable.doAs";
+  private static final String
+          REST_PROXY_IMPERSONATION_DOC =
+          "Set to true if you want impersonations for streams to be enabled, if false - all manipulation will be"
+          + " performed from admin of cluster user";
+  public static final boolean REST_PROXY_IMPERSONATION_DEFAULT = true;
+  protected static final String SSL_PROTOCOL_DEFAULT_OVERRIDE = "TLSv1.2";
+  protected static final String SSL_ENABLED_PROTOCOLS_DEFAULT_OVERRIDE = "TLSv1.1,TLSv1.2";
+
+
+  public static final String PRODUCERS_MAX_CACHES_NUM_CONFIG = "producers.max.caches.num";
+  private static final String
+          PRODUCERS_MAX_CACHES_NUM_DOC =
+          "Maximum number user names for which producers are cached. "
+                  + "If 0, then caching is disabled and producer will be created for each request.";
+
+  public static final int PRODUCERS_MAX_CACHES_NUM_DEFAULT = 20;
+
+  public static final String STREAMS_DEFAULT_STREAM_CONFIG = "streams.default.stream";
+  private static final String STREAMS_DEFAULT_STREAM_DOC = "The default stream the consumer should poll messages from and"
+           + "the producer should send messages to, if the topic name does not specify the stream path and the property has "
+           + "a valid value, then this topic name is looked in the default stream.";
+  private static final String STREAMS_DEFAULT_STREAM_DEFAULT = "";
+
   public static final String HTTPS = "https";
   public static final String HTTP = "http";
 
@@ -363,6 +423,28 @@ public class KafkaRestConfig extends RestConfig {
             Importance.LOW,
             METRICS_JMX_PREFIX_DOC
         )
+        .defineOverride(
+            SSL_PROTOCOL_CONFIG, Type.STRING,
+            SSL_PROTOCOL_DEFAULT_OVERRIDE,
+            Importance.MEDIUM, SSL_PROTOCOL_DOC)
+        .defineOverride(
+            AUTHENTICATION_METHOD_CONFIG,
+            Type.STRING, AUTHENTICATION_METHOD_BASIC,
+            AUTHENTICATION_METHOD_VALIDATOR,
+            Importance.LOW, AUTHENTICATION_METHOD_DOC
+        )
+        .defineOverride(
+            AUTHENTICATION_REALM_CONFIG,
+            Type.STRING,
+            "jpamLogin",
+            Importance.LOW,
+            AUTHENTICATION_REALM_DOC)
+        .defineOverride(AUTHENTICATION_ROLES_CONFIG, Type.LIST, AUTHENTICATION_ROLES_DEFAULT,
+            Importance.LOW, AUTHENTICATION_ROLES_DOC)
+        .defineOverride(
+            SSL_ENABLED_PROTOCOLS_CONFIG, Type.LIST,
+            SSL_ENABLED_PROTOCOLS_DEFAULT_OVERRIDE,
+            Importance.MEDIUM, SSL_ENABLED_PROTOCOLS_DOC)
         .define(ID_CONFIG, Type.STRING, ID_DEFAULT, Importance.HIGH, ID_CONFIG_DOC)
         .define(HOST_NAME_CONFIG, Type.STRING, HOST_NAME_DEFAULT, Importance.MEDIUM, HOST_NAME_DOC)
         .define(CONSUMER_MAX_THREADS_CONFIG, Type.INT, CONSUMER_MAX_THREADS_DEFAULT,
@@ -382,6 +464,13 @@ public class KafkaRestConfig extends RestConfig {
             BOOTSTRAP_SERVERS_DOC
         )
         .define(
+            SCHEMA_REGISTRY_ENABLE_CONFIG,
+            Type.BOOLEAN,
+            SCHEMA_REGISTRY_ENABLE_DEFAULT,
+            Importance.HIGH,
+            SCHEMA_REGISTRY_ENABLE_DOC
+        )
+        .define(
             SCHEMA_REGISTRY_URL_CONFIG,
             Type.STRING,
             SCHEMA_REGISTRY_URL_DEFAULT,
@@ -396,6 +485,19 @@ public class KafkaRestConfig extends RestConfig {
             Importance.LOW,
             PROXY_FETCH_MIN_BYTES_DOC
         )
+        .define(
+            SIMPLE_CONSUMER_MAX_POLL_TIME_CONFIG,
+            Type.INT, SIMPLE_CONSUMER_MAX_POLL_TIME_DEFAULT,
+            Importance.LOW, SIMPLE_CONSUMER_MAX_POLL_TIME_DOC)
+        .define(SIMPLE_CONSUMER_MAX_CACHES_NUM_CONFIG,
+            Type.INT, SIMPLE_CONSUMER_MAX_CACHES_NUM_DEFAULT,
+            Importance.MEDIUM,
+            SIMPLE_CONSUMER_MAX_CACHES_NUM_DOC)
+        .define(SIMPLE_CONSUMER_CACHE_MAX_RECORDS_CONFIG,
+            Type.INT,
+            SIMPLE_CONSUMER_CACHE_MAX_RECORDS_DEFAULT,
+            Importance.MEDIUM,
+            SIMPLE_CONSUMER_CACHE_MAX_RECORDS_DOC)
         .define(
             PRODUCER_THREADS_CONFIG,
             Type.INT,
@@ -549,7 +651,7 @@ public class KafkaRestConfig extends RestConfig {
         .define(
             KAFKACLIENT_SSL_ENABLED_PROTOCOLS_CONFIG,
             ConfigDef.Type.STRING,
-            "TLSv1.2,TLSv1.1,TLSv1",
+            SSL_ENABLED_PROTOCOLS_DEFAULT_OVERRIDE,
             ConfigDef.Importance.MEDIUM,
             KAFAKSTORE_SSL_ENABLED_PROTOCOLS_DOC
         )
@@ -629,10 +731,23 @@ public class KafkaRestConfig extends RestConfig {
             "",
             Importance.LOW,
             KAFKA_REST_RESOURCE_EXTENSION_DOC
-        );
+        )
+        .define(STREAMS_DEFAULT_STREAM_CONFIG, Type.STRING, STREAMS_DEFAULT_STREAM_DEFAULT,
+            Importance.MEDIUM, STREAMS_DEFAULT_STREAM_DOC)
+        .define(STREAM_BUFFER_MAX_TIME_CONFIG, Type.INT, STREAM_BUFFER_MAX_TIME_DEFAULT,
+            Importance.MEDIUM, STREAM_BUFFER_MAX_TIME_DOC)
+        .define(REST_PROXY_IMPERSONATION, Type.BOOLEAN, REST_PROXY_IMPERSONATION_DEFAULT,
+            Importance.MEDIUM, REST_PROXY_IMPERSONATION_DOC)
+        .define(PRODUCERS_MAX_CACHES_NUM_CONFIG, Type.INT, PRODUCERS_MAX_CACHES_NUM_DEFAULT,
+            Importance.MEDIUM, PRODUCERS_MAX_CACHES_NUM_DOC);
   }
 
   private Time time;
+  /**
+   * Indicates whether MapR Streams are used as a backend
+   */
+  private boolean defaultStreamSet;
+  private boolean isImpersonationEnabled;
   private Properties originalProperties;
 
   public KafkaRestConfig() throws RestConfigException {
@@ -656,10 +771,22 @@ public class KafkaRestConfig extends RestConfig {
     super(configDef, props);
     this.originalProperties = props;
     this.time = time;
+
+    this.defaultStreamSet = !STREAMS_DEFAULT_STREAM_DEFAULT.equals(
+      getString(STREAMS_DEFAULT_STREAM_CONFIG));
+    this.isImpersonationEnabled = getBoolean(KafkaRestConfig.REST_PROXY_IMPERSONATION);
   }
 
   public Time getTime() {
     return time;
+  }
+
+  public boolean isImpersonationEnabled(){
+      return isImpersonationEnabled;
+  }
+
+  public boolean isDefaultStreamSet() {
+    return defaultStreamSet;
   }
 
   public Properties getOriginalProperties() {
@@ -726,7 +853,8 @@ public class KafkaRestConfig extends RestConfig {
 
   public String bootstrapBrokers() {
     int zkSessionTimeoutMs = getInt(KAFKACLIENT_ZK_SESSION_TIMEOUT_MS_CONFIG);
-
+    if (true)
+        return "";
     String bootstrapServersConfig = getString(BOOTSTRAP_SERVERS_CONFIG);
     if (StringUtil.isNotBlank(bootstrapServersConfig)) {
       return bootstrapServersConfig;
