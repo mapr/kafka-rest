@@ -429,7 +429,7 @@ public class KafkaRestConfig extends RestConfig {
             Importance.MEDIUM, SSL_PROTOCOL_DOC)
         .defineOverride(
             AUTHENTICATION_METHOD_CONFIG,
-            Type.STRING, AUTHENTICATION_METHOD_BASIC,
+            Type.STRING, AUTHENTICATION_METHOD_MULTIAUTH,
             AUTHENTICATION_METHOD_VALIDATOR,
             Importance.LOW, AUTHENTICATION_METHOD_DOC
         )

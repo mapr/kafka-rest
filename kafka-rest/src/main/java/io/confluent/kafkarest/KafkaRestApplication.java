@@ -90,10 +90,11 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
   ) {
 
     boolean impersonationEnabled = appConfig.isImpersonationEnabled();
-    String authenticationRealm = appConfig.getString(KafkaRestConfig.AUTHENTICATION_REALM_CONFIG);
+    String authenticationMehtod = appConfig.getString(KafkaRestConfig.AUTHENTICATION_METHOD_CONFIG);
 
-    if (impersonationEnabled && !"jpamLogin".equals(authenticationRealm)) {
-      throw new RuntimeException("PAM Authentication must be enabled in order to support MapR Streams impersonation");
+    if (impersonationEnabled && !authenticationMehtod.equals(KafkaRestConfig.AUTHENTICATION_METHOD_MULTIAUTH)) {
+      throw new RuntimeException(KafkaRestConfig.AUTHENTICATION_METHOD_MULTIAUTH +
+              " Authentication must be enabled in order to support MapR Streams impersonation");
     }
 
     KafkaRestContextProvider.initialize(zkUtils, appConfig, mdObserver, producerPool,
