@@ -60,10 +60,8 @@
 
         <!-- MapR repository -->
         <repository>
-            <id>mapr-releases</id>
-            <url>http://repository.mapr.com/nexus/content/repositories/releases</url>
-            <snapshots><enabled>true</enabled></snapshots>
-            <releases><enabled>true</enabled></releases>
+            <id>mapr</id>
+            <url>${env.MAPR_MAVEN_REPO}</url>
         </repository>
     </repositories>
 
