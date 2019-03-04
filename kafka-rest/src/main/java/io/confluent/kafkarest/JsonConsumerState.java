@@ -35,6 +35,7 @@ public class JsonConsumerState extends ConsumerState<byte[], byte[], Object, Obj
                            Properties consumerProperties,
                            ConsumerManager.ConsumerFactory consumerFactory) {
     super(config, instanceId, consumerProperties, consumerFactory);
+    super.startHeartbeatThread();
   }
 
   @Override

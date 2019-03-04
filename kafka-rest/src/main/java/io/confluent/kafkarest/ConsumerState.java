@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Queue;
 import java.util.Set;
@@ -123,11 +124,14 @@ public abstract class ConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, ClientVa
       // with frequency of 1/4 session timeout.
       this.heartbeatDelay = defaultSessionTimeoutMs / 4;
     } else {
-      this.heartbeatDelay = Integer.valueOf(consumerSessionTimeout);
+      this.heartbeatDelay = Optional.ofNullable(Long.valueOf(consumerSessionTimeout)).orElse(0L);
     }
 
     this.nextHeartbeatTime = 0;
     this.heartbeatThread = new ConsumerHeartbeatThread();
+  }
+
+  protected void startHeartbeatThread (){
     heartbeatThread.start();
   }
 

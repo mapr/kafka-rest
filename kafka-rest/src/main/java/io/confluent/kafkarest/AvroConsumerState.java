@@ -39,6 +39,7 @@ public class AvroConsumerState extends ConsumerState<Object, Object, JsonNode, J
                            Properties consumerProperties,
                            ConsumerManager.ConsumerFactory consumerFactory) {
     super(config, instanceId, consumerProperties, consumerFactory);
+    super.startHeartbeatThread();
   }
 
   private Deserializer<Object> initDeserializer() {

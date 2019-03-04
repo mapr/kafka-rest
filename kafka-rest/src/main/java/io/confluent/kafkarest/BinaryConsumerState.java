@@ -34,6 +34,7 @@ public class BinaryConsumerState extends ConsumerState<byte[], byte[], byte[], b
                              Properties consumerProperties,
                              ConsumerManager.ConsumerFactory consumerFactory) {
     super(config, instanceId, consumerProperties, consumerFactory);
+    super.startHeartbeatThread();
   }
 
   @Override
