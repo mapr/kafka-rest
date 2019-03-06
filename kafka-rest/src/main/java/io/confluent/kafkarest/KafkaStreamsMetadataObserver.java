@@ -43,8 +43,7 @@ public class KafkaStreamsMetadataObserver extends MetadataObserver {
   private StreamsMetadataConsumer streamsMetadataConsumer;
 
   private boolean defaultStreamSet;
-  private String defaultStream; 
-  private ZkUtils zkUtil;
+  private String defaultStream;
 
 
   public KafkaStreamsMetadataObserver(KafkaRestConfig config, ZkUtils zkUtils) {
@@ -55,7 +54,6 @@ public class KafkaStreamsMetadataObserver extends MetadataObserver {
 
     this.defaultStreamSet = config.isDefaultStreamSet();
     this.defaultStream = defaultStream;
-    this.zkUtil = zkUtils;
     streamsMetadataConsumer = new StreamsMetadataConsumer(bootstrapServers, defaultStream);
   }
     
@@ -67,17 +65,13 @@ public class KafkaStreamsMetadataObserver extends MetadataObserver {
 
   @Override
   public Collection<String> getTopicNames() {
-    if (defaultStreamSet) {
-      try {
-        return streamsMetadataConsumer.listTopics().keySet();
-      } catch (KafkaException e) {
-        log.warn("listTopics() API", e);
-        throw Errors.notSupportedByMapRStreams(
-          "Please try to set " + KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG
-            + " to return topics for default stream");
-      }
-    } else {
-      return super.getTopicNames();
+    try {
+      return streamsMetadataConsumer.listTopics().keySet();
+    } catch (KafkaException e) {
+      log.warn("listTopics() API", e);
+      throw Errors.notSupportedByMapRStreams(
+              "Please try to set " + KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG
+                      + " to return topics for default stream");
     }
   }
 
@@ -102,24 +96,20 @@ public class KafkaStreamsMetadataObserver extends MetadataObserver {
 
   @Override
   public List<Topic> getTopics() {
-    if (defaultStreamSet) {
-      try {
-        List<Topic> result = new ArrayList<>();
-        java.util.Map<String, List<PartitionInfo>> topicsMap = streamsMetadataConsumer.listTopics();
-        for (java.util.Map.Entry<String, List<PartitionInfo>> entry: topicsMap.entrySet()) {
+    try {
+      List<Topic> result = new ArrayList<>();
+      java.util.Map<String, List<PartitionInfo>> topicsMap = streamsMetadataConsumer.listTopics();
+      for (java.util.Map.Entry<String, List<PartitionInfo>> entry: topicsMap.entrySet()) {
 
-          Topic topic = new Topic(entry.getKey(), null, convertPartitions(entry.getValue()));
-          result.add(topic);
-        }
-        return result;
-      } catch (KafkaException e) {
-        log.warn("listTopics() API", e);
-        throw Errors.notSupportedByMapRStreams(
-          "Please try to set " + KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG
-            + " to return topics for default stream");
+        Topic topic = new Topic(entry.getKey(), null, convertPartitions(entry.getValue()));
+        result.add(topic);
       }
-    } else {
-      return super.getTopics();
+      return result;
+    } catch (KafkaException e) {
+      log.warn("listTopics() API", e);
+      throw Errors.notSupportedByMapRStreams(
+              "Please try to set " + KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG
+                      + " to return topics for default stream");
     }
   }
 
@@ -239,11 +229,6 @@ public class KafkaStreamsMetadataObserver extends MetadataObserver {
       partitions.add(partition);
     }
     return partitions;
-  }
-
-
-  public ZkUtils getZkUtils(){
-      return zkUtil;
   }
 }
 

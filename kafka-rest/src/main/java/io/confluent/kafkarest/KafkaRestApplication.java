@@ -97,6 +97,21 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
               " Authentication must be enabled in order to support MapR Streams impersonation");
     }
 
+    if (producerPool == null) {
+      producerPool = new ProducerPool(appConfig, null);
+    }
+
+    if (consumerManager == null) {
+      consumerManager = new ConsumerManager(appConfig, mdObserver);
+    }
+    if (simpleConsumerFactory == null) {
+      simpleConsumerFactory = new SimpleConsumerFactory(appConfig);
+    }
+    if (simpleConsumerManager == null) {
+      simpleConsumerManager =
+              new SimpleConsumerManager(appConfig, mdObserver, simpleConsumerFactory);
+    }
+
     KafkaRestContextProvider.initialize(zkUtils, appConfig, mdObserver, producerPool,
         consumerManager, simpleConsumerFactory,
         simpleConsumerManager, kafkaConsumerManager, adminClientWrapperInjected
