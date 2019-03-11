@@ -37,16 +37,12 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Queue;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.Vector;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Pattern;
-
-import kafka.common.MessageStreamsExistException;
-import kafka.consumer.KafkaStream;
 
 /**
  * Tracks all the state for a consumer. This class is abstract in order to support multiple
@@ -69,7 +65,6 @@ public abstract class ConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, ClientVa
   protected KafkaRestConfig config;
   private ConsumerInstanceId instanceId;
   private Consumer<KafkaKeyT, KafkaValueT> consumer;
-  private Map<String, ConsumerTopicState<KafkaKeyT, KafkaValueT, ClientKeyT, ClientValueT>> topics;
   volatile long expiration;
 
   /*
@@ -104,7 +99,6 @@ public abstract class ConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, ClientVa
     this.instanceId = instanceId;
     this.consumer = consumerFactory.createConsumer(
         consumerProperties, getKeyDeserializer(), getValueDeserializer());
-    this.topics = new HashMap<>();
     this.expiration = config.getTime().milliseconds()
                       + config.getInt(KafkaRestConfig.CONSUMER_INSTANCE_TIMEOUT_MS_CONFIG);
     this.lock = new ReentrantReadWriteLock();

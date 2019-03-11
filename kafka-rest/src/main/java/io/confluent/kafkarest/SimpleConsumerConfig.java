@@ -17,11 +17,9 @@ package io.confluent.kafkarest;
 
 import java.util.Properties;
 
-import kafka.consumer.ConsumerConfig;
-
 public class SimpleConsumerConfig {
 
-  final ConsumerConfig consumerConfig;
+  final Properties properties;
 
   public SimpleConsumerConfig(final Properties originalProperties) {
     final Properties props = (Properties) originalProperties.clone();
@@ -32,26 +30,6 @@ public class SimpleConsumerConfig {
     // sensible defaults (buffer size, ...).
     props.setProperty("zookeeper.connect", "");
     props.setProperty("group.id", "");
-    consumerConfig = new ConsumerConfig(props);
-  }
-
-  public int socketTimeoutMs() {
-    return consumerConfig.socketTimeoutMs();
-  }
-
-  public int socketReceiveBufferBytes() {
-    return consumerConfig.socketReceiveBufferBytes();
-  }
-
-  public int fetchMessageMaxBytes() {
-    return consumerConfig.fetchMessageMaxBytes();
-  }
-
-  public int fetchWaitMaxMs() {
-    return consumerConfig.fetchWaitMaxMs();
-  }
-
-  public int fetchMinBytes() {
-    return consumerConfig.fetchMinBytes();
+    properties = props;
   }
 }

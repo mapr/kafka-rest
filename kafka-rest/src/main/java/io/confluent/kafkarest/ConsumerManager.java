@@ -50,8 +50,6 @@ import io.confluent.rest.exceptions.RestServerErrorException;
 
 import javax.ws.rs.core.Response;
 
-import kafka.common.InvalidConfigException;
-
 /**
  * Manages consumer instances by mapping instance IDs to consumer objects, processing read requests,
  * and cleaning up when consumers disappear.
@@ -227,7 +225,7 @@ public class ConsumerManager {
         }
         succeeded = true;
         return name;
-      } catch (InvalidConfigException e) {
+      } catch (RuntimeException e) {
         throw Errors.invalidConsumerConfigException(e);
       }
     } finally {

@@ -26,7 +26,6 @@ import io.confluent.rest.exceptions.RestConstraintViolationException;
 import io.confluent.rest.exceptions.RestException;
 import io.confluent.rest.exceptions.RestNotFoundException;
 import io.confluent.rest.exceptions.RestServerErrorException;
-import kafka.common.InvalidConfigException;
 
 public class Errors {
 
@@ -161,7 +160,7 @@ public class Errors {
   public static final int INVALID_CONSUMER_CONFIG_ERROR_CODE = 42204;
 
   public static RestConstraintViolationException invalidConsumerConfigException(
-      InvalidConfigException e
+          RuntimeException e
   ) {
     return new RestConstraintViolationException(
         INVALID_CONSUMER_CONFIG_MESSAGE + e.getMessage(),
