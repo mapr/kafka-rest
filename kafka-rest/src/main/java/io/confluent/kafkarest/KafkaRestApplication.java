@@ -96,6 +96,7 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
       throw new RuntimeException(KafkaRestConfig.AUTHENTICATION_METHOD_MULTIAUTH +
               " Authentication must be enabled in order to support MapR Streams impersonation");
     }
+    mdObserver = new KafkaStreamsMetadataObserver(appConfig, zkUtils);
 
     if (producerPool == null) {
       producerPool = new ProducerPool(appConfig, null);
