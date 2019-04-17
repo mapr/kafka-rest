@@ -15,16 +15,13 @@
 
 package io.confluent.kafkarest.resources.v2;
 
-import java.security.PrivilegedExceptionAction;
-import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -32,11 +29,11 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.UriInfo;
 
-import io.confluent.kafkarest.KafkaRestContext;
-import io.confluent.kafkarest.ConsumerReadCallback;
 import io.confluent.kafkarest.Errors;
+import io.confluent.kafkarest.KafkaRestContext;
 import io.confluent.kafkarest.UriUtils;
 import io.confluent.kafkarest.Versions;
 import io.confluent.kafkarest.entities.ConsumerAssignmentRequest;
@@ -45,22 +42,18 @@ import io.confluent.kafkarest.entities.ConsumerCommittedRequest;
 import io.confluent.kafkarest.entities.ConsumerCommittedResponse;
 import io.confluent.kafkarest.entities.ConsumerInstanceConfig;
 import io.confluent.kafkarest.entities.ConsumerOffsetCommitRequest;
-import io.confluent.kafkarest.entities.ConsumerRecord;
 import io.confluent.kafkarest.entities.ConsumerSeekToOffsetRequest;
 import io.confluent.kafkarest.entities.ConsumerSeekToRequest;
 import io.confluent.kafkarest.entities.ConsumerSubscriptionRecord;
 import io.confluent.kafkarest.entities.ConsumerSubscriptionResponse;
 import io.confluent.kafkarest.entities.CreateConsumerInstanceResponse;
-import io.confluent.kafkarest.entities.TopicPartitionOffset;
 import io.confluent.kafkarest.extension.SchemaRegistryEnabled;
 import io.confluent.kafkarest.v2.AvroKafkaConsumerState;
 import io.confluent.kafkarest.v2.BinaryKafkaConsumerState;
 import io.confluent.kafkarest.v2.JsonKafkaConsumerState;
-import io.confluent.kafkarest.v2.KafkaConsumerManager;
 import io.confluent.kafkarest.v2.KafkaConsumerState;
 import io.confluent.rest.annotations.PerformanceMetric;
-import io.confluent.rest.exceptions.RestException;
-import org.apache.hadoop.security.UserGroupInformation;
+import io.confluent.rest.impersonation.ImpersonationUtils;
 
 @Path("/consumers")
 // We include embedded formats here so you can always use these headers when interacting with
@@ -91,102 +84,87 @@ public class ConsumersResource {
   @Valid
   @Path("/{group}")
   @PerformanceMetric("consumer.create+v2")
-  public CreateConsumerInstanceResponse createGroup(
-      @javax.ws.rs.core.Context HttpServletRequest httpRequest,
-      final @javax.ws.rs.core.Context UriInfo uriInfo,
-      final @PathParam("group") String group,
-      @Valid ConsumerInstanceConfig config
-  ) throws Exception {
-      if (config == null) {
-          config = new ConsumerInstanceConfig();
-      }
-      final ConsumerInstanceConfig consumerConfig = config;
+  public CreateConsumerInstanceResponse createGroup(final @javax.ws.rs.core.Context UriInfo uriInfo,
+                                                    final @PathParam("group") String group,
+                                                    final @Valid ConsumerInstanceConfig config,
+                                                    @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                                                    @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    return ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> createGroup(uriInfo, group, config), auth, cookie);
+  }
 
-      return (CreateConsumerInstanceResponse) runProxyQuery(new PrivilegedExceptionAction() {
-        @Override
-        public CreateConsumerInstanceResponse run() throws Exception {
-            String instanceId = ctx.getKafkaConsumerManager().createConsumer(group, consumerConfig);
-            String instanceBaseUri = UriUtils.absoluteUriBuilder(ctx.getConfig(), uriInfo)
-                    .path("instances").path(instanceId).build().toString();
-            return new CreateConsumerInstanceResponse(instanceId, instanceBaseUri);
-        }
-    }, httpRequest.getRemoteUser());
+  private CreateConsumerInstanceResponse createGroup(UriInfo uriInfo, String group,
+                                                     ConsumerInstanceConfig config) {
+    if (config == null) {
+      config = new ConsumerInstanceConfig();
+    }
+    String instanceId = ctx.getKafkaConsumerManager().createConsumer(group, config);
+    String instanceBaseUri = UriUtils.absoluteUriBuilder(ctx.getConfig(), uriInfo)
+        .path("instances").path(instanceId).build().toString();
+    return new CreateConsumerInstanceResponse(instanceId, instanceBaseUri);
   }
 
   @DELETE
   @Path("/{group}/instances/{instance}")
   @PerformanceMetric("consumer.delete+v2")
-  public void deleteGroup(
-      @javax.ws.rs.core.Context HttpServletRequest httpRequest,
-      final @PathParam("group") String group,
-      final @PathParam("instance") String instance
-  ) throws Exception {
-      runProxyQuery(new PrivilegedExceptionAction() {
-          @Override
-          public Object run() throws Exception {
-              ctx.getKafkaConsumerManager().deleteConsumer(group, instance);
-              return null;
-          }
-      }, httpRequest.getRemoteUser());
+  public void deleteGroup(final @PathParam("group") String group,
+                          final @PathParam("instance") String instance,
+                          @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                          @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      ctx.getKafkaConsumerManager().deleteConsumer(group, instance);
+      return null;
+    }, auth, cookie);
   }
 
   @POST
   @Path("/{group}/instances/{instance}/subscription")
   @PerformanceMetric("consumer.subscribe+v2")
-  public void subscribe(
-      @javax.ws.rs.core.Context HttpServletRequest httpRequest,
-      @javax.ws.rs.core.Context UriInfo uriInfo,
-      final @PathParam("group") String group,
-      final @PathParam("instance") String instance,
-      final @Valid @NotNull ConsumerSubscriptionRecord subscription
-  ) throws Exception {
-        runProxyQuery(new PrivilegedExceptionAction() {
-            @Override
-            public Object run() throws Exception {
-              try {
-                ctx.getKafkaConsumerManager().subscribe(group, instance, subscription);
-                } catch (java.lang.IllegalStateException e) {
-              throw Errors.illegalStateException(e);
-              }
-              return null;
-            }
-        }, httpRequest.getRemoteUser());
+  public void subscribe(@javax.ws.rs.core.Context UriInfo uriInfo,
+                        final @PathParam("group") String group,
+                        final @PathParam("instance") String instance,
+                        final @Valid @NotNull ConsumerSubscriptionRecord subscription,
+                        @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                        @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      subscribe(uriInfo, group, instance, subscription);
+      return null;
+    }, auth, cookie);
+  }
+
+  private void subscribe(UriInfo uriInfo, String group, String instance,
+                         ConsumerSubscriptionRecord subscription) {
+    try {
+      ctx.getKafkaConsumerManager().subscribe(group, instance, subscription);
+    } catch (java.lang.IllegalStateException e) {
+      throw Errors.illegalStateException(e);
+    }
   }
 
   @GET
   @Path("/{group}/instances/{instance}/subscription")
   @PerformanceMetric("consumer.subscription+v2")
-  public ConsumerSubscriptionResponse subscription(
-      @javax.ws.rs.core.Context HttpServletRequest httpRequest,
-      @javax.ws.rs.core.Context UriInfo uriInfo,
-      final @PathParam("group") String group,
-      final @PathParam("instance") String instance
-  ) throws Exception {
-      return (ConsumerSubscriptionResponse)runProxyQuery(new PrivilegedExceptionAction() {
-          @Override
-          public ConsumerSubscriptionResponse run() throws Exception {
-              return ctx.getKafkaConsumerManager().subscription(group, instance);
-          }
-      }, httpRequest.getRemoteUser());
-
+  public ConsumerSubscriptionResponse subscription(@javax.ws.rs.core.Context UriInfo uriInfo,
+                                                   final @PathParam("group") String group,
+                                                   final @PathParam("instance") String instance,
+                                                   @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                                                   @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    return ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> ctx.getKafkaConsumerManager().subscription(group, instance), auth, cookie);
   }
 
   @DELETE
   @Path("/{group}/instances/{instance}/subscription")
   @PerformanceMetric("consumer.unsubscribe+v2")
-  public void unsubscribe(
-      @javax.ws.rs.core.Context HttpServletRequest httpRequest,
-      @javax.ws.rs.core.Context UriInfo uriInfo,
-      final @PathParam("group") String group,
-      final @PathParam("instance") String instance
-  ) throws Exception {
-      runProxyQuery(new PrivilegedExceptionAction() {
-          @Override
-          public Object run() throws Exception {
-              ctx.getKafkaConsumerManager().unsubscribe(group, instance);
-              return null;
-          }
-      }, httpRequest.getRemoteUser());
+  public void unsubscribe(@javax.ws.rs.core.Context UriInfo uriInfo,
+                          final @PathParam("group") String group,
+                          final @PathParam("instance") String instance,
+                          @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                          @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      ctx.getKafkaConsumerManager().unsubscribe(group, instance);
+      return null;
+    }, auth, cookie);
   }
 
   @GET
@@ -194,21 +172,17 @@ public class ConsumersResource {
   @PerformanceMetric("consumer.records.read-binary+v2")
   @Produces({Versions.KAFKA_V2_JSON_BINARY_WEIGHTED,
              Versions.KAFKA_V2_JSON_WEIGHTED})
-  public void readRecordBinary(
-      @javax.ws.rs.core.Context HttpServletRequest httpRequest,
-      final @Suspended AsyncResponse asyncResponse,
-      final @PathParam("group") String group,
-      final @PathParam("instance") String instance,
-      final @QueryParam("timeout") @DefaultValue("-1") long timeout,
-      final @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes
-  ) throws Exception {
-      runProxyQuery(new PrivilegedExceptionAction() {
-          @Override
-          public Object run() throws Exception {
-              readRecords(asyncResponse, group, instance, timeout, maxBytes, BinaryKafkaConsumerState.class);
-              return null;
-          }
-      }, httpRequest.getRemoteUser());
+  public void readRecordBinary(final @Suspended AsyncResponse asyncResponse,
+                               final @PathParam("group") String group,
+                               final @PathParam("instance") String instance,
+                               final @QueryParam("timeout") @DefaultValue("-1") long timeout,
+                               final @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes,
+                               @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                               @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      readRecords(asyncResponse, group, instance, timeout, maxBytes, BinaryKafkaConsumerState.class);
+      return null;
+    }, auth, cookie);
   }
 
   @GET
@@ -216,21 +190,17 @@ public class ConsumersResource {
   @PerformanceMetric("consumer.records.read-json+v2")
   @Produces({Versions.KAFKA_V2_JSON_JSON_WEIGHTED_LOW})
   // Using low weight ensures binary is default
-  public void readRecordJson(
-      @javax.ws.rs.core.Context HttpServletRequest httpRequest,
-      final @Suspended AsyncResponse asyncResponse,
-      final @PathParam("group") String group,
-      final @PathParam("instance") String instance,
-      final @QueryParam("timeout") @DefaultValue("-1") long timeout,
-      final @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes
-  ) throws Exception {
-      runProxyQuery(new PrivilegedExceptionAction() {
-          @Override
-          public Object run() throws Exception {
-              readRecords(asyncResponse, group, instance, timeout, maxBytes, JsonKafkaConsumerState.class);
-              return null;
-          }
-      }, httpRequest.getRemoteUser());
+  public void readRecordJson(final @Suspended AsyncResponse asyncResponse,
+                             final @PathParam("group") String group,
+                             final @PathParam("instance") String instance,
+                             final @QueryParam("timeout") @DefaultValue("-1") long timeout,
+                             final @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes,
+                             @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                             @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      readRecords(asyncResponse, group, instance, timeout, maxBytes, JsonKafkaConsumerState.class);
+      return null;
+    }, auth, cookie);
   }
 
   @GET
@@ -239,193 +209,186 @@ public class ConsumersResource {
   @PerformanceMetric("consumer.records.read-avro+v2")
   @Produces({Versions.KAFKA_V2_JSON_AVRO_WEIGHTED_LOW})
   // Using low weight ensures binary is default
-  public void readRecordAvro(
-      @javax.ws.rs.core.Context HttpServletRequest httpRequest,
-      final @Suspended AsyncResponse asyncResponse,
-      final @PathParam("group") String group,
-      final @PathParam("instance") String instance,
-      final @QueryParam("timeout") @DefaultValue("-1") long timeout,
-      final @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes
-  ) throws Exception {
-      runProxyQuery(new PrivilegedExceptionAction() {
-          @Override
-          public Object run() throws Exception {
-              readRecords(asyncResponse, group, instance, timeout, maxBytes, AvroKafkaConsumerState.class);
-              return null;
-          }
-      }, httpRequest.getRemoteUser());
+  public void readRecordAvro(final @Suspended AsyncResponse asyncResponse,
+                             final @PathParam("group") String group,
+                             final @PathParam("instance") String instance,
+                             final @QueryParam("timeout") @DefaultValue("-1") long timeout,
+                             final @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes,
+                             @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                             @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      readRecords(asyncResponse, group, instance, timeout, maxBytes, AvroKafkaConsumerState.class);
+      return null;
+    }, auth, cookie);
   }
 
   @POST
   @Path("/{group}/instances/{instance}/offsets")
   @PerformanceMetric("consumer.commit-offsets+v2")
-  public void commitOffsets(
-      @javax.ws.rs.core.Context HttpServletRequest httpRequest,
-      final @Suspended AsyncResponse asyncResponse,
-      final @PathParam("group") String group,
-      final @PathParam("instance") String instance,
-      final @QueryParam("async") @DefaultValue("false") String async,
-      final @Valid ConsumerOffsetCommitRequest offsetCommitRequest
-  ) throws Exception {
-      runProxyQuery(new PrivilegedExceptionAction() {
-          @Override
-          public Object run() throws Exception {
-              ctx.getKafkaConsumerManager().commitOffsets(
-                      group,
-                      instance,
-                      async,
-                      offsetCommitRequest,
-                      new KafkaConsumerManager.CommitCallback() {
-                          @Override
-                          public void onCompletion(
-                                  List<TopicPartitionOffset> offsets,
-                                  Exception e
-                          ) {
-                              if (e != null) {
-                                  asyncResponse.resume(e);
-                              } else {
-                                  asyncResponse.resume(offsets);
-                              }
-                          }
-                      }
-              );              return null;
+  public void commitOffsets(final @Suspended AsyncResponse asyncResponse,
+                            final @PathParam("group") String group,
+                            final @PathParam("instance") String instance,
+                            final @QueryParam("async") @DefaultValue("false") String async,
+                            final @Valid ConsumerOffsetCommitRequest offsetCommitRequest,
+                            @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                            @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      commitOffsets(asyncResponse, group, instance, async, offsetCommitRequest);
+      return null;
+    }, auth, cookie);
+  }
+
+  private void commitOffsets(AsyncResponse asyncResponse, String group, String instance,
+                             String async, ConsumerOffsetCommitRequest offsetCommitRequest) {
+    ctx.getKafkaConsumerManager().commitOffsets(
+        group,
+        instance,
+        async,
+        offsetCommitRequest,
+        (offsets, e) -> {
+          if (e != null) {
+            asyncResponse.resume(e);
+          } else {
+            asyncResponse.resume(offsets);
           }
-      }, httpRequest.getRemoteUser());
+        }
+    );
   }
 
   @GET
   @Path("/{group}/instances/{instance}/offsets")
   @PerformanceMetric("consumer.committed-offsets+v2")
-  public ConsumerCommittedResponse committedOffsets(
-      @javax.ws.rs.core.Context HttpServletRequest httpRequest,
-      final @PathParam("group") String group,
-      final @PathParam("instance") String instance,
-      final @Valid ConsumerCommittedRequest request
-  ) throws Exception {
+  public ConsumerCommittedResponse committedOffsets(final @PathParam("group") String group,
+                                                    final @PathParam("instance") String instance,
+                                                    final @Valid ConsumerCommittedRequest request,
+                                                    @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                                                    @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    return ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> committedOffsets(group, instance, request), auth, cookie);
+  }
+
+  private ConsumerCommittedResponse committedOffsets(String group, String instance,
+                                                     ConsumerCommittedRequest request) {
     if (request == null) {
       throw Errors.partitionNotFoundException();
     }
-      return (ConsumerCommittedResponse)runProxyQuery(new PrivilegedExceptionAction() {
-          @Override
-          public ConsumerCommittedResponse run() throws Exception {
-              return ctx.getKafkaConsumerManager().committed(group, instance, request);
-          }
-      }, httpRequest.getRemoteUser());
+    return ctx.getKafkaConsumerManager().committed(group, instance, request);
   }
 
   @POST
   @Path("/{group}/instances/{instance}/positions/beginning")
   @PerformanceMetric("consumer.seek-to-beginning+v2")
-  public void seekToBeginning(
-      @javax.ws.rs.core.Context HttpServletRequest httpRequest,
-      @javax.ws.rs.core.Context UriInfo uriInfo,
-      final @PathParam("group") String group,
-      final @PathParam("instance") String instance,
-      final @Valid @NotNull ConsumerSeekToRequest seekToRequest
-  ) throws Exception {
-      runProxyQuery(new PrivilegedExceptionAction() {
-          @Override
-          public Object run() throws Exception {
-              try {
-                  ctx.getKafkaConsumerManager().seekToBeginning(group, instance, seekToRequest);
-              } catch (java.lang.IllegalStateException e) {
-                  throw Errors.illegalStateException(e);
-              }
-              return null;
-          }
-      }, httpRequest.getRemoteUser());
+  public void seekToBeginning(@javax.ws.rs.core.Context UriInfo uriInfo,
+                              final @PathParam("group") String group,
+                              final @PathParam("instance") String instance,
+                              final @Valid @NotNull ConsumerSeekToRequest seekToRequest,
+                              @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                              @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      seekToBeginning(uriInfo, group, instance, seekToRequest);
+      return null;
+    }, auth, cookie);
+  }
 
+  private void seekToBeginning(UriInfo uriInfo, String group, String instance,
+                               ConsumerSeekToRequest seekToRequest) {
+    try {
+      ctx.getKafkaConsumerManager().seekToBeginning(group, instance, seekToRequest);
+    } catch (java.lang.IllegalStateException e) {
+      throw Errors.illegalStateException(e);
+    }
   }
 
   @POST
   @Path("/{group}/instances/{instance}/positions/end")
   @PerformanceMetric("consumer.seek-to-end+v2")
-  public void seekToEnd(
-      @javax.ws.rs.core.Context HttpServletRequest httpRequest,
-      @javax.ws.rs.core.Context UriInfo uriInfo,
-      final @PathParam("group") String group,
-      final @PathParam("instance") String instance,
-      final @Valid @NotNull ConsumerSeekToRequest seekToRequest
-  ) throws Exception {
-      runProxyQuery(new PrivilegedExceptionAction() {
-          @Override
-          public Object run() throws Exception {
-              try {
-                  ctx.getKafkaConsumerManager().seekToEnd(group, instance, seekToRequest);
-              } catch (java.lang.IllegalStateException e) {
-                  throw Errors.illegalStateException(e);
-              }
-              return null;
-          }
-      }, httpRequest.getRemoteUser());
+  public void seekToEnd(@javax.ws.rs.core.Context UriInfo uriInfo,
+                        final @PathParam("group") String group,
+                        final @PathParam("instance") String instance,
+                        final @Valid @NotNull ConsumerSeekToRequest seekToRequest,
+                        @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                        @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      seekToEnd(uriInfo, group, instance, seekToRequest);
+      return null;
+    }, auth, cookie);
+  }
+
+  private void seekToEnd(UriInfo uriInfo, String group, String instance,
+                         ConsumerSeekToRequest seekToRequest) {
+    try {
+      ctx.getKafkaConsumerManager().seekToEnd(group, instance, seekToRequest);
+    } catch (java.lang.IllegalStateException e) {
+      throw Errors.illegalStateException(e);
+    }
   }
 
   @POST
   @Path("/{group}/instances/{instance}/positions")
   @PerformanceMetric("consumer.seek-to-offset+v2")
-  public void seekToOffset(
-      @javax.ws.rs.core.Context HttpServletRequest httpRequest,
-      @javax.ws.rs.core.Context UriInfo uriInfo,
-      final @PathParam("group") String group,
-      final @PathParam("instance") String instance,
-      final @Valid @NotNull ConsumerSeekToOffsetRequest seekToOffsetRequest
-  ) throws Exception {
-          runProxyQuery(new PrivilegedExceptionAction() {
-              @Override
-              public Object run() throws Exception {
-                  try {
-                      ctx.getKafkaConsumerManager().seekToOffset(group, instance, seekToOffsetRequest);
-                  } catch (java.lang.IllegalStateException e) {
-                      throw Errors.illegalStateException(e);
-                  }
-                  return null;
-              }
-          }, httpRequest.getRemoteUser());
+  public void seekToOffset(@javax.ws.rs.core.Context UriInfo uriInfo,
+                           final @PathParam("group") String group,
+                           final @PathParam("instance") String instance,
+                           final @Valid @NotNull ConsumerSeekToOffsetRequest seekToOffsetRequest,
+                           @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                           @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      seekToOffset(uriInfo, group, instance, seekToOffsetRequest);
+      return null;
+    }, auth, cookie);
+  }
 
+  private void seekToOffset(UriInfo uriInfo, String group, String instance,
+                            ConsumerSeekToOffsetRequest seekToOffsetRequest) {
+    try {
+      ctx.getKafkaConsumerManager().seekToOffset(group, instance, seekToOffsetRequest);
+    } catch (java.lang.IllegalStateException e) {
+      throw Errors.illegalStateException(e);
+    }
   }
 
   @POST
   @Path("/{group}/instances/{instance}/assignments")
   @PerformanceMetric("consumer.assign+v2")
-  public void assign(
-      @javax.ws.rs.core.Context HttpServletRequest httpRequest,
-      @javax.ws.rs.core.Context UriInfo uriInfo,
-      final @PathParam("group") String group,
-      final @PathParam("instance") String instance,
-      final @Valid @NotNull ConsumerAssignmentRequest assignmentRequest
-  ) throws Exception {
-      runProxyQuery(new PrivilegedExceptionAction() {
-          @Override
-          public Object run() throws Exception {
-              try {
-                  ctx.getKafkaConsumerManager().assign(group, instance, assignmentRequest);
-              } catch (java.lang.IllegalStateException e) {
-                  throw Errors.illegalStateException(e);
-              }
-              return null;
-          }
-      }, httpRequest.getRemoteUser());
+  public void assign(@javax.ws.rs.core.Context UriInfo uriInfo,
+                     final @PathParam("group") String group,
+                     final @PathParam("instance") String instance,
+                     final @Valid @NotNull ConsumerAssignmentRequest assignmentRequest,
+                     @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                     @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      assign(uriInfo, group, instance, assignmentRequest);
+      return null;
+    }, auth, cookie);
+  }
+
+  private void assign(UriInfo uriInfo, String group, String instance,
+                      ConsumerAssignmentRequest assignmentRequest) {
+    try {
+      ctx.getKafkaConsumerManager().assign(group, instance, assignmentRequest);
+    } catch (java.lang.IllegalStateException e) {
+      throw Errors.illegalStateException(e);
+    }
   }
 
   @GET
   @Path("/{group}/instances/{instance}/assignments")
   @PerformanceMetric("consumer.assignment+v2")
-  public ConsumerAssignmentResponse assignment(
-      @javax.ws.rs.core.Context HttpServletRequest httpRequest,
-      @javax.ws.rs.core.Context UriInfo uriInfo,
-      final @PathParam("group") String group,
-      final @PathParam("instance") String instance
-  ) throws Exception {
-      return (ConsumerAssignmentResponse)runProxyQuery(new PrivilegedExceptionAction() {
-          @Override
-          public ConsumerAssignmentResponse run() throws Exception {
-              try {
-                  return ctx.getKafkaConsumerManager().assignment(group, instance);
-              } catch (java.lang.IllegalStateException e) {
-                  throw Errors.illegalStateException(e);
-              }
-          }
-      }, httpRequest.getRemoteUser());
+  public ConsumerAssignmentResponse assignment(@javax.ws.rs.core.Context UriInfo uriInfo,
+                                               final @PathParam("group") String group,
+                                               final @PathParam("instance") String instance,
+                                               @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                                               @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+  return ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> assignment(uriInfo, group, instance), auth, cookie);
+  }
+
+  private ConsumerAssignmentResponse assignment(UriInfo uriInfo, String group, String instance) {
+    try {
+      return ctx.getKafkaConsumerManager().assignment(group, instance);
+    } catch (java.lang.IllegalStateException e) {
+      throw Errors.illegalStateException(e);
+    }
   }
 
   private <KafkaKeyT, KafkaValueT, ClientKeyT, ClientValueT> void readRecords(
@@ -441,29 +404,13 @@ public class ConsumersResource {
 
     ctx.getKafkaConsumerManager().readRecords(
         group, instance, consumerStateType, timeout, maxBytes,
-        new ConsumerReadCallback<ClientKeyT, ClientValueT>() {
-          @Override
-          public void onCompletion(
-              List<? extends ConsumerRecord<ClientKeyT, ClientValueT>> records,
-              RestException e
-          ) {
-            if (e != null) {
-              asyncResponse.resume(e);
-            } else {
-              asyncResponse.resume(records);
+            (records, e) -> {
+              if (e != null) {
+                asyncResponse.resume(e);
+              } else {
+                asyncResponse.resume(records);
+              }
             }
-          }
-        }
     );
-  }
-
-  public Object runProxyQuery(PrivilegedExceptionAction action, String remoteUser) throws Exception {
-      if (ctx.getConfig().isImpersonationEnabled()){
-          UserGroupInformation ugi = UserGroupInformation.createProxyUser(remoteUser,
-                  UserGroupInformation.getCurrentUser());
-          return ugi.doAs(action);
-      } else {
-          return action.run();
-      }
   }
 }

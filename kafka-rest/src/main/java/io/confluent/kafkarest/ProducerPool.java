@@ -15,6 +15,7 @@
 
 package io.confluent.kafkarest;
 
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
@@ -23,7 +24,13 @@ import  io.confluent.rest.exceptions.RestServerErrorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.io.IOException;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
@@ -178,14 +185,13 @@ public class ProducerPool {
       EmbeddedFormat recordFormat,
       SchemaHolder schemaHolder,
       Collection<? extends ProduceRecord<K, V>> records,
-      ProduceRequestCallback callback,
-      String userName
+      ProduceRequestCallback callback
   ) {
     ProduceTask task = new ProduceTask(schemaHolder, records.size(), callback);
     log.trace("Starting produce task " + task.toString());
 
     RestProducer restProducer;
-    if (true) {
+    try {
       if (!defaultStreamSet && !topic.contains(":")) {
         throw Errors.topicNotFoundException();
       }
@@ -194,13 +200,13 @@ public class ProducerPool {
       if (isImpersonationEnabled) {
         switch (recordFormat) {
           case AVRO:
-            restProducer = producerCache.getAvroProducer(userName);
+            restProducer = producerCache.getAvroProducer(UserGroupInformation.getCurrentUser().getUserName());
             break;
           case BINARY:
-            restProducer = producerCache.getBinaryProducer(userName);
+            restProducer = producerCache.getBinaryProducer(UserGroupInformation.getCurrentUser().getUserName());
             break;
           case JSON:
-            restProducer = producerCache.getJsonProducer(userName);
+            restProducer = producerCache.getJsonProducer(UserGroupInformation.getCurrentUser().getUserName());
             break;
           default:
             throw new RestServerErrorException(
@@ -218,6 +224,8 @@ public class ProducerPool {
         log.warn("Producer error "+ e);
         throw Errors.topicPermissionException();
       }
+    } catch (IOException e) {
+      throw io.confluent.rest.impersonation.Errors.serverLoginException(e);
     }
   }
 

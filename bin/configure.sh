@@ -136,6 +136,8 @@ function create_properties_file_with_ssl_config() {
 
         cat >>${KAFKA_REST_PROPERTIES} <<-EOL
 		listeners=https://0.0.0.0:${KAFKA_REST_PORT}
+		authentication.method=MULTIAUTH
+		impersonation.enable=true
 		EOL
 }
 

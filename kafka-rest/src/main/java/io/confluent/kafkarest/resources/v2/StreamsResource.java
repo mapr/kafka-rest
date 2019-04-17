@@ -4,11 +4,15 @@ package io.confluent.kafkarest.resources.v2;
 import io.confluent.kafkarest.KafkaRestContext;
 import io.confluent.kafkarest.Versions;
 import io.confluent.rest.annotations.PerformanceMetric;
-import org.apache.hadoop.security.UserGroupInformation;
+import io.confluent.rest.impersonation.ImpersonationUtils;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.*;
-import java.security.PrivilegedExceptionAction;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.HttpHeaders;
 import java.util.Collection;
 
 @Path("/streams")
@@ -26,25 +30,10 @@ public class StreamsResource {
   @GET
   @Path("/{stream}/topics")
   @PerformanceMetric("stream.topics.list+v2")
-  public Collection<String> list(@javax.ws.rs.core.Context HttpServletRequest httpRequest, 
-                                 final @PathParam("stream") String stream) throws Exception {
-      
-    return  (Collection<String>) runProxyQuery(new PrivilegedExceptionAction<Collection<String>>() {
-        @Override
-        public Collection<String> run() throws Exception {
-            return  ctx.getMetadataObserver().getTopicNames(stream);
-        }
-    }, httpRequest.getRemoteUser());
+  public Collection<String> list(final @PathParam("stream") String stream,
+                                 @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                                 @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    return ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> ctx.getMetadataObserver().getTopicNames(stream), auth, cookie);
   }
-
-    public Object runProxyQuery(PrivilegedExceptionAction action, String remoteUser) throws Exception {
-        if (ctx.getConfig().isImpersonationEnabled()){
-            UserGroupInformation ugi = UserGroupInformation.createProxyUser(remoteUser,
-                    UserGroupInformation.getCurrentUser());
-            return ugi.doAs(action);
-        } else {
-            return action.run();
-        }
-    }
-
 }

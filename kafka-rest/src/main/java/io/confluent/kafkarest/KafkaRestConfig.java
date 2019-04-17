@@ -355,12 +355,6 @@ public class KafkaRestConfig extends RestConfig {
   private static final boolean ZOOKEEPER_SET_ACL_DEFAULT = false;
   private static final ConfigDef config;
 
-  public static final String REST_PROXY_IMPERSONATION = "rest.proxy.enable.doAs";
-  private static final String
-          REST_PROXY_IMPERSONATION_DOC =
-          "Set to true if you want impersonations for streams to be enabled, if false - all manipulation will be"
-          + " performed from admin of cluster user";
-  public static final boolean REST_PROXY_IMPERSONATION_DEFAULT = true;
   protected static final String SSL_PROTOCOL_DEFAULT_OVERRIDE = "TLSv1.2";
   protected static final String SSL_ENABLED_PROTOCOLS_DEFAULT_OVERRIDE = "TLSv1.1,TLSv1.2";
 
@@ -427,20 +421,6 @@ public class KafkaRestConfig extends RestConfig {
             SSL_PROTOCOL_CONFIG, Type.STRING,
             SSL_PROTOCOL_DEFAULT_OVERRIDE,
             Importance.MEDIUM, SSL_PROTOCOL_DOC)
-        .defineOverride(
-            AUTHENTICATION_METHOD_CONFIG,
-            Type.STRING, AUTHENTICATION_METHOD_MULTIAUTH,
-            AUTHENTICATION_METHOD_VALIDATOR,
-            Importance.LOW, AUTHENTICATION_METHOD_DOC
-        )
-        .defineOverride(
-            AUTHENTICATION_REALM_CONFIG,
-            Type.STRING,
-            "jpamLogin",
-            Importance.LOW,
-            AUTHENTICATION_REALM_DOC)
-        .defineOverride(AUTHENTICATION_ROLES_CONFIG, Type.LIST, AUTHENTICATION_ROLES_DEFAULT,
-            Importance.LOW, AUTHENTICATION_ROLES_DOC)
         .defineOverride(
             SSL_ENABLED_PROTOCOLS_CONFIG, Type.LIST,
             SSL_ENABLED_PROTOCOLS_DEFAULT_OVERRIDE,
@@ -736,8 +716,6 @@ public class KafkaRestConfig extends RestConfig {
             Importance.MEDIUM, STREAMS_DEFAULT_STREAM_DOC)
         .define(STREAM_BUFFER_MAX_TIME_CONFIG, Type.INT, STREAM_BUFFER_MAX_TIME_DEFAULT,
             Importance.MEDIUM, STREAM_BUFFER_MAX_TIME_DOC)
-        .define(REST_PROXY_IMPERSONATION, Type.BOOLEAN, REST_PROXY_IMPERSONATION_DEFAULT,
-            Importance.MEDIUM, REST_PROXY_IMPERSONATION_DOC)
         .define(PRODUCERS_MAX_CACHES_NUM_CONFIG, Type.INT, PRODUCERS_MAX_CACHES_NUM_DEFAULT,
             Importance.MEDIUM, PRODUCERS_MAX_CACHES_NUM_DOC);
   }
@@ -774,7 +752,7 @@ public class KafkaRestConfig extends RestConfig {
 
     this.defaultStreamSet = !STREAMS_DEFAULT_STREAM_DEFAULT.equals(
       getString(STREAMS_DEFAULT_STREAM_CONFIG));
-    this.isImpersonationEnabled = getBoolean(KafkaRestConfig.REST_PROXY_IMPERSONATION);
+    this.isImpersonationEnabled = getBoolean(KafkaRestConfig.IMPERSONATION);
   }
 
   public Time getTime() {

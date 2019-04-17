@@ -15,16 +15,12 @@
 
 package io.confluent.kafkarest.resources;
 
-import java.security.PrivilegedExceptionAction;
-
-import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -32,27 +28,22 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.UriInfo;
 
 import io.confluent.kafkarest.AvroConsumerState;
 import io.confluent.kafkarest.BinaryConsumerState;
-import io.confluent.kafkarest.ConsumerManager;
-import io.confluent.kafkarest.ConsumerReadCallback;
 import io.confluent.kafkarest.ConsumerState;
 import io.confluent.kafkarest.KafkaRestContext;
 import io.confluent.kafkarest.JsonConsumerState;
 import io.confluent.kafkarest.UriUtils;
 import io.confluent.kafkarest.Versions;
 import io.confluent.kafkarest.entities.ConsumerInstanceConfig;
-import io.confluent.kafkarest.entities.ConsumerRecord;
-import io.confluent.kafkarest.entities.ConsumerInstanceConfig;
 import io.confluent.kafkarest.entities.CreateConsumerInstanceResponse;
-import io.confluent.kafkarest.entities.TopicPartitionOffset;
 import io.confluent.kafkarest.extension.SchemaRegistryEnabled;
 import io.confluent.rest.annotations.PerformanceMetric;
-import io.confluent.rest.exceptions.RestException;
 
-import org.apache.hadoop.security.UserGroupInformation;
+import io.confluent.rest.impersonation.ImpersonationUtils;
 
 @Path("/consumers")
 // We include embedded formats here so you can always use these headers when interacting with
@@ -75,60 +66,62 @@ public class ConsumersResource {
   @Valid
   @Path("/{group}")
   @PerformanceMetric("consumer.create")
-  public CreateConsumerInstanceResponse createGroup(@javax.ws.rs.core.Context HttpServletRequest httpRequest,
-                                                    @javax.ws.rs.core.Context final UriInfo uriInfo, final @PathParam("group") String group,
-                                                    @Valid ConsumerInstanceConfig config) throws Exception {
+  public CreateConsumerInstanceResponse createGroup(@javax.ws.rs.core.Context final UriInfo uriInfo,
+                                                    final @PathParam("group") String group,
+                                                    final @Valid ConsumerInstanceConfig config,
+                                                    @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                                                    @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    return ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> createGroup(uriInfo, group, config), auth, cookie);
+  }
 
+  private CreateConsumerInstanceResponse createGroup(UriInfo uriInfo, String group,
+                                                     ConsumerInstanceConfig config) {
     if (config == null) {
       config = new ConsumerInstanceConfig();
     }
-    final ConsumerInstanceConfig consumerConfig = config;
 
-    return (CreateConsumerInstanceResponse) runProxyQuery(new PrivilegedExceptionAction() {
-        @Override
-        public CreateConsumerInstanceResponse run() throws Exception {
-            String instanceId = ctx.getConsumerManager().createConsumer(group, consumerConfig);
-            String instanceBaseUri = UriUtils.absoluteUriBuilder(ctx.getConfig(), uriInfo)
-                    .path("instances").path(instanceId).build().toString();
-            return new CreateConsumerInstanceResponse(instanceId, instanceBaseUri);
-                          }
-    }, httpRequest.getRemoteUser());
-
+    String instanceId = ctx.getConsumerManager().createConsumer(group, config);
+    String instanceBaseUri = UriUtils.absoluteUriBuilder(ctx.getConfig(), uriInfo)
+            .path("instances").path(instanceId).build().toString();
+    return new CreateConsumerInstanceResponse(instanceId, instanceBaseUri);
   }
 
   @POST
   @Path("/{group}/instances/{instance}/offsets")
   @PerformanceMetric("consumer.commit")
-  public void commitOffsets(@javax.ws.rs.core.Context HttpServletRequest httpRequest,
-                            final @Suspended AsyncResponse asyncResponse,
+  public void commitOffsets(final @Suspended AsyncResponse asyncResponse,
                             final @PathParam("group") String group,
-                            final @PathParam("instance") String instance) throws Exception {
-      runProxyQuery(new PrivilegedExceptionAction() {
-          @Override
-          public Object run() throws Exception {
-              ctx.getConsumerManager().commitOffsets(group, instance, new ConsumerManager.CommitCallback() {
-                  @Override
-                  public void onCompletion(List<TopicPartitionOffset> offsets, Exception e) {
-                      if (e != null) {
-                          asyncResponse.resume(e);
-                      } else {
-                          asyncResponse.resume(offsets);
-                      }
-                  }
-              });
-              return null;
-          }
-    }, httpRequest.getRemoteUser());
+                            final @PathParam("instance") String instance,
+                            @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                            @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      commitOffsets(asyncResponse, group, instance);
+      return null;
+    }, auth, cookie);
+  }
+
+  private void commitOffsets(AsyncResponse asyncResponse, String group, String instance) {
+    ctx.getConsumerManager().commitOffsets(group, instance, (offsets, e) -> {
+      if (e != null) {
+        asyncResponse.resume(e);
+      } else {
+        asyncResponse.resume(offsets);
+      }
+    });
   }
 
   @DELETE
   @Path("/{group}/instances/{instance}")
   @PerformanceMetric("consumer.delete")
-  public void deleteGroup(
-      final @PathParam("group") String group,
-      final @PathParam("instance") String instance
-  ) {
-    ctx.getConsumerManager().deleteConsumer(group, instance);
+  public void deleteGroup(final @PathParam("group") String group,
+                          final @PathParam("instance") String instance,
+                          @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                          @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      ctx.getConsumerManager().deleteConsumer(group, instance);
+      return null;
+    }, auth, cookie);
   }
 
   @GET
@@ -138,56 +131,52 @@ public class ConsumersResource {
              Versions.KAFKA_V1_JSON_WEIGHTED,
              Versions.KAFKA_DEFAULT_JSON_WEIGHTED,
              Versions.JSON_WEIGHTED})
-  public void readTopicBinary( @javax.ws.rs.core.Context final HttpServletRequest httpRequest,
-      final @Suspended AsyncResponse asyncResponse,
-      final @PathParam("group") String group,
-      final @PathParam("instance") String instance,
-      final @PathParam("topic") String topic,
-      @QueryParam("max_bytes") @DefaultValue("-1") final long maxBytes
-  ) throws Exception {
-      runProxyQuery(new PrivilegedExceptionAction() {
-          @Override
-          public Object run() throws Exception {
-              readTopic(asyncResponse, group, instance, topic, maxBytes, BinaryConsumerState.class,
-                      httpRequest.getRemoteUser());
-              return null;
-          }
-      }, httpRequest.getRemoteUser());  }
+  public void readTopicBinary(final @Suspended AsyncResponse asyncResponse,
+                              final @PathParam("group") String group,
+                              final @PathParam("instance") String instance,
+                              final @PathParam("topic") String topic,
+                              @QueryParam("max_bytes") @DefaultValue("-1") final long maxBytes,
+                              @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                              @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      readTopic(asyncResponse, group, instance, topic, maxBytes, BinaryConsumerState.class);
+      return null;
+    }, auth, cookie);
+  }
 
   @GET
   @Path("/{group}/instances/{instance}/topics/{topic}")
   @PerformanceMetric("consumer.topic.read-json")
   @Produces({Versions.KAFKA_V1_JSON_JSON_WEIGHTED_LOW})// Using low weight ensures binary is default
-  public void readTopicJson(
-      @javax.ws.rs.core.Context final HttpServletRequest httpRequest,
-      final @Suspended AsyncResponse asyncResponse,
-      final @PathParam("group") String group,
-      final @PathParam("instance") String instance,
-      final @PathParam("topic") String topic,
-      @QueryParam("max_bytes") @DefaultValue("-1") final long maxBytes
-  ) throws Exception  {
-      runProxyQuery(new PrivilegedExceptionAction() {
-          @Override
-          public Object run() throws Exception {
-              readTopic(asyncResponse, group, instance, topic, maxBytes, JsonConsumerState.class,
-                      httpRequest.getRemoteUser());
-              return null;
-          }
-      }, httpRequest.getRemoteUser());   }
+  public void readTopicJson(final @Suspended AsyncResponse asyncResponse,
+                            final @PathParam("group") String group,
+                            final @PathParam("instance") String instance,
+                            final @PathParam("topic") String topic,
+                            @QueryParam("max_bytes") @DefaultValue("-1") final long maxBytes,
+                            @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                            @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      readTopic(asyncResponse, group, instance, topic, maxBytes, JsonConsumerState.class);
+      return null;
+    }, auth, cookie);
+  }
 
   @GET
   @Path("/{group}/instances/{instance}/topics/{topic}")
   @SchemaRegistryEnabled
   @PerformanceMetric("consumer.topic.read-avro")
   @Produces({Versions.KAFKA_V1_JSON_AVRO_WEIGHTED_LOW})// Using low weight ensures binary is default
-  public void readTopicAvro(
-      final @Suspended AsyncResponse asyncResponse,
-      final @PathParam("group") String group,
-      final @PathParam("instance") String instance,
-      final @PathParam("topic") String topic,
-      @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes
-  ) {
-    readTopic(asyncResponse, group, instance, topic, maxBytes, AvroConsumerState.class, null);
+  public void readTopicAvro(final @Suspended AsyncResponse asyncResponse,
+                            final @PathParam("group") String group,
+                            final @PathParam("instance") String instance,
+                            final @PathParam("topic") String topic,
+                            @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes,
+                            @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                            @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      readTopic(asyncResponse, group, instance, topic, maxBytes, AvroConsumerState.class);
+      return null;
+    }, auth, cookie);
   }
 
   private <KafkaKeyT, KafkaValueT, ClientKeyT, ClientValueT> void readTopic(
@@ -197,36 +186,19 @@ public class ConsumersResource {
       final @PathParam("topic") String topic,
       @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes,
       Class<? extends ConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, ClientValueT>>
-          consumerStateType, String user
-  ) {
+          consumerStateType) {
     maxBytes = (maxBytes <= 0) ? Long.MAX_VALUE : maxBytes;
     String fqTopic = ctx.getMetadataObserver().toFullyQualifiedTopic(topic);
 
     ctx.getConsumerManager().readTopic(
         group, instance, fqTopic, consumerStateType, maxBytes,
-        new ConsumerReadCallback<ClientKeyT, ClientValueT>() {
-          @Override
-          public void onCompletion(
-              List<? extends ConsumerRecord<ClientKeyT, ClientValueT>> records,
-              RestException e
-          ) {
-            if (e != null) {
-              asyncResponse.resume(e);
-            } else {
-              asyncResponse.resume(records);
+            (records, e) -> {
+              if (e != null) {
+                asyncResponse.resume(e);
+              } else {
+                asyncResponse.resume(records);
+              }
             }
-          }
-        }
     );
   }
-
-    public Object runProxyQuery(PrivilegedExceptionAction action, String remoteUser) throws Exception {
-        if (ctx.getConfig().isImpersonationEnabled()){
-            UserGroupInformation ugi = UserGroupInformation.createProxyUser(remoteUser,
-                    UserGroupInformation.getCurrentUser());
-            return ugi.doAs(action);
-        } else {
-            return action.run();
-        }
-    }
 }
