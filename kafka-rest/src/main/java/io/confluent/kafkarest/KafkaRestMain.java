@@ -15,7 +15,6 @@
 
 package io.confluent.kafkarest;
 
-import io.confluent.rest.impersonation.ImpersonationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +50,6 @@ public class KafkaRestMain {
   public static void main(String[] args) throws IOException {
     try {
       KafkaRestConfig config = new KafkaRestConfig((args.length > 0 ? args[0] : null));
-      ImpersonationUtils.initialize(config);
       KafkaRestApplication app = new KafkaRestApplication(config);
       app.start();
       log.info("Server started, listening for requests...");
