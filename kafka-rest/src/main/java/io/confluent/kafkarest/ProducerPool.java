@@ -144,6 +144,13 @@ public class ProducerPool {
         "schema.registry.url",
         appConfig.getString(KafkaRestConfig.SCHEMA_REGISTRY_URL_CONFIG)
     );
+    // configure default stream
+    String defaultStream = appConfig.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
+    if (!"".equals(defaultStream)) {
+      avroDefaults.put(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG, defaultStream);
+    }
+    int streamBuffer = appConfig.getInt(KafkaRestConfig.STREAM_BUFFER_MAX_TIME_CONFIG);
+    avroDefaults.put(ProducerConfig.STREAMS_BUFFER_TIME_CONFIG, streamBuffer);
 
     Properties producerProps = (Properties) appConfig.getProducerProperties();
     return buildConfig(avroDefaults, producerProps, producerConfigOverrides);
