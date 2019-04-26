@@ -111,7 +111,7 @@ included with the REST Proxy includes convenient defaults for a local testing se
 and should be modified for a production deployment. By default the server starts bound to port
 8082, does not specify a unique instance ID (required to safely run multiple
 proxies concurrently), and expects |zk| to be available at
-``localhost:2181`` and |sr| at ``http://localhost:8081``.
+``localhost:5181`` and |sr| at ``http://localhost:8087``.
 
 If you started the service in the background, you can use the following
 command to stop it:

@@ -121,7 +121,7 @@ public class KafkaRestConfig extends RestConfig {
       "The base URL for the schema registry that should be used by the Avro serializer. " +
           "NOTE: this setting will be ignored if `schema.registry.enable` is set to false.";
   public static final String SCHEMA_REGISTRY_URL_CONFIG = "schema.registry.url";
-  private static final String SCHEMA_REGISTRY_URL_DEFAULT = "http://localhost:8081";
+  private static final String SCHEMA_REGISTRY_URL_DEFAULT = "http://localhost:8087";
 
   public static final String PROXY_FETCH_MIN_BYTES_CONFIG =
           "fetch.min.bytes";

@@ -35,7 +35,7 @@ General
   The base URL for |sr| that should be used by the Avro serializer.
 
   * Type: string
-  * Default: "http://localhost:8081"
+  * Default: "http://localhost:8087"
   * Importance: high
 
 ``zookeeper.connect``
@@ -44,7 +44,7 @@ General
   The server may also have a |zk| chroot path as part of it's |zk| connection string which puts its data under some path in the global |zk| namespace. If so the consumer should use the same chroot path in its connection string. For example to give a chroot path of /chroot/path you would give the connection string as hostname1:port1,hostname2:port2,hostname3:port3/chroot/path.
 
   * Type: string
-  * Default: "localhost:2181"
+  * Default: "localhost:5181"
   * Importance: high
 
 ``consumer.request.max.bytes``

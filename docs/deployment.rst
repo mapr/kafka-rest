@@ -131,14 +131,14 @@ because they depend on your cluster layout:
      hostname3:port3/chroot/path.
 
      * Type: string
-     * Default: "localhost:2181"
+     * Default: "localhost:5181"
      * Importance: high
 
    ``schema.registry.url``
      The base URL for |sr| that should be used by the Avro serializer.
 
      * Type: string
-     * Default: "http://localhost:8081"
+     * Default: "http://localhost:8087"
      * Importance: high
 
    ``id``
