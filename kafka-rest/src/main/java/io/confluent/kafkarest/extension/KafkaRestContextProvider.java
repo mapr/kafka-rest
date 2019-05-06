@@ -26,11 +26,9 @@ import io.confluent.kafkarest.DefaultKafkaRestContext;
 import io.confluent.kafkarest.KafkaRestConfig;
 import io.confluent.kafkarest.KafkaRestContext;
 import io.confluent.kafkarest.KafkaStreamsMetadataObserver;
-import io.confluent.kafkarest.MetadataObserver;
 import io.confluent.kafkarest.ProducerPool;
 import io.confluent.kafkarest.SimpleConsumerFactory;
 import io.confluent.kafkarest.SimpleConsumerManager;
-import io.confluent.kafkarest.UnsupportedMetaDataObserver;
 import io.confluent.kafkarest.v2.KafkaConsumerManager;
 import kafka.utils.ZkUtils;
 

@@ -86,7 +86,7 @@ public class PartitionsResource {
     checkTopicExists(topic);
     KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
     List<Partition> partitions = metadataObserver.getTopicPartitions(topic);
-    if (ctx.getConfig().isImpersonationEnabled()){
+    if (ctx.getConfig().isImpersonationEnabled()) {
       metadataObserver.shutdown();
     }
     return partitions;
@@ -176,12 +176,13 @@ public class PartitionsResource {
   @PerformanceMetric("partition.produce-binary")
   @Consumes({Versions.KAFKA_V1_JSON_BINARY, Versions.KAFKA_V1_JSON,
              Versions.KAFKA_DEFAULT_JSON, Versions.JSON, Versions.GENERIC_REQUEST})
-  public void produceBinary(final @Suspended AsyncResponse asyncResponse,
-                            final @PathParam("topic") String topic,
-                            final @PathParam("partition") int partition,
-                            @Valid @NotNull final PartitionProduceRequest<BinaryProduceRecord> request,
-                            @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-                            @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+  public void produceBinary(
+          final @Suspended AsyncResponse asyncResponse,
+          final @PathParam("topic") String topic,
+          final @PathParam("partition") int partition,
+          @Valid @NotNull final PartitionProduceRequest<BinaryProduceRecord> request,
+          @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+          @HeaderParam(HttpHeaders.COOKIE) String cookie) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
       produce(asyncResponse, topic, partition, EmbeddedFormat.BINARY, request);
       return null;
@@ -252,23 +253,23 @@ public class PartitionsResource {
     SimpleConsumerManager consumerManager = ctx.getSimpleConsumerManager();
     consumerManager.consume(
         topicName, partitionId, offset, count, embeddedFormat,
-            (records, e) -> {
-              log.trace(
-                  "Completed simple consume id={} records={} exception={}",
-                  asyncResponse,
-                  records,
-                  e
-              );
-                  if (e != null) {
-                    asyncResponse.resume(e);
-                  } else {
-                    asyncResponse.resume(records);
-                  }
-                }
+        (records, e) -> {
+          log.trace(
+              "Completed simple consume id={} records={} exception={}",
+              asyncResponse,
+              records,
+              e
+          );
+          if (e != null) {
+            asyncResponse.resume(e);
+          } else {
+            asyncResponse.resume(records);
+          }
+        }
     );
 
-    if(ctx.getConfig().isImpersonationEnabled()) {
-        consumerManager.shutdown();
+    if (ctx.getConfig().isImpersonationEnabled()) {
+      consumerManager.shutdown();
     }
   }
 
@@ -289,29 +290,27 @@ public class PartitionsResource {
           topic, partition, format,
           request,
           request.getRecords(),
-              (keySchemaId, valueSchemaId, results) -> {
-                ProduceResponse response = new ProduceResponse();
-                List<PartitionOffset> offsets = new Vector<PartitionOffset>();
-                for (RecordMetadataOrException result : results) {
-                  if (result.getException() != null) {
-                    int errorCode = Errors.codeFromProducerException(result.getException());
-                    String errorMessage = result.getException().getMessage();
-                    offsets.add(new PartitionOffset(null, null, errorCode, errorMessage));
-                  } else {
-                    offsets.add(new PartitionOffset(result.getRecordMetadata().partition(),
+          (keySchemaId, valueSchemaId, results) -> {
+            ProduceResponse response = new ProduceResponse();
+            List<PartitionOffset> offsets = new Vector<PartitionOffset>();
+            for (RecordMetadataOrException result : results) {
+              if (result.getException() != null) {
+                int errorCode = Errors.codeFromProducerException(result.getException());
+                String errorMessage = result.getException().getMessage();
+                offsets.add(new PartitionOffset(null, null, errorCode, errorMessage));
+              } else {
+                offsets.add(new PartitionOffset(result.getRecordMetadata().partition(),
                         result.getRecordMetadata().offset(),
-                        null, null
-                    ));
-                  }
-                }
-                response.setOffsets(offsets);
-                response.setKeySchemaId(keySchemaId);
-                response.setValueSchemaId(valueSchemaId);
-                log.trace("Completed topic produce request id={} response={}",
-                    asyncResponse, response
-                );
-                asyncResponse.resume(response);
-              });
+                        null, null));
+              }
+            }
+            response.setOffsets(offsets);
+            response.setKeySchemaId(keySchemaId);
+            response.setValueSchemaId(valueSchemaId);
+            log.trace("Completed topic produce request id={} response={}",
+                    asyncResponse, response);
+            asyncResponse.resume(response);
+          });
     } catch (KafkaException e) {
       if (StringUtil.startsWithIgnoreCase(e.getMessage(), "Invalid partition")) {
         Errors.partitionNotFoundException();

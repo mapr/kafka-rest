@@ -376,8 +376,8 @@ public class ConsumerManager {
   }
 
   public interface ConsumerFactory {
-
-    <K, V> Consumer<K, V> createConsumer(Properties props, Deserializer<K> keyDeserializer, Deserializer<V> valueDeserializer);
+    <K, V> Consumer<K, V> createConsumer(Properties props, Deserializer<K> keyDeserializer,
+                                         Deserializer<V> valueDeserializer);
   }
 
   class RunnableReadTask implements Runnable, Delayed {

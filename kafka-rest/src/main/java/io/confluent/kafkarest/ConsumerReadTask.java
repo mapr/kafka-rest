@@ -120,7 +120,8 @@ class ConsumerReadTask<KafkaKeyT, KafkaValueT, ClientKeyT, ClientValueT>
   }
 
   private boolean processConsumerRecord(org.apache.kafka.clients.consumer.ConsumerRecord record) {
-    ConsumerRecordAndSize<ClientKeyT, ClientValueT> recordAndSize = parent.convertConsumerRecord(record);
+    ConsumerRecordAndSize<ClientKeyT, ClientValueT> recordAndSize =
+            parent.convertConsumerRecord(record);
     long roughMsgSize = recordAndSize.getSize();
     if (bytesConsumed + roughMsgSize > maxResponseBytes) {
       return false;
@@ -141,9 +142,11 @@ class ConsumerReadTask<KafkaKeyT, KafkaValueT, ClientKeyT, ClientValueT>
       boolean backoff = false;
 
       final long startedIteration = parent.getConfig().getTime().milliseconds();
-      final int requestTimeoutMs = parent.getConfig().getInt(KafkaRestConfig.CONSUMER_REQUEST_TIMEOUT_MS_CONFIG);
+      final int requestTimeoutMs =
+              parent.getConfig().getInt(KafkaRestConfig.CONSUMER_REQUEST_TIMEOUT_MS_CONFIG);
       final long endTime = startedIteration + requestTimeoutMs;
-      final int itBackoff = parent.getConfig().getInt(KafkaRestConfig.CONSUMER_ITERATOR_BACKOFF_MS_CONFIG);
+      final int itBackoff =
+              parent.getConfig().getInt(KafkaRestConfig.CONSUMER_ITERATOR_BACKOFF_MS_CONFIG);
 
       // Initial setup requires locking, which must be done on this thread.
       if (consumer == null) {
@@ -157,8 +160,6 @@ class ConsumerReadTask<KafkaKeyT, KafkaValueT, ClientKeyT, ClientValueT>
         while (it.hasNext()) {
           if (processConsumerRecord(it.next())) {
             it.remove();
-          } else {
-
           }
         }
         waitExpiration = 0;

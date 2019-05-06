@@ -19,7 +19,11 @@ import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Queue;
 
 /**
  * The SizeLimitedSimpleConsumerPool keeps a pool of SimpleConsumers
@@ -43,7 +47,8 @@ public class SimpleConsumerPool {
   private final KafkaStreamsMetadataObserver metadataObserver;
 
   public SimpleConsumerPool(int maxPoolSize, int poolInstanceAvailabilityTimeoutMs,
-                            Time time, SimpleConsumerFactory simpleConsumerFactory, KafkaStreamsMetadataObserver metadataObserver) {
+                            Time time, SimpleConsumerFactory simpleConsumerFactory,
+                            KafkaStreamsMetadataObserver metadataObserver) {
     this.maxPoolSize = maxPoolSize;
     this.poolInstanceAvailabilityTimeoutMs = poolInstanceAvailabilityTimeoutMs;
     this.time = time;
@@ -54,6 +59,8 @@ public class SimpleConsumerPool {
     availableStreamsConsumers = new LinkedList<String>();
   }
 
+  // CHECKSTYLE_RULES.OFF: CyclomaticComplexity
+  // CHECKSTYLE_RULES.OFF: NPathComplexity
   /**
    * @return assigned Consumer that is ready to be used for polling records
    */
@@ -81,7 +88,7 @@ public class SimpleConsumerPool {
       if (consumerId != null) {
         TPConsumerState consumerState = simpleConsumers.get(consumerId);
         consumerState.consumer().assign(Collections
-          .singletonList(new TopicPartition(topic, partition)));
+            .singletonList(new TopicPartition(topic, partition)));
 
         return consumerState;
       }
@@ -93,7 +100,8 @@ public class SimpleConsumerPool {
 
       // If no consumer is available and we reached the limit
       try {
-        // The behavior of wait when poolInstanceAvailabilityTimeoutMs=0 is consistent as it won't timeout
+        // The behavior of wait when poolInstanceAvailabilityTimeoutMs=0
+        // is consistent as it won't timeout
         wait(poolInstanceAvailabilityTimeoutMs);
       } catch (InterruptedException e) {
         log.warn("A thread requesting a SimpleConsumer has been interrupted while waiting", e);
@@ -110,13 +118,15 @@ public class SimpleConsumerPool {
           // create new one for requested backend.
           if (requestToStreams) {
             if (availableKafkaConsumers.size() > 0) {
-              TPConsumerState removedConsumer = simpleConsumers.remove(availableKafkaConsumers.remove());
+              TPConsumerState removedConsumer
+                      = simpleConsumers.remove(availableKafkaConsumers.remove());
               removedConsumer.consumer().close();
               removed = true;
             }
           } else {
             if (availableStreamsConsumers.size() > 0) {
-              TPConsumerState removedConsumer = simpleConsumers.remove(availableStreamsConsumers.remove());
+              TPConsumerState removedConsumer
+                      = simpleConsumers.remove(availableStreamsConsumers.remove());
               removedConsumer.consumer().close();
               removed = true;
             }
@@ -134,8 +144,10 @@ public class SimpleConsumerPool {
     }
   }
 
-  private synchronized TPConsumerState createAndAssign(String topic, int partition, boolean isStreamsConsumer) {
-    final SimpleConsumerFactory.ConsumerProvider simpleConsumer = simpleConsumerFactory.createConsumer();
+  private synchronized TPConsumerState createAndAssign(String topic, int partition,
+                                                       boolean isStreamsConsumer) {
+    final SimpleConsumerFactory.ConsumerProvider simpleConsumer
+            = simpleConsumerFactory.createConsumer();
 
     // assign consumer to TopicPartition
     // depending on topic string and default streams presence
@@ -143,16 +155,17 @@ public class SimpleConsumerPool {
     // The variable isStreamsConsumer must be set to the correct
     // value that corresponds to topic
     simpleConsumer.consumer().assign(Collections
-      .singletonList(new TopicPartition(topic, partition)));
+        .singletonList(new TopicPartition(topic, partition)));
 
     TPConsumerState consumerState =
-      new TPConsumerState(simpleConsumer.consumer(), isStreamsConsumer, this, simpleConsumer.clientId());
+        new TPConsumerState(simpleConsumer.consumer(),
+              isStreamsConsumer, this, simpleConsumer.clientId());
     simpleConsumers.put(simpleConsumer.clientId(), consumerState);
     return consumerState;
   }
 
 
-  synchronized public void release(TPConsumerState tpConsumerState) {
+  public synchronized void release(TPConsumerState tpConsumerState) {
     log.debug("Releasing into the pool SimpleConsumer with id " + tpConsumerState.clientId());
     if (tpConsumerState.isStreams()) {
       availableStreamsConsumers.add(tpConsumerState.clientId());

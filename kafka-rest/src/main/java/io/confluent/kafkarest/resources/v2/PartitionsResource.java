@@ -103,12 +103,13 @@ public class PartitionsResource {
   @Path("/{partition}")
   @PerformanceMetric("partition.produce-binary+v2")
   @Consumes({Versions.KAFKA_V2_JSON_BINARY})
-  public void produceBinary(final @Suspended AsyncResponse asyncResponse,
-                            final @PathParam("topic") String topic,
-                            final @PathParam("partition") int partition,
-                            final @Valid @NotNull PartitionProduceRequest<BinaryProduceRecord> request,
-                            @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-                            @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+  public void produceBinary(
+          final @Suspended AsyncResponse asyncResponse,
+          final @PathParam("topic") String topic,
+          final @PathParam("partition") int partition,
+          final @Valid @NotNull PartitionProduceRequest<BinaryProduceRecord> request,
+          @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+          @HeaderParam(HttpHeaders.COOKIE) String cookie) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
       produce(asyncResponse, topic, partition, EmbeddedFormat.BINARY, request);
       return null;
@@ -186,32 +187,32 @@ public class PartitionsResource {
         topic, partition, format,
         request,
         request.getRecords(),
-            (keySchemaId, valueSchemaId, results) -> {
-              ProduceResponse response = new ProduceResponse();
-              List<PartitionOffset> offsets = new Vector<PartitionOffset>();
-              for (RecordMetadataOrException result : results) {
-                if (result.getException() != null) {
-                  int errorCode = Errors.codeFromProducerException(result.getException());
-                  String errorMessage = result.getException().getMessage();
-                  offsets.add(new PartitionOffset(null, null, errorCode, errorMessage));
-                } else {
-                  offsets.add(new PartitionOffset(
+        (keySchemaId, valueSchemaId, results) -> {
+          ProduceResponse response = new ProduceResponse();
+          List<PartitionOffset> offsets = new Vector<PartitionOffset>();
+          for (RecordMetadataOrException result : results) {
+            if (result.getException() != null) {
+              int errorCode = Errors.codeFromProducerException(result.getException());
+              String errorMessage = result.getException().getMessage();
+              offsets.add(new PartitionOffset(null, null, errorCode, errorMessage));
+            } else {
+              offsets.add(new PartitionOffset(
                       result.getRecordMetadata().partition(),
                       result.getRecordMetadata().offset(),
                       null,
                       null
                   ));
-                }
-              }
-              response.setOffsets(offsets);
-              response.setKeySchemaId(keySchemaId);
-              response.setValueSchemaId(valueSchemaId);
-              log.trace(
-                  "Completed topic produce request id={} response={}",
-                  asyncResponse, response
-              );
-              asyncResponse.resume(response);
-            });
+            }
+          }
+          response.setOffsets(offsets);
+          response.setKeySchemaId(keySchemaId);
+          response.setValueSchemaId(valueSchemaId);
+          log.trace(
+              "Completed topic produce request id={} response={}",
+              asyncResponse, response
+          );
+          asyncResponse.resume(response);
+        });
   }
 
   private boolean topicExists(final String topic) {

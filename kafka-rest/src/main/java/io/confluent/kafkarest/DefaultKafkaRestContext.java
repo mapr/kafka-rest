@@ -83,12 +83,12 @@ public class DefaultKafkaRestContext implements KafkaRestContext {
 
   @Override
   public SimpleConsumerManager getSimpleConsumerManager() {
-      if (config.isImpersonationEnabled()) {
-          return new SimpleConsumerManager(config, getMetadataObserver(),
-                  new SimpleConsumerFactory(config));
-      } else {
-          return simpleConsumerManager;
-      }
+    if (config.isImpersonationEnabled()) {
+      return new SimpleConsumerManager(config, getMetadataObserver(),
+              new SimpleConsumerFactory(config));
+    } else {
+      return simpleConsumerManager;
+    }
   }
 
   @Override

@@ -43,6 +43,7 @@ import io.confluent.kafkarest.entities.SchemaHolder;
 
 import javax.ws.rs.core.Response;
 
+// CHECKSTYLE_RULES.OFF: ClassDataAbstractionCoupling
 /**
  * Shared pool of Kafka producers used to send messages. The pool manages batched sends, tracking
  * all required acks for a batch and managing timeouts. Currently this pool only contains one
@@ -75,19 +76,19 @@ public class ProducerPool {
       String bootstrapBrokers,
       Properties producerConfigOverrides
   ) {
-      this.defaultStreamSet = appConfig.isDefaultStreamSet();
-      this.isImpersonationEnabled = appConfig.isImpersonationEnabled();
+    this.defaultStreamSet = appConfig.isDefaultStreamSet();
+    this.isImpersonationEnabled = appConfig.isImpersonationEnabled();
 
-      standardProps = buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
-      avroProps = buildAvroConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
+    standardProps = buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
+    avroProps = buildAvroConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
 
-      if(!isImpersonationEnabled){
-          producers.put(EmbeddedFormat.BINARY, buildBinaryProducer(standardProps));
-          producers.put(EmbeddedFormat.JSON, buildJsonProducer(standardProps));
-          producers.put(EmbeddedFormat.AVRO, buildAvroProducer(avroProps));
-      } else {
-          producerCache = new SimpleProducerCache(appConfig);
-      }
+    if (!isImpersonationEnabled) {
+      producers.put(EmbeddedFormat.BINARY, buildBinaryProducer(standardProps));
+      producers.put(EmbeddedFormat.JSON, buildJsonProducer(standardProps));
+      producers.put(EmbeddedFormat.AVRO, buildAvroProducer(avroProps));
+    } else {
+      producerCache = new SimpleProducerCache(appConfig);
+    }
   }
 
   private Map<String, Object> buildStandardConfig(
@@ -102,7 +103,7 @@ public class ProducerPool {
     // configure default stream
     String defaultStream = appConfig.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
     if (!"".equals(defaultStream)) {
-        props.put(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG, defaultStream);
+      props.put(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG, defaultStream);
     }
     int streamBuffer = appConfig.getInt(KafkaRestConfig.STREAM_BUFFER_MAX_TIME_CONFIG);
     props.put(ProducerConfig.STREAMS_BUFFER_TIME_CONFIG, streamBuffer);
@@ -207,13 +208,16 @@ public class ProducerPool {
       if (isImpersonationEnabled) {
         switch (recordFormat) {
           case AVRO:
-            restProducer = producerCache.getAvroProducer(UserGroupInformation.getCurrentUser().getUserName());
+            restProducer = producerCache
+                    .getAvroProducer(UserGroupInformation.getCurrentUser().getUserName());
             break;
           case BINARY:
-            restProducer = producerCache.getBinaryProducer(UserGroupInformation.getCurrentUser().getUserName());
+            restProducer = producerCache
+                    .getBinaryProducer(UserGroupInformation.getCurrentUser().getUserName());
             break;
           case JSON:
-            restProducer = producerCache.getJsonProducer(UserGroupInformation.getCurrentUser().getUserName());
+            restProducer = producerCache
+                    .getJsonProducer(UserGroupInformation.getCurrentUser().getUserName());
             break;
           default:
             throw new RestServerErrorException(
@@ -227,8 +231,8 @@ public class ProducerPool {
 
       try {
         restProducer.produce(task, topic, partition, records);
-      } catch (RestServerErrorException e){
-        log.warn("Producer error "+ e);
+      } catch (RestServerErrorException e) {
+        log.warn("Producer error " + e);
         throw Errors.topicPermissionException();
       }
     } catch (IOException e) {
@@ -240,8 +244,8 @@ public class ProducerPool {
     for (RestProducer restProducer : producers.values()) {
       restProducer.close();
     }
-    if (producerCache != null){
-        producerCache.shutdown();
+    if (producerCache != null) {
+      producerCache.shutdown();
     }
   }
 
@@ -361,7 +365,7 @@ public class ProducerPool {
       }
     }
 
-    void shutdown(){
+    void shutdown() {
       for (RestProducer binaryRestProducer : binaryHighLevelCache.values()) {
         binaryRestProducer.close();
       }

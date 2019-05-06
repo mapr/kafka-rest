@@ -1,3 +1,18 @@
+/*
+ * Copyright 2018 Confluent Inc.
+ *
+ * Licensed under the Confluent Community License (the "License"); you may not use
+ * this file except in compliance with the License.  You may obtain a copy of the
+ * License at
+ *
+ * http://www.confluent.io/confluent-community-license
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OF ANY KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
+
 package io.confluent.kafkarest;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -21,7 +36,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * is used to fetch metadata about topics for
  * both MapR Streams and Kafka.
  *
- * Note: for Kafka some APIs are unavailable
+ * <p>Note: for Kafka some APIs are unavailable
  * and en exception is thrown.
  */
 class StreamsMetadataConsumer implements AutoCloseable {
@@ -34,22 +49,24 @@ class StreamsMetadataConsumer implements AutoCloseable {
     Properties properties = new Properties();
     if (bootstrapServers != null) {
       properties.setProperty(
-        ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+           ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
     }
     boolean defaultStreamProvided = false;
     if (!"".equals(defaultStream)) {
       properties.setProperty(
-        ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, defaultStream);
+           ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, defaultStream);
       defaultStreamProvided = true;
     }
-    metadataConsumer = new KafkaConsumer<>(properties, new ByteArrayDeserializer(), new ByteArrayDeserializer());
+    metadataConsumer =
+          new KafkaConsumer<>(properties, new ByteArrayDeserializer(), new ByteArrayDeserializer());
 
     if (!defaultStreamProvided) {
       // We need to have initialized KafkaConsumer driver right after
       // creation if default stream was not specified.
       // This forces consumer initialization in Streams mode.
       try {
-        Method method = metadataConsumer.getClass().getDeclaredMethod("initializeConsumer", String.class);
+        Method method = metadataConsumer.getClass()
+                .getDeclaredMethod("initializeConsumer", String.class);
         method.setAccessible(true);
         method.invoke(metadataConsumer, "/:");
       } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
@@ -74,8 +91,8 @@ class StreamsMetadataConsumer implements AutoCloseable {
   }
 
   /**
-   * @return all kafka topics in case of Kafka backend or
-   * topics in default stream in case of MapR Streams backend.
+   * @return all kafka topics in case of Kafka backend
+   *         or topics in default stream in case of MapR Streams backend.
    */
   Map<String, List<PartitionInfo>> listTopics() {
     consumerLock.lock();

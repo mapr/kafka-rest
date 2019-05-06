@@ -66,11 +66,12 @@ public class ConsumersResource {
   @Valid
   @Path("/{group}")
   @PerformanceMetric("consumer.create")
-  public CreateConsumerInstanceResponse createGroup(@javax.ws.rs.core.Context final UriInfo uriInfo,
-                                                    final @PathParam("group") String group,
-                                                    final @Valid ConsumerInstanceConfig config,
-                                                    @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-                                                    @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+  public CreateConsumerInstanceResponse createGroup(
+          @javax.ws.rs.core.Context final UriInfo uriInfo,
+          final @PathParam("group") String group,
+          final @Valid ConsumerInstanceConfig config,
+          @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+          @HeaderParam(HttpHeaders.COOKIE) String cookie) {
     return ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> createGroup(uriInfo, group, config), auth, cookie);
   }
@@ -192,13 +193,13 @@ public class ConsumersResource {
 
     ctx.getConsumerManager().readTopic(
         group, instance, fqTopic, consumerStateType, maxBytes,
-            (records, e) -> {
-              if (e != null) {
-                asyncResponse.resume(e);
-              } else {
-                asyncResponse.resume(records);
-              }
-            }
+        (records, e) -> {
+          if (e != null) {
+            asyncResponse.resume(e);
+          } else {
+            asyncResponse.resume(records);
+          }
+        }
     );
   }
 }

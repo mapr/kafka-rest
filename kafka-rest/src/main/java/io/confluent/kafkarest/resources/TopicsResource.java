@@ -74,7 +74,7 @@ public class TopicsResource {
   public Collection<String> list(@HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
                                  @HeaderParam(HttpHeaders.COOKIE) String cookie) {
     return ImpersonationUtils.runAsUserIfImpersonationEnabled(
-            () -> ctx.getMetadataObserver().getTopicNames(), auth, cookie);
+        () -> ctx.getMetadataObserver().getTopicNames(), auth, cookie);
   }
 
   @GET
@@ -84,15 +84,15 @@ public class TopicsResource {
                         @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
                         @HeaderParam(HttpHeaders.COOKIE) String cookie) {
     return ImpersonationUtils.runAsUserIfImpersonationEnabled(
-            () -> getTopic(topicName), auth, cookie);
+        () -> getTopic(topicName), auth, cookie);
   }
 
   private Topic getTopic(final String topicName) {
-      Topic topic = ctx.getMetadataObserver().getTopic(topicName);
-      if (topic == null) {
-          throw Errors.topicNotFoundException();
-      }
-      return topic;
+    Topic topic = ctx.getMetadataObserver().getTopic(topicName);
+    if (topic == null) {
+      throw Errors.topicNotFoundException();
+    }
+    return topic;
   }
 
   @POST
@@ -167,34 +167,34 @@ public class TopicsResource {
     log.trace("Executing topic produce request id={} topic={} format={} request={}",
               asyncResponse, topicName, format, request
     );
-      ProducerPool producerPool = ctx.getProducerPool();
-      producerPool.produce(
+    ProducerPool producerPool = ctx.getProducerPool();
+    producerPool.produce(
         topicName, null, format,
         request,
         request.getRecords(),
-              (keySchemaId, valueSchemaId, results) -> {
-                ProduceResponse response = new ProduceResponse();
-                List<PartitionOffset> offsets = new Vector<PartitionOffset>();
-                for (RecordMetadataOrException result : results) {
-                  if (result.getException() != null) {
-                    int errorCode = Errors.codeFromProducerException(result.getException());
-                    String errorMessage = result.getException().getMessage();
-                    offsets.add(new PartitionOffset(null, null, errorCode, errorMessage));
-                  } else {
-                    offsets.add(new PartitionOffset(result.getRecordMetadata().partition(),
-                                                    result.getRecordMetadata().offset(),
-                                                    null, null
-                    ));
-                  }
-                }
-                response.setOffsets(offsets);
-                response.setKeySchemaId(keySchemaId);
-                response.setValueSchemaId(valueSchemaId);
-                log.trace("Completed topic produce request id={} response={}",
-                          asyncResponse, response
-                );
-                asyncResponse.resume(response);
-              }
-      );
+        (keySchemaId, valueSchemaId, results) -> {
+          ProduceResponse response = new ProduceResponse();
+          List<PartitionOffset> offsets = new Vector<PartitionOffset>();
+          for (RecordMetadataOrException result : results) {
+            if (result.getException() != null) {
+              int errorCode = Errors.codeFromProducerException(result.getException());
+              String errorMessage = result.getException().getMessage();
+              offsets.add(new PartitionOffset(null, null, errorCode, errorMessage));
+            } else {
+              offsets.add(new PartitionOffset(result.getRecordMetadata().partition(),
+                      result.getRecordMetadata().offset(),
+                      null, null
+              ));
+            }
+          }
+          response.setOffsets(offsets);
+          response.setKeySchemaId(keySchemaId);
+          response.setValueSchemaId(valueSchemaId);
+          log.trace("Completed topic produce request id={} response={}",
+                  asyncResponse, response
+          );
+          asyncResponse.resume(response);
+        }
+    );
   }
 }

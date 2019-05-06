@@ -118,8 +118,8 @@ public class KafkaRestConfig extends RestConfig {
   private static final String SCHEMA_REGISTRY_ENABLE_DEFAULT = "false";
 
   private static final String SCHEMA_REGISTRY_URL_DOC =
-      "The base URL for the schema registry that should be used by the Avro serializer. " +
-          "NOTE: this setting will be ignored if `schema.registry.enable` is set to false.";
+      "The base URL for the schema registry that should be used by the Avro serializer. "
+      + "NOTE: this setting will be ignored if `schema.registry.enable` is set to false.";
   public static final String SCHEMA_REGISTRY_URL_CONFIG = "schema.registry.url";
   private static final String SCHEMA_REGISTRY_URL_DEFAULT = "http://localhost:8087";
 
@@ -192,32 +192,31 @@ public class KafkaRestConfig extends RestConfig {
   public static final String SIMPLE_CONSUMER_POOL_TIMEOUT_MS_DEFAULT = "1000";
 
   public static final String SIMPLE_CONSUMER_MAX_POLL_TIME_CONFIG = "simpleconsumer.max.poll.time";
-  private static final String
-    SIMPLE_CONSUMER_MAX_POLL_TIME_DOC =
-    "Maximum amount of time to poll for records by a consumer.";
+  private static final String SIMPLE_CONSUMER_MAX_POLL_TIME_DOC =
+      "Maximum amount of time to poll for records by a consumer.";
   public static final int SIMPLE_CONSUMER_MAX_POLL_TIME_DEFAULT = 1000;
 
-  public static final String SIMPLE_CONSUMER_MAX_CACHES_NUM_CONFIG = "simpleconsumer.max.caches.num";
-  private static final String
-    SIMPLE_CONSUMER_MAX_CACHES_NUM_DOC =
-    "Maximum number topic-partition combinations for which records are cached."
-     + " If 0, then caching is disabled and extra records are thrown away."
-     + " Cache improves performance if end user fetches records sequentially"
-     + " increasing offsets.";
+  public static final String SIMPLE_CONSUMER_MAX_CACHES_NUM_CONFIG =
+      "simpleconsumer.max.caches.num";
+  private static final String SIMPLE_CONSUMER_MAX_CACHES_NUM_DOC =
+      "Maximum number topic-partition combinations for which records are cached."
+      + " If 0, then caching is disabled and extra records are thrown away."
+      + " Cache improves performance if end user fetches records sequentially"
+      + " increasing offsets.";
   public static final int SIMPLE_CONSUMER_MAX_CACHES_NUM_DEFAULT = 0;
 
-  public static final String SIMPLE_CONSUMER_CACHE_MAX_RECORDS_CONFIG = "simpleconsumer.cache.max.records";
-  private static final String
-    SIMPLE_CONSUMER_CACHE_MAX_RECORDS_DOC =
-    "Maximum number of records that can be stored for a specific topic-partition combination."
-     + " Records with higher offsets replace records with lower ones"
-     + " Must be greater that 0.";
+  public static final String SIMPLE_CONSUMER_CACHE_MAX_RECORDS_CONFIG =
+      "simpleconsumer.cache.max.records";
+  private static final String SIMPLE_CONSUMER_CACHE_MAX_RECORDS_DOC =
+      "Maximum number of records that can be stored for a specific topic-partition combination."
+      + " Records with higher offsets replace records with lower ones"
+      + " Must be greater that 0.";
   public static final int SIMPLE_CONSUMER_CACHE_MAX_RECORDS_DEFAULT = 1000;
 
-
   public static final String STREAM_BUFFER_MAX_TIME_CONFIG = "producer.streams.buffer.max.time.ms";
-  private static final String STREAM_BUFFER_MAX_TIME_DOC = "Messages are buffered in the producer for at most the "
-    + "specified time. A thread will flush all the messages that have been buffered for more than the time specified";
+  private static final String STREAM_BUFFER_MAX_TIME_DOC = "Messages are buffered in the producer"
+      + " for at most the specified time. A thread will flush "
+      + "all the messages that have been buffered for more than the time specified";
 
   public static final String STREAM_BUFFER_MAX_TIME_DEFAULT = "1";
 
@@ -368,8 +367,10 @@ public class KafkaRestConfig extends RestConfig {
   public static final int PRODUCERS_MAX_CACHES_NUM_DEFAULT = 20;
 
   public static final String STREAMS_DEFAULT_STREAM_CONFIG = "streams.default.stream";
-  private static final String STREAMS_DEFAULT_STREAM_DOC = "The default stream the consumer should poll messages from and"
-           + "the producer should send messages to, if the topic name does not specify the stream path and the property has "
+  private static final String STREAMS_DEFAULT_STREAM_DOC = "The default stream the consumer "
+           + "should poll messages from and"
+           + "the producer should send messages to, if the topic name does "
+           + "not specify the stream path and the property has "
            + "a valid value, then this topic name is looked in the default stream.";
   private static final String STREAMS_DEFAULT_STREAM_DEFAULT = "";
 
@@ -759,8 +760,8 @@ public class KafkaRestConfig extends RestConfig {
     return time;
   }
 
-  public boolean isImpersonationEnabled(){
-      return isImpersonationEnabled;
+  public boolean isImpersonationEnabled() {
+    return isImpersonationEnabled;
   }
 
   public boolean isDefaultStreamSet() {
@@ -831,8 +832,9 @@ public class KafkaRestConfig extends RestConfig {
 
   public String bootstrapBrokers() {
     int zkSessionTimeoutMs = getInt(KAFKACLIENT_ZK_SESSION_TIMEOUT_MS_CONFIG);
-    if (true)
-        return "";
+    if (true) {
+      return "";
+    }
     String bootstrapServersConfig = getString(BOOTSTRAP_SERVERS_CONFIG);
     if (StringUtil.isNotBlank(bootstrapServersConfig)) {
       return bootstrapServersConfig;

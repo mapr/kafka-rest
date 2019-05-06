@@ -15,20 +15,18 @@
 
 package io.confluent.kafkarest;
 
-import io.confluent.kafkarest.entities.*;
-import org.apache.kafka.common.record.TimestampType;
-import org.apache.kafka.common.security.auth.SecurityProtocol;
+import io.confluent.kafkarest.entities.AvroConsumerRecord;
+import io.confluent.kafkarest.entities.BinaryConsumerRecord;
+import io.confluent.kafkarest.entities.ConsumerRecord;
+import io.confluent.kafkarest.entities.EmbeddedFormat;
+import io.confluent.kafkarest.entities.JsonConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.ws.rs.core.Response;
 
@@ -70,66 +68,69 @@ public class SimpleConsumerManager {
     this.simpleConsumerFactory = simpleConsumerFactory;
 
     maxPoolSize = config.getInt(KafkaRestConfig.SIMPLE_CONSUMER_MAX_POOL_SIZE_CONFIG);
-    poolInstanceAvailabilityTimeoutMs = config.getInt(KafkaRestConfig.SIMPLE_CONSUMER_POOL_TIMEOUT_MS_CONFIG);
+    poolInstanceAvailabilityTimeoutMs =
+            config.getInt(KafkaRestConfig.SIMPLE_CONSUMER_POOL_TIMEOUT_MS_CONFIG);
     time = config.getTime();
 
     simpleConsumersPool =
-      new SimpleConsumerPool(maxPoolSize, poolInstanceAvailabilityTimeoutMs, time, simpleConsumerFactory, mdObserver);
+      new SimpleConsumerPool(maxPoolSize, poolInstanceAvailabilityTimeoutMs,
+              time, simpleConsumerFactory, mdObserver);
     cache =
       new SimpleConsumerRecordsCache(config);
 
     // Load decoders
     Properties props = new Properties();
-    props.setProperty("schema.registry.url", config.getString(KafkaRestConfig.SCHEMA_REGISTRY_URL_CONFIG));
+    props.setProperty("schema.registry.url",
+            config.getString(KafkaRestConfig.SCHEMA_REGISTRY_URL_CONFIG));
     avroDeserializer = new KafkaAvroDeserializer();
     avroDeserializer.configure((Map)props, true);
     objectMapper = new ObjectMapper();
 
   }
 
+  public void consume(final String topicName,
+                      final int partitionId,
+                      long offset,
+                      long count,
+                      final EmbeddedFormat embeddedFormat,
+                      final ConsumerManager.ReadCallback callback) {
 
+    List<ConsumerRecord> records = new ArrayList<>();
+    RestException exception = null;
 
-    public void consume(final String topicName,
-                        final int partitionId,
-                        long offset,
-                        long count,
-                        final EmbeddedFormat embeddedFormat,
-                        final ConsumerManager.ReadCallback callback) {
+    if (!mdObserver.topicExists(topicName)) {
+      exception = Errors.topicNotFoundException();
+    } else {
+      if (!mdObserver.partitionExists(topicName, partitionId)) {
+        exception = Errors.partitionNotFoundException();
+      } else {
+        try (TPConsumerState consumer = simpleConsumersPool.get(topicName, partitionId)) {
+          List<org.apache.kafka.clients.consumer.ConsumerRecord<byte[], byte[]>> fetched =
+              cache.pollRecords(consumer.consumer(), topicName, partitionId, offset, count);
 
-        List<ConsumerRecord> records = new ArrayList<>();
-        RestException exception = null;
+          for (org.apache.kafka.clients.consumer.ConsumerRecord record: fetched) {
+            records.add(createConsumerRecord(record, record.topic(),
+                    record.partition(), embeddedFormat));
+          }
 
-        if (!mdObserver.topicExists(topicName)) {
-            exception = Errors.topicNotFoundException();
-        } else
-        if (!mdObserver.partitionExists(topicName, partitionId)) {
-            exception = Errors.partitionNotFoundException();
-        } else {
-            try (TPConsumerState consumer = simpleConsumersPool.get(topicName, partitionId)) {
-                List<org.apache.kafka.clients.consumer.ConsumerRecord<byte[], byte[]>> fetched =
-                        cache.pollRecords(consumer.consumer(), topicName, partitionId, offset, count);
-
-                for (org.apache.kafka.clients.consumer.ConsumerRecord record: fetched) {
-                    records.add(createConsumerRecord(record, record.topic(), record.partition(), embeddedFormat));
-                }
-
-            } catch (Throwable e) {
-                if (e instanceof RestException) {
-                    exception = (RestException) e;
-                } else {
-                    exception = Errors.kafkaErrorException(e);
-                    log.warn("Internal error", e);
-                }
-            }
+        } catch (Throwable e) {
+          if (e instanceof RestException) {
+            exception = (RestException) e;
+          } else {
+            exception = Errors.kafkaErrorException(e);
+            log.warn("Internal error", e);
+          }
         }
-
-        callback.onCompletion(records, exception);
+      }
     }
 
+    callback.onCompletion(records, exception);
+  }
+
   private BinaryConsumerRecord createBinaryConsumerRecord(
-    final org.apache.kafka.clients.consumer.ConsumerRecord<byte[], byte[]> consumerRecord,
-    final String topicName,
-    final int partitionId) {
+      final org.apache.kafka.clients.consumer.ConsumerRecord<byte[], byte[]> consumerRecord,
+      final String topicName,
+      final int partitionId) {
 
     // KafkaConsumer instances are created with ByteArrayDeserializer so
     // there is no reason to deserialize record again.
@@ -138,9 +139,9 @@ public class SimpleConsumerManager {
   }
 
   private AvroConsumerRecord createAvroConsumerRecord(
-    final org.apache.kafka.clients.consumer.ConsumerRecord<byte[], byte[]> consumerRecord,
-    final String topicName,
-    final int partitionId) {
+      final org.apache.kafka.clients.consumer.ConsumerRecord<byte[], byte[]> consumerRecord,
+      final String topicName,
+      final int partitionId) {
 
     return new AvroConsumerRecord(
         topicName,
@@ -152,9 +153,9 @@ public class SimpleConsumerManager {
 
 
   private JsonConsumerRecord createJsonConsumerRecord(
-    final org.apache.kafka.clients.consumer.ConsumerRecord<byte[], byte[]> consumerRecord,
-    final String topicName,
-    final int partitionId) {
+      final org.apache.kafka.clients.consumer.ConsumerRecord<byte[], byte[]> consumerRecord,
+      final String topicName,
+      final int partitionId) {
 
     return new JsonConsumerRecord(
         topicName,
@@ -172,10 +173,10 @@ public class SimpleConsumerManager {
   }
 
   private ConsumerRecord createConsumerRecord(
-    final org.apache.kafka.clients.consumer.ConsumerRecord consumerRecord,
-    final String topicName,
-    final int partitionId,
-    final EmbeddedFormat embeddedFormat) {
+      final org.apache.kafka.clients.consumer.ConsumerRecord consumerRecord,
+      final String topicName,
+      final int partitionId,
+      final EmbeddedFormat embeddedFormat) {
 
     switch (embeddedFormat) {
       case BINARY:

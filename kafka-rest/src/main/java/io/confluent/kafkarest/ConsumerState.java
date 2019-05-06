@@ -47,7 +47,7 @@ import java.util.regex.Pattern;
 /**
  * Tracks all the state for a consumer. This class is abstract in order to support multiple
  * serialization formats. Implementations must provide deserializers and a method to convert Kafka
- * MessageAndMetadata<K,V> values to ConsumerRecords that can be returned to the client (including
+ * MessageAndMetadata< K,V > values to ConsumerRecords that can be returned to the client (including
  * translation if the decoded Kafka consumer type and ConsumerRecord types differ).
  */
 public abstract class ConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, ClientValueT>
@@ -125,7 +125,7 @@ public abstract class ConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, ClientVa
     this.heartbeatThread = new ConsumerHeartbeatThread();
   }
 
-  protected void startHeartbeatThread (){
+  protected void startHeartbeatThread() {
     heartbeatThread.start();
   }
 
@@ -138,7 +138,6 @@ public abstract class ConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, ClientVa
   }
 
   /**
-   *
    * Gets the key deserializer for the Kafka consumer.
    */
   protected abstract Deserializer<KafkaKeyT> getKeyDeserializer();
@@ -167,7 +166,8 @@ public abstract class ConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, ClientVa
   }
 
   /**
-   * Finish a read request, releasing the lock on the ConsumerSubscriptionState and the read lock on this
+   * Finish a read request, releasing the lock on
+   * the ConsumerSubscriptionState and the read lock on this
    * ConsumerState.
    */
   public void finishRead() {

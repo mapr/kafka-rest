@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  **/
+
 package io.confluent.kafkarest;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -22,36 +23,36 @@ import org.apache.kafka.clients.consumer.Consumer;
  */
 public class TPConsumerState implements AutoCloseable {
 
-    private Consumer<byte[], byte[]> consumer;
-    private SimpleConsumerPool ownerPool;
-    private String clientId;
-    private final boolean isStreams;
+  private Consumer<byte[], byte[]> consumer;
+  private SimpleConsumerPool ownerPool;
+  private String clientId;
+  private final boolean isStreams;
 
-    public TPConsumerState(Consumer<byte[], byte[]> consumer,
-                           final boolean isStreams,
-                           SimpleConsumerPool ownerPool,
-                           String clientId) {
-        this.consumer = consumer;
-        this.isStreams = isStreams;
-        this.ownerPool = ownerPool;
-        this.clientId = clientId;
-    }
+  public TPConsumerState(Consumer<byte[], byte[]> consumer,
+                         final boolean isStreams,
+                         SimpleConsumerPool ownerPool,
+                         String clientId) {
+    this.consumer = consumer;
+    this.isStreams = isStreams;
+    this.ownerPool = ownerPool;
+    this.clientId = clientId;
+  }
 
-    public String clientId() {
-        return clientId;
-    }
+  public String clientId() {
+    return clientId;
+  }
 
-    public Consumer<byte[], byte[]> consumer() {
-        return consumer;
-    }
+  public Consumer<byte[], byte[]> consumer() {
+    return consumer;
+  }
 
-    public void close() throws Exception {
-        // release partition
-        consumer.unsubscribe();
-        ownerPool.release(this);
-    }
+  public void close() throws Exception {
+    // release partition
+    consumer.unsubscribe();
+    ownerPool.release(this);
+  }
 
-    public boolean isStreams() {
-        return isStreams;
-    }
+  public boolean isStreams() {
+    return isStreams;
+  }
 }

@@ -25,8 +25,6 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 public class SimpleConsumerFactory {
 
   private static final Logger log = LoggerFactory.getLogger(SimpleConsumerManager.class);
@@ -81,26 +79,26 @@ public class SimpleConsumerFactory {
     }
 
     Consumer<byte[], byte[]> consumer =  new KafkaConsumer<byte[], byte[]>(properties,
-      new ByteArrayDeserializer(),
-      new ByteArrayDeserializer());
+        new ByteArrayDeserializer(),
+        new ByteArrayDeserializer());
     return new ConsumerProvider(consumer, clientId);
   }
 
-    public static class ConsumerProvider {
-        private Consumer<byte[], byte[]> consumer;
-        private String clientId;
+  public static class ConsumerProvider {
+    private Consumer<byte[], byte[]> consumer;
+    private String clientId;
 
-        public ConsumerProvider(Consumer<byte[], byte[]> consumer, String clientId) {
-            this.consumer = consumer;
-            this.clientId = clientId;
-        }
-
-        public Consumer<byte[], byte[]> consumer() {
-            return consumer;
-        }
-
-        public String clientId() {
-            return clientId;
-        }
+    public ConsumerProvider(Consumer<byte[], byte[]> consumer, String clientId) {
+      this.consumer = consumer;
+      this.clientId = clientId;
     }
+
+    public Consumer<byte[], byte[]> consumer() {
+      return consumer;
+    }
+
+    public String clientId() {
+      return clientId;
+    }
+  }
 }

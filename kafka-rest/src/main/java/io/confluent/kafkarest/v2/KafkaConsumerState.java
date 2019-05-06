@@ -394,7 +394,7 @@ public abstract class KafkaConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, Cli
   private void getOrCreateConsumerRecords() {
     consumerRecords = new ArrayDeque<>();
     ConsumerRecords<KafkaKeyT, KafkaValueT> polledRecords = consumer.poll(0);
-    if(polledRecords.count() == 0){
+    if (polledRecords.count() == 0) {
       // The first poll is used to assign partitions. The second poll is used to fetch data.
       polledRecords = consumer.poll(0);
     }

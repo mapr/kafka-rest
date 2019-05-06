@@ -84,11 +84,12 @@ public class ConsumersResource {
   @Valid
   @Path("/{group}")
   @PerformanceMetric("consumer.create+v2")
-  public CreateConsumerInstanceResponse createGroup(final @javax.ws.rs.core.Context UriInfo uriInfo,
-                                                    final @PathParam("group") String group,
-                                                    final @Valid ConsumerInstanceConfig config,
-                                                    @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-                                                    @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+  public CreateConsumerInstanceResponse createGroup(
+          final @javax.ws.rs.core.Context UriInfo uriInfo,
+          final @PathParam("group") String group,
+          final @Valid ConsumerInstanceConfig config,
+          @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+          @HeaderParam(HttpHeaders.COOKIE) String cookie) {
     return ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> createGroup(uriInfo, group, config), auth, cookie);
   }
@@ -144,11 +145,12 @@ public class ConsumersResource {
   @GET
   @Path("/{group}/instances/{instance}/subscription")
   @PerformanceMetric("consumer.subscription+v2")
-  public ConsumerSubscriptionResponse subscription(@javax.ws.rs.core.Context UriInfo uriInfo,
-                                                   final @PathParam("group") String group,
-                                                   final @PathParam("instance") String instance,
-                                                   @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-                                                   @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+  public ConsumerSubscriptionResponse subscription(
+          @javax.ws.rs.core.Context UriInfo uriInfo,
+          final @PathParam("group") String group,
+          final @PathParam("instance") String instance,
+          @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+          @HeaderParam(HttpHeaders.COOKIE) String cookie) {
     return ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> ctx.getKafkaConsumerManager().subscription(group, instance), auth, cookie);
   }
@@ -180,7 +182,8 @@ public class ConsumersResource {
                                @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
                                @HeaderParam(HttpHeaders.COOKIE) String cookie) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
-      readRecords(asyncResponse, group, instance, timeout, maxBytes, BinaryKafkaConsumerState.class);
+      readRecords(asyncResponse, group, instance,
+              timeout, maxBytes, BinaryKafkaConsumerState.class);
       return null;
     }, auth, cookie);
   }
@@ -258,11 +261,12 @@ public class ConsumersResource {
   @GET
   @Path("/{group}/instances/{instance}/offsets")
   @PerformanceMetric("consumer.committed-offsets+v2")
-  public ConsumerCommittedResponse committedOffsets(final @PathParam("group") String group,
-                                                    final @PathParam("instance") String instance,
-                                                    final @Valid ConsumerCommittedRequest request,
-                                                    @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-                                                    @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+  public ConsumerCommittedResponse committedOffsets(
+          final @PathParam("group") String group,
+          final @PathParam("instance") String instance,
+          final @Valid ConsumerCommittedRequest request,
+          @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+          @HeaderParam(HttpHeaders.COOKIE) String cookie) {
     return ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> committedOffsets(group, instance, request), auth, cookie);
   }
@@ -379,8 +383,8 @@ public class ConsumersResource {
                                                final @PathParam("instance") String instance,
                                                @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
                                                @HeaderParam(HttpHeaders.COOKIE) String cookie) {
-  return ImpersonationUtils.runAsUserIfImpersonationEnabled(
-        () -> assignment(uriInfo, group, instance), auth, cookie);
+    return ImpersonationUtils.runAsUserIfImpersonationEnabled(
+      () -> assignment(uriInfo, group, instance), auth, cookie);
   }
 
   private ConsumerAssignmentResponse assignment(UriInfo uriInfo, String group, String instance) {
@@ -404,13 +408,13 @@ public class ConsumersResource {
 
     ctx.getKafkaConsumerManager().readRecords(
         group, instance, consumerStateType, timeout, maxBytes,
-            (records, e) -> {
-              if (e != null) {
-                asyncResponse.resume(e);
-              } else {
-                asyncResponse.resume(records);
-              }
-            }
+        (records, e) -> {
+          if (e != null) {
+            asyncResponse.resume(e);
+          } else {
+            asyncResponse.resume(records);
+          }
+        }
     );
   }
 }
