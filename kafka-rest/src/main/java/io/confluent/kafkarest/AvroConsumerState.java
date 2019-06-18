@@ -16,6 +16,7 @@
 package io.confluent.kafkarest;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.confluent.kafka.schemaregistry.client.SchemaRegistryClientConfig;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafkarest.converters.AvroConverter;
 import io.confluent.kafkarest.entities.AvroConsumerRecord;
@@ -47,6 +48,10 @@ public class AvroConsumerState extends ConsumerState<Object, Object, JsonNode, J
       Properties props = new Properties();
       props.setProperty("schema.registry.url",
           config.getString(KafkaRestConfig.SCHEMA_REGISTRY_URL_CONFIG));
+      String authenticationMethod = config.getString(KafkaRestConfig.AUTHENTICATION_METHOD_CONFIG);
+      if (KafkaRestConfig.AUTHENTICATION_METHOD_MULTIAUTH.equals(authenticationMethod)) {
+        props.setProperty(SchemaRegistryClientConfig.MAPRSASL_AUTH_CONFIG, "true");
+      }
       deserializer = new KafkaAvroDeserializer();
       deserializer.configure((Map)props, true);
     }

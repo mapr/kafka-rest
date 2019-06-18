@@ -36,8 +36,10 @@ NOW=`date "+%Y%m%d_%H%M%S"`
 KAFKA_REST_NAME=${KAFKA_REST_NAME:-kafka-rest}
 KAFKA_REST_HOME=${NEW_MYPKG_CONF_FILE:-${MAPR_HOME}/${KAFKA_REST_NAME}}
 KAFKA_REST_PACKAGE_DIR=${KAFKA_REST_PACKAGE_DIR:-${KAFKA_REST_HOME}/${KAFKA_REST_NAME}-${VERSION}}
+KAFKA_REST_CONF_DIR=${KAFKA_REST_CONF_DIR:-${KAFKA_REST_PACKAGE_DIR}/config}
+KAFKA_REST_CONF_TEMPLATE_DIR=${KAFKA_REST_CONF_TEMPLATE_DIR:-${KAFKA_REST_PACKAGE_DIR}/conf.new}
 KAFKA_REST_VERSION_FILE=${KAFKA_REST_VERSION_FILE:-${KAFKA_REST_HOME}/kafka-restversion}
-KAFKA_REST_PROPERTIES=${KAFKA_REST_PROPERTIES:-${KAFKA_REST_PACKAGE_DIR}/config/${KAFKA_REST_NAME}.properties}
+KAFKA_REST_PROPERTIES=${KAFKA_REST_PROPERTIES:-${KAFKA_REST_CONF_DIR}/${KAFKA_REST_NAME}.properties}
 
 # directory contains saved user's configs
 KAFKA_REST_SAVED_PROPS_DIR=${KAFKA_REST_SAVED_PROPS_DIR:-${KAFKA_REST_PACKAGE_DIR}/config/saved}
@@ -61,7 +63,7 @@ MAPR_RESTART_SCRIPTS_DIR=${MAPR_RESTART_SCRIPTS_DIR:-${MAPR_HOME}/conf/restart}
 KAFKA_REST_RESTART_SRC=${KAFKA_REST_RESTART_SRC:-${MAPR_RESTART_SCRIPTS_DIR}/${KAFKA_REST_NAME}-${VERSION}.restart}
 
 # Warden-specific
-KAFKA_REST_WARDEN_CONF=${KAFKA_REST_WARDEN_CONF:-${KAFKA_REST_PACKAGE_DIR}/config/warden.kafka-rest.conf}
+KAFKA_REST_WARDEN_CONF=${KAFKA_REST_WARDEN_CONF:-${KAFKA_REST_CONF_DIR}/warden.kafka-rest.conf}
 KAFKA_REST_WARDEN_DEST_CONF=${KAFKA_REST_WARDEN_DEST_CONF:-${MAPR_HOME}/conf/conf.d/warden.kafka-rest.conf}
 
 #######################################################################
@@ -132,28 +134,6 @@ function create_saved_properties_directory() {
     fi
 }
 
-function create_properties_file_with_ssl_config() {
-
-        cat >>${KAFKA_REST_PROPERTIES} <<-EOL
-		listeners=https://0.0.0.0:${KAFKA_REST_PORT}
-		authentication.method=MULTIAUTH
-		impersonation.enable=true
-		EOL
-}
-
-function create_standard_properties_file() {
-        TMP_CONFIG=$(sed '/^listeners/d' ${KAFKA_REST_PROPERTIES})
-        echo "$TMP_CONFIG" > ${KAFKA_REST_PROPERTIES}
-}
-
-function enable_ssl() {
-
-    save_current_properties
-    create_properties_file_with_ssl_config
-
-    return 0
-}
-
 function write_kafka_rest_restart(){
     if [ ! -d $MAPR_RESTART_SCRIPTS_DIR ]; then
         mkdir $MAPR_RESTART_SCRIPTS_DIR
@@ -186,7 +166,9 @@ function register_port_if_available() {
     return 0
 }
 
-function configure_insecure_mode() {
+function configure() {
+    mode=$1
+
     logInfo 'This is initial run of Kafka REST configure.sh';
     create_saved_properties_directory
     write_version_file
@@ -195,36 +177,14 @@ function configure_insecure_mode() {
         return 1
     fi
     save_current_properties
-    create_standard_properties_file
-    change_permissions
-    setup_warden_config
+    cp ${KAFKA_REST_CONF_TEMPLATE_DIR}/kafka-rest-${mode}.properties ${KAFKA_REST_PROPERTIES}
+    cp ${KAFKA_REST_CONF_TEMPLATE_DIR}/log4j.properties ${KAFKA_REST_CONF_DIR}/log4j.properties
+    cp ${KAFKA_REST_CONF_TEMPLATE_DIR}/warden.kafka-rest.conf ${KAFKA_REST_CONF_DIR}/warden.kafka-rest.conf
     if ! ${KAFKA_REST_INITIAL_RUN}; then
-        write_kafka_rest_restart    
+        write_kafka_rest_restart
     fi
     return 0
 }
-
-function configure_secure_mode() {
-    logInfo 'This is initial run of Kafka REST configure.sh';
-    create_saved_properties_directory
-    write_version_file
-
-    if ! register_port_if_available $KAFKA_REST_PORT; then
-       logErr "Can not register port '$KAFKA_REST_PORT' for Kafka REST since it is not available."
-       return 1
-    fi
-
-    if ! enable_ssl; then
-        return 1
-    fi
-    change_permissions
-    setup_warden_config
-    if ! ${KAFKA_REST_INITIAL_RUN}; then
-        write_kafka_rest_restart    
-    fi   
-    return 0
-}
-
 
 #######################################################################
 # Parse options
@@ -234,26 +194,20 @@ function configure_secure_mode() {
 { OPTS=`getopt -n "$0" -a -o suhR --long secure,unsecure,customSecure,help,EC -- "$@"`; } 2>/dev/null
 eval set -- "$OPTS"
 
-SECURE=false
-CUSTOM=false
+SECURITY=disabled
 HELP=false
 while true; do
   case "$1" in
     -s | --secure )
-    SECURE=true;
+    SECURITY=default
     shift ;;
 
     -u | --unsecure )
-    SECURE=false;
+    SECURITY=disabled
     shift ;;
     
-    -cs | --customSecure)  
-      if [ -f "$KAFKA_REST_PACKAGE_DIR/conf/.not_configured_yet" ]; then
-        SECURE=true;
-      else
-        SECURE=false;
-        CUSTOM=true;
-      fi
+    -cs | --customSecure)
+    SECURITY=custom
     shift ;;
     
     -h | --help ) HELP=true; shift ;;
@@ -273,38 +227,38 @@ done
 
 if $HELP; then
     print_usage
-fi  
-
-if [ -f "$KAFKA_REST_PACKAGE_DIR/conf/.not_configured_yet" ]  ; then
-    rm -f "$KAFKA_REST_PACKAGE_DIR/conf/.not_configured_yet"
+    exit 0
 fi
- 
-if $SECURE; then
-    num=1
-    IS_SECURE_CONFIG=$(grep -e listeners  ${KAFKA_REST_PROPERTIES} | wc -l)
-    if [ $IS_SECURE_CONFIG -lt $num ]; then
-        if configure_secure_mode; then
+
+change_permissions
+setup_warden_config
+
+case ${SECURITY} in
+    disabled )
+        if configure insecure; then
+            logInfo 'Kafka REST successfully configured to run in insecure mode.'
+        else
+            logErr 'Error: Errors occurred while configuring Kafka REST to run in insecure mode.'
+            exit 1
+        fi
+    ;;
+
+    default )
+        if configure secure; then
             logInfo 'Kafka REST successfully configured to run in secure mode.'
         else
             logErr 'Error: Errors occurred while configuring Kafka REST to run in secure mode.'
             exit 1
         fi
-    else
+    ;;
 
-        change_permissions
-        setup_warden_config
-	    logInfo ''Kafka REST has been already configured to run in secure mode.''
-    fi
-else
-    setup_warden_config
-    change_permissions
-    if $CUSTOM; then
-        exit 0
-    fi
-    if grep -q ssl "$KAFKA_REST_PROPERTIES"; then
-       configure_insecure_mode
-       logInfo 'Kafka REST successfully configured to run in unsecure mode.'
-    fi
+    custom )
+    # do nothing
+    ;;
+esac
+
+if [[ -f "$KAFKA_REST_PACKAGE_DIR/conf/.not_configured_yet" ]] ; then
+    rm -f "$KAFKA_REST_PACKAGE_DIR/conf/.not_configured_yet"
 fi
 
 exit 0

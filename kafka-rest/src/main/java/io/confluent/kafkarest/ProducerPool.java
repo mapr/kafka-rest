@@ -15,6 +15,7 @@
 
 package io.confluent.kafkarest;
 
+import io.confluent.kafka.schemaregistry.client.SchemaRegistryClientConfig;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -158,6 +159,10 @@ public class ProducerPool {
   }
 
   private AvroRestProducer buildAvroProducer(Map<String, Object> config) {
+    String authenticationMethod = (String)config.get(KafkaRestConfig.AUTHENTICATION_METHOD_CONFIG);
+    if (KafkaRestConfig.AUTHENTICATION_METHOD_MULTIAUTH.equals(authenticationMethod)) {
+      config.put(SchemaRegistryClientConfig.MAPRSASL_AUTH_CONFIG, "true");
+    }
     final KafkaAvroSerializer avroKeySerializer = new KafkaAvroSerializer();
     avroKeySerializer.configure(config, true);
     final KafkaAvroSerializer avroValueSerializer = new KafkaAvroSerializer();

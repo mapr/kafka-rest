@@ -15,6 +15,7 @@
 
 package io.confluent.kafkarest;
 
+import io.confluent.kafka.schemaregistry.client.SchemaRegistryClientConfig;
 import io.confluent.kafkarest.entities.AvroConsumerRecord;
 import io.confluent.kafkarest.entities.BinaryConsumerRecord;
 import io.confluent.kafkarest.entities.ConsumerRecord;
@@ -82,6 +83,10 @@ public class SimpleConsumerManager {
     Properties props = new Properties();
     props.setProperty("schema.registry.url",
             config.getString(KafkaRestConfig.SCHEMA_REGISTRY_URL_CONFIG));
+    String authenticationMethod = config.getString(KafkaRestConfig.AUTHENTICATION_METHOD_CONFIG);
+    if (KafkaRestConfig.AUTHENTICATION_METHOD_MULTIAUTH.equals(authenticationMethod)) {
+      props.setProperty(SchemaRegistryClientConfig.MAPRSASL_AUTH_CONFIG, "true");
+    }
     avroDeserializer = new KafkaAvroDeserializer();
     avroDeserializer.configure((Map)props, true);
     objectMapper = new ObjectMapper();

@@ -30,12 +30,27 @@
         </fileSet>
         <fileSet>
             <directory>${project.parent.basedir}/config</directory>
-            <outputDirectory>config</outputDirectory>
+            <outputDirectory>conf.new</outputDirectory>
             <includes>
                 <include>*</include>
             </includes>
         </fileSet>
     </fileSets>
+    <files>
+        <file>
+            <source>${project.parent.basedir}/config/kafka-rest-unsecure.properties</source>
+            <outputDirectory>config</outputDirectory>
+            <destName>kafka-rest.properties</destName>
+        </file>
+        <file>
+            <source>${project.parent.basedir}/config/log4j.properties</source>
+            <outputDirectory>config</outputDirectory>
+        </file>
+        <file>
+            <source>${project.parent.basedir}/config/warden.kafka-rest.conf</source>
+            <outputDirectory>config</outputDirectory>
+        </file>
+    </files>
     <dependencySets>
         <dependencySet>
             <outputDirectory>share/java/kafka-rest</outputDirectory>
