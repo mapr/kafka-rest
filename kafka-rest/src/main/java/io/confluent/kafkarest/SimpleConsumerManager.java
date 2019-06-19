@@ -83,8 +83,8 @@ public class SimpleConsumerManager {
     Properties props = new Properties();
     props.setProperty("schema.registry.url",
             config.getString(KafkaRestConfig.SCHEMA_REGISTRY_URL_CONFIG));
-    String authenticationMethod = config.getString(KafkaRestConfig.AUTHENTICATION_METHOD_CONFIG);
-    if (KafkaRestConfig.AUTHENTICATION_METHOD_MULTIAUTH.equals(authenticationMethod)) {
+    boolean isAuthenticationEnabled = config.getBoolean(KafkaRestConfig.ENABLE_AUTHENTICATION_CONFIG);
+    if (isAuthenticationEnabled) {
       props.setProperty(SchemaRegistryClientConfig.MAPRSASL_AUTH_CONFIG, "true");
     }
     avroDeserializer = new KafkaAvroDeserializer();

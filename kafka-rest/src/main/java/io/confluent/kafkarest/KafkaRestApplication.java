@@ -86,12 +86,12 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
   ) {
 
     boolean impersonationEnabled = appConfig.isImpersonationEnabled();
-    String authenticationMehtod = appConfig.getString(KafkaRestConfig.AUTHENTICATION_METHOD_CONFIG);
+    boolean isAuthenticationEnabled = appConfig.getBoolean(KafkaRestConfig.ENABLE_AUTHENTICATION_CONFIG);
 
     if (impersonationEnabled
-            && !authenticationMehtod.equals(KafkaRestConfig.AUTHENTICATION_METHOD_MULTIAUTH)) {
-      throw new RuntimeException(KafkaRestConfig.AUTHENTICATION_METHOD_MULTIAUTH
-              + " Authentication must be enabled in order to support MapR Streams impersonation");
+            && !isAuthenticationEnabled) {
+      throw new RuntimeException(KafkaRestConfig.ENABLE_AUTHENTICATION_CONFIG
+              + " must be enabled in order to support MapR Streams impersonation");
     }
     mdObserver = new KafkaStreamsMetadataObserver(appConfig, zkUtils);
 

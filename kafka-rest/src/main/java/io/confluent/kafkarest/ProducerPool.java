@@ -159,8 +159,8 @@ public class ProducerPool {
   }
 
   private AvroRestProducer buildAvroProducer(Map<String, Object> config) {
-    String authenticationMethod = (String)config.get(KafkaRestConfig.AUTHENTICATION_METHOD_CONFIG);
-    if (KafkaRestConfig.AUTHENTICATION_METHOD_MULTIAUTH.equals(authenticationMethod)) {
+    boolean isAuthenticationEnabled = (Boolean)config.get(KafkaRestConfig.ENABLE_AUTHENTICATION_CONFIG);
+    if (isAuthenticationEnabled) {
       config.put(SchemaRegistryClientConfig.MAPRSASL_AUTH_CONFIG, "true");
     }
     final KafkaAvroSerializer avroKeySerializer = new KafkaAvroSerializer();
