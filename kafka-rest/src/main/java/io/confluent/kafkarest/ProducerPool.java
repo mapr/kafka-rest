@@ -151,6 +151,10 @@ public class ProducerPool {
     if (!"".equals(defaultStream)) {
       avroDefaults.put(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG, defaultStream);
     }
+    boolean isAuthenticationEnabled = appConfig.getBoolean(KafkaRestConfig.ENABLE_AUTHENTICATION_CONFIG);
+    if (isAuthenticationEnabled) {
+      avroDefaults.put(SchemaRegistryClientConfig.MAPRSASL_AUTH_CONFIG, "true");
+    }
     int streamBuffer = appConfig.getInt(KafkaRestConfig.STREAM_BUFFER_MAX_TIME_CONFIG);
     avroDefaults.put(ProducerConfig.STREAMS_BUFFER_TIME_CONFIG, streamBuffer);
 
@@ -159,10 +163,6 @@ public class ProducerPool {
   }
 
   private AvroRestProducer buildAvroProducer(Map<String, Object> config) {
-    boolean isAuthenticationEnabled = (Boolean)config.get(KafkaRestConfig.ENABLE_AUTHENTICATION_CONFIG);
-    if (isAuthenticationEnabled) {
-      config.put(SchemaRegistryClientConfig.MAPRSASL_AUTH_CONFIG, "true");
-    }
     final KafkaAvroSerializer avroKeySerializer = new KafkaAvroSerializer();
     avroKeySerializer.configure(config, true);
     final KafkaAvroSerializer avroValueSerializer = new KafkaAvroSerializer();
