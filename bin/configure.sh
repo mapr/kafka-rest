@@ -4,7 +4,7 @@
 #######################################################################
 #
 # Configure script for Kafka REST. Allows to configure Kafka in secure
-# and insecure modes. Secure mode provides SSL support and generates
+# and unsecure modes. Secure mode provides SSL support and generates
 # appropriate certificate, client key with default password.
 #
 #######################################################################
@@ -235,10 +235,10 @@ setup_warden_config
 
 case ${SECURITY} in
     disabled )
-        if configure insecure; then
-            logInfo 'Kafka REST successfully configured to run in insecure mode.'
+        if configure unsecure; then
+            logInfo 'Kafka REST successfully configured to run in unsecure mode.'
         else
-            logErr 'Error: Errors occurred while configuring Kafka REST to run in insecure mode.'
+            logErr 'Error: Errors occurred while configuring Kafka REST to run in unsecure mode.'
             exit 1
         fi
     ;;
