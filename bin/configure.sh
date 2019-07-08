@@ -50,14 +50,6 @@ if [ -d $KAFKA_REST_SAVED_PROPS_DIR ]; then # directory exists, script was execu
     KAFKA_REST_INITIAL_RUN=false;
 fi
 
-# indicates whether cluster is up or not
-KAFKA_REST_CORE_IS_RUNNING=false
-if [ ! -z ${isOnlyRoles+x} ]; then # isOnlyRoles exists
-    if [ $isOnlyRoles -eq 1 ] ; then
-        KAFKA_REST_CORE_IS_RUNNING=true;
-    fi
-fi
-
 # MapR ecosystems' restart directory and Kafka REST service restart script
 MAPR_RESTART_SCRIPTS_DIR=${MAPR_RESTART_SCRIPTS_DIR:-${MAPR_HOME}/conf/restart}
 KAFKA_REST_RESTART_SRC=${KAFKA_REST_RESTART_SRC:-${MAPR_RESTART_SCRIPTS_DIR}/${KAFKA_REST_NAME}-${VERSION}.restart}
@@ -212,7 +204,9 @@ while true; do
     
     -h | --help ) HELP=true; shift ;;
 
-    -R) KAFKA_REST_CORE_IS_RUNNING=true; shift ;;
+    -R)
+    # sets isOnlyRoles
+    shift ;;
 
     --EC)
      # ignoring
@@ -233,29 +227,31 @@ fi
 change_permissions
 setup_warden_config
 
-case ${SECURITY} in
-    disabled )
-        if configure unsecure; then
-            logInfo 'Kafka REST successfully configured to run in unsecure mode.'
-        else
-            logErr 'Error: Errors occurred while configuring Kafka REST to run in unsecure mode.'
-            exit 1
-        fi
-    ;;
+if [[ -z ${isOnlyRoles} ]] ; then
+    case ${SECURITY} in
+        disabled )
+            if configure unsecure; then
+                logInfo 'Kafka REST successfully configured to run in unsecure mode.'
+            else
+                logErr 'Error: Errors occurred while configuring Kafka REST to run in unsecure mode.'
+                exit 1
+            fi
+        ;;
 
-    default )
-        if configure secure; then
-            logInfo 'Kafka REST successfully configured to run in secure mode.'
-        else
-            logErr 'Error: Errors occurred while configuring Kafka REST to run in secure mode.'
-            exit 1
-        fi
-    ;;
+        default )
+            if configure secure; then
+                logInfo 'Kafka REST successfully configured to run in secure mode.'
+            else
+                logErr 'Error: Errors occurred while configuring Kafka REST to run in secure mode.'
+                exit 1
+            fi
+        ;;
 
-    custom )
-    # do nothing
-    ;;
-esac
+        custom )
+        # do nothing
+        ;;
+    esac
+fi
 
 if [[ -f "$KAFKA_REST_PACKAGE_DIR/conf/.not_configured_yet" ]] ; then
     rm -f "$KAFKA_REST_PACKAGE_DIR/conf/.not_configured_yet"
