@@ -281,6 +281,13 @@ public class PartitionsResource {
       final PartitionProduceRequest<R> request
   ) {
 
+    if (!ctx.getMetadataObserver().topicExists(topic)) {
+      throw Errors.topicNotFoundException();
+    }
+    if (!ctx.getMetadataObserver().partitionExists(topic, partition)) {
+      throw Errors.partitionNotFoundException();
+    }
+
     log.trace("Executing topic produce request id={} topic={} partition={} format={} request={}",
         asyncResponse, topic, partition, format, request
     );
