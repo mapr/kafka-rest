@@ -189,7 +189,7 @@ public abstract class ClusterTestHarness {
     restProperties.put(KafkaRestConfig.ZOOKEEPER_CONNECT_CONFIG, zkConnect);
     overrideKafkaRestConfigs(restProperties);
     if (withSchemaRegistry) {
-      restProperties.put(KafkaRestConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegConnect);
+      restProperties.put("schema.registry.url", schemaRegConnect);
     }
     restConnect = getRestConnectString(restPort);
     restProperties.put("listeners",restConnect);

@@ -221,7 +221,7 @@ public class KafkaConsumerManager {
 
       props.setProperty(
           "schema.registry.url",
-          config.getString(KafkaRestConfig.SCHEMA_REGISTRY_URL_CONFIG)
+          config.getSchemaRegistryUrl()
       );
 
       switch (instanceConfig.getFormat()) {

@@ -15,6 +15,7 @@
 
 package io.confluent.kafkarest;
 
+import io.confluent.kafka.schemaregistry.client.rest.utils.UrlUtils;
 import org.apache.kafka.common.security.JaasUtils;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.utils.Utils;
@@ -22,6 +23,7 @@ import org.eclipse.jetty.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
@@ -120,8 +122,12 @@ public class KafkaRestConfig extends RestConfig {
   private static final String SCHEMA_REGISTRY_URL_DOC =
       "The base URL for the schema registry that should be used by the Avro serializer. "
       + "NOTE: this setting will be ignored if `schema.registry.enable` is set to false.";
-  public static final String SCHEMA_REGISTRY_URL_CONFIG = "schema.registry.url";
+  private static final String SCHEMA_REGISTRY_URL_CONFIG = "schema.registry.url";
   private static final String SCHEMA_REGISTRY_URL_DEFAULT = "http://localhost:8087";
+  private static final String DUMMY_SCHEMA_REGISTRY_URL = "__INTERNAL_DUMMY_SR_URL__";
+
+  public static final String SCHEMA_REGISTRY_SERVICE_ID_CONFIG = "schema.registry.service.id";
+  public static final String SCHEMA_REGISTRY_SERVICE_ID_DEFAULT = "default_";
 
   public static final String PROXY_FETCH_MIN_BYTES_CONFIG =
           "fetch.min.bytes";
@@ -238,6 +244,7 @@ public class KafkaRestConfig extends RestConfig {
   public static final String KAFKACLIENT_INIT_TIMEOUT_CONFIG = "client.init.timeout.ms";
 
   public static final String ZOOKEEPER_SET_ACL_CONFIG = "zookeeper.set.acl";
+  public static final String ZK_INIT_TIMEOUT_CONFIG = "zookeeper.init.timeout";
   public static final String KAFKACLIENT_SECURITY_PROTOCOL_CONFIG =
       "client.security.protocol";
   public static final String KAFKACLIENT_SSL_TRUSTSTORE_LOCATION_CONFIG =
@@ -452,9 +459,32 @@ public class KafkaRestConfig extends RestConfig {
             SCHEMA_REGISTRY_ENABLE_DOC
         )
         .define(
+            SCHEMA_REGISTRY_SERVICE_ID_CONFIG,
+            Type.STRING,
+            SCHEMA_REGISTRY_SERVICE_ID_DEFAULT,
+            Importance.MEDIUM,
+           "Indicates the ID of the schema registry service."
+        )
+        .define(
+            ZK_INIT_TIMEOUT_CONFIG,
+            Type.INT,
+           60000,
+            Importance.MEDIUM,
+           "The timeout for initialization when creating connection to zookeeper."
+        )
+        .define(
+            ZOOKEEPER_SET_ACL_CONFIG,
+            Type.BOOLEAN,
+            ZOOKEEPER_SET_ACL_DEFAULT,
+            Importance.MEDIUM,
+           "Whether or not to set an ACL in ZooKeeper when znodes are created "
+               + "and ZooKeeper SASL authentication is configured. IMPORTANT: "
+               + "if set to `true`, the SASL principal must be the same as the Kafka brokers."
+        )
+        .define(
             SCHEMA_REGISTRY_URL_CONFIG,
             Type.STRING,
-            SCHEMA_REGISTRY_URL_DEFAULT,
+            DUMMY_SCHEMA_REGISTRY_URL,
             Importance.HIGH,
             SCHEMA_REGISTRY_URL_DOC
         )
@@ -729,6 +759,8 @@ public class KafkaRestConfig extends RestConfig {
   private boolean isImpersonationEnabled;
   private Properties originalProperties;
 
+  private String schemaRegistryUrl;
+
   public KafkaRestConfig() throws RestConfigException {
     this(new Properties());
   }
@@ -753,6 +785,7 @@ public class KafkaRestConfig extends RestConfig {
 
     this.defaultStreamSet = !STREAMS_DEFAULT_STREAM_DEFAULT.equals(
       getString(STREAMS_DEFAULT_STREAM_CONFIG));
+    this.schemaRegistryUrl = initSchemaRegistryUrl();
     this.isImpersonationEnabled = getBoolean(KafkaRestConfig.IMPERSONATION);
   }
 
@@ -866,6 +899,26 @@ public class KafkaRestConfig extends RestConfig {
       }
     }
     return getInt(PORT_CONFIG);
+  }
+
+  public String getSchemaRegistryUrl() {
+    return schemaRegistryUrl;
+  }
+
+  private String initSchemaRegistryUrl() throws RestConfigException {
+    if (getString(SCHEMA_REGISTRY_URL_CONFIG).equals(DUMMY_SCHEMA_REGISTRY_URL)) {
+      try {
+        final String result = UrlUtils.extractSchemaRegistryUrlFromZk(
+                getString(SCHEMA_REGISTRY_SERVICE_ID_CONFIG),
+                getInt(ZK_INIT_TIMEOUT_CONFIG),
+                getBoolean(ZOOKEEPER_SET_ACL_CONFIG));
+        return result == null || result.isEmpty() ? SCHEMA_REGISTRY_URL_DEFAULT : result;
+      } catch (IOException e) {
+        throw new RestConfigException(e);
+      }
+    } else {
+      return getString(SCHEMA_REGISTRY_URL_CONFIG);
+    }
   }
 
   private  String getBootstrapBrokers(ZkUtils zkUtils) {

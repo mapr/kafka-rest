@@ -42,7 +42,7 @@ public class AvroKafkaConsumerState extends KafkaConsumerState<Object, Object, J
     super(config, instanceId, consumer);
     Properties props = new Properties();
     props.setProperty("schema.registry.url",
-        config.getString(KafkaRestConfig.SCHEMA_REGISTRY_URL_CONFIG));
+        config.getSchemaRegistryUrl());
   }
 
   @Override

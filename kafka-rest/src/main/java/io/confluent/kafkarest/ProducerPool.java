@@ -144,7 +144,7 @@ public class ProducerPool {
     avroDefaults.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapBrokers);
     avroDefaults.put(
         "schema.registry.url",
-        appConfig.getString(KafkaRestConfig.SCHEMA_REGISTRY_URL_CONFIG)
+        appConfig.getSchemaRegistryUrl()
     );
     // configure default stream
     String defaultStream = appConfig.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
