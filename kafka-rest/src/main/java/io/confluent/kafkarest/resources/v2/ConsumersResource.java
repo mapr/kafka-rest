@@ -264,7 +264,7 @@ public class ConsumersResource {
   public ConsumerCommittedResponse committedOffsets(
           final @PathParam("group") String group,
           final @PathParam("instance") String instance,
-          final @Valid ConsumerCommittedRequest request,
+          final @Valid @NotNull ConsumerCommittedRequest request,
           @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
           @HeaderParam(HttpHeaders.COOKIE) String cookie) {
     return ImpersonationUtils.runAsUserIfImpersonationEnabled(
