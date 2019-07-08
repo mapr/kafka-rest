@@ -29,6 +29,17 @@ import io.confluent.rest.exceptions.RestServerErrorException;
 
 public class Errors {
 
+  public static final String NO_PERMISSIONS_ERROR_MESSAGE = "You have no permissions to perform that action.";
+  public static final int NO_PERMISSIONS_ERROR_CODE = 403001;
+
+  public static RestException noPermissionsException() {
+    return new RestException(
+            NO_PERMISSIONS_ERROR_MESSAGE,
+            Response.Status.FORBIDDEN.getStatusCode(),
+            NO_PERMISSIONS_ERROR_CODE
+    );
+  }
+
   public static final String TOPIC_NOT_FOUND_MESSAGE = "Topic not found.";
   public static final int TOPIC_NOT_FOUND_ERROR_CODE = 40401;
 
@@ -72,10 +83,6 @@ public class Errors {
         STREAM_NOT_FOUND_ERROR_CODE
     );
   }
-
-  public static final String TOPIC_PERMISSION_MESSAGE =
-      "Topic not found or you have not permission to access.";
-  public static final int TOPIC_PERMISSION_MESSAGE_ERROR_CODE = 40405;
 
   public static final String CONSUMER_FORMAT_MISMATCH_MESSAGE =
       "The requested embedded data format does not match the deserializer for this consumer "

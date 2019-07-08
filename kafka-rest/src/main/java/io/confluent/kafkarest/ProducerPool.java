@@ -205,45 +205,42 @@ public class ProducerPool {
     log.trace("Starting produce task " + task.toString());
 
     RestProducer restProducer;
-    try {
-      if (!defaultStreamSet && !topic.contains(":")) {
-        throw Errors.topicNotFoundException();
-      }
-      //we enclose it only for streams producer
-      //because there can be exception due to permissions
-      if (isImpersonationEnabled) {
-        switch (recordFormat) {
-          case AVRO:
-            restProducer = producerCache
-                    .getAvroProducer(UserGroupInformation.getCurrentUser().getUserName());
-            break;
-          case BINARY:
-            restProducer = producerCache
-                    .getBinaryProducer(UserGroupInformation.getCurrentUser().getUserName());
-            break;
-          case JSON:
-            restProducer = producerCache
-                    .getJsonProducer(UserGroupInformation.getCurrentUser().getUserName());
-            break;
-          default:
-            throw new RestServerErrorException(
-                "Invalid embedded format for new producer.",
-                Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()
-            );
-        }
-      } else {
-        restProducer = producers.get(recordFormat);
-      }
-
-      try {
-        restProducer.produce(task, topic, partition, records);
-      } catch (RestServerErrorException e) {
-        log.warn("Producer error " + e);
-        throw Errors.topicPermissionException();
-      }
-    } catch (IOException e) {
-      throw io.confluent.rest.impersonation.Errors.serverLoginException(e);
+    if (!defaultStreamSet && !topic.contains(":")) {
+      throw Errors.topicNotFoundException();
     }
+    //we enclose it only for streams producer
+    //because there can be exception due to permissions
+    if (isImpersonationEnabled) {
+      String userName = null;
+      try {
+        userName = UserGroupInformation.getCurrentUser().getUserName();
+      } catch (IOException e) {
+        // Never happens because authentication is required for MapR impersonation
+      }
+      switch (recordFormat) {
+        case AVRO:
+          restProducer = producerCache
+                  .getAvroProducer(userName);
+          break;
+        case BINARY:
+          restProducer = producerCache
+                  .getBinaryProducer(userName);
+          break;
+        case JSON:
+          restProducer = producerCache
+                  .getJsonProducer(userName);
+          break;
+        default:
+          throw new RestServerErrorException(
+              "Invalid embedded format for new producer.",
+              Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()
+          );
+      }
+    } else {
+      restProducer = producers.get(recordFormat);
+    }
+
+      restProducer.produce(task, topic, partition, records);
   }
 
   public void shutdown() {
