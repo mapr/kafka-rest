@@ -86,7 +86,8 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
   ) {
 
     boolean impersonationEnabled = appConfig.isImpersonationEnabled();
-    boolean isAuthenticationEnabled = appConfig.getBoolean(KafkaRestConfig.ENABLE_AUTHENTICATION_CONFIG);
+    boolean isAuthenticationEnabled =
+            appConfig.getBoolean(KafkaRestConfig.ENABLE_AUTHENTICATION_CONFIG);
 
     if (impersonationEnabled
             && !isAuthenticationEnabled) {

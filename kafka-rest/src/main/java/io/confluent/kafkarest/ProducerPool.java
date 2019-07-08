@@ -151,7 +151,8 @@ public class ProducerPool {
     if (!"".equals(defaultStream)) {
       avroDefaults.put(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG, defaultStream);
     }
-    boolean isAuthenticationEnabled = appConfig.getBoolean(KafkaRestConfig.ENABLE_AUTHENTICATION_CONFIG);
+    boolean isAuthenticationEnabled =
+            appConfig.getBoolean(KafkaRestConfig.ENABLE_AUTHENTICATION_CONFIG);
     if (isAuthenticationEnabled) {
       avroDefaults.put(SchemaRegistryClientConfig.MAPRSASL_AUTH_CONFIG, "true");
     }

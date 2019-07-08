@@ -48,7 +48,8 @@ public class AvroConsumerState extends ConsumerState<Object, Object, JsonNode, J
       Properties props = new Properties();
       props.setProperty("schema.registry.url",
           config.getString(KafkaRestConfig.SCHEMA_REGISTRY_URL_CONFIG));
-      boolean isAuthenticationEnabled = config.getBoolean(KafkaRestConfig.ENABLE_AUTHENTICATION_CONFIG);
+      boolean isAuthenticationEnabled =
+              config.getBoolean(KafkaRestConfig.ENABLE_AUTHENTICATION_CONFIG);
       if (isAuthenticationEnabled) {
         props.setProperty(SchemaRegistryClientConfig.MAPRSASL_AUTH_CONFIG, "true");
       }
