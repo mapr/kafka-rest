@@ -63,9 +63,14 @@ public class Errors {
     );
   }
 
-  public static RestException topicPermissionException() {
-    return new RestNotFoundException(TOPIC_PERMISSION_MESSAGE,
-            TOPIC_PERMISSION_MESSAGE_ERROR_CODE);
+  public static final String STREAM_NOT_FOUND_MESSAGE = "Stream not found.";
+  public static final int STREAM_NOT_FOUND_ERROR_CODE = 40405;
+
+  public static RestException streamNotFoundException() {
+    return new RestNotFoundException(
+        STREAM_NOT_FOUND_MESSAGE,
+        STREAM_NOT_FOUND_ERROR_CODE
+    );
   }
 
   public static final String TOPIC_PERMISSION_MESSAGE =
