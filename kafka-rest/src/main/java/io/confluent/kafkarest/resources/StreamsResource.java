@@ -62,7 +62,7 @@ public class StreamsResource {
       throw Errors.kafkaErrorException(e);
     }
     return ImpersonationUtils.runAsUserIfImpersonationEnabled(
-            () -> ctx.getMetadataObserver().getTopicNames(stream), auth, cookie);
+        () -> ctx.getMetadataObserver().getTopicNames(stream), auth, cookie);
   }
 }
 

@@ -240,7 +240,7 @@ public class ProducerPool {
       restProducer = producers.get(recordFormat);
     }
 
-      restProducer.produce(task, topic, partition, records);
+    restProducer.produce(task, topic, partition, records);
   }
 
   public void shutdown() {

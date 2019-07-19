@@ -57,7 +57,8 @@ public class ProduceTask {
     return new Callback() {
       @Override
       public void onCompletion(RecordMetadata metadata, Exception exception) {
-        // TODO: MapR Streams Producer implementation should throw relevant exception, after we can remove this work around
+        // TODO: MapR Streams Producer implementation should throw relevant exception,
+        // TODO: after we can remove this work around
         if (exception.getMessage().endsWith("err 1")) {
           exception = Errors.topicNotFoundException();
         }

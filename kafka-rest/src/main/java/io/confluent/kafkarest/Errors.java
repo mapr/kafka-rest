@@ -29,7 +29,8 @@ import io.confluent.rest.exceptions.RestServerErrorException;
 
 public class Errors {
 
-  public static final String NO_PERMISSIONS_ERROR_MESSAGE = "You have no permissions to perform that action.";
+  public static final String NO_PERMISSIONS_ERROR_MESSAGE =
+          "You have no permissions to perform that action.";
   public static final int NO_PERMISSIONS_ERROR_CODE = 403001;
 
   public static RestException noPermissionsException() {
