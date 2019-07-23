@@ -214,7 +214,11 @@ public abstract class ConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, ClientVa
         && lock.readLock().tryLock()) {
       try {
         log.info("Consumer {} sends heartbeat.", instanceId.getInstance());
-        ConsumerRecords<KafkaKeyT, KafkaValueT> records = consumer.poll(100);
+        ConsumerRecords<KafkaKeyT, KafkaValueT> records = consumer.poll(0);
+        if (records.count() == 0) {
+          // The first poll is used to assign partitions. The second poll is used to fetch data.
+          records = consumer.poll(0);
+        }
 
         // change next heartbeat time before processing records
         this.nextHeartbeatTime = config.getTime().milliseconds() + heartbeatDelay;
