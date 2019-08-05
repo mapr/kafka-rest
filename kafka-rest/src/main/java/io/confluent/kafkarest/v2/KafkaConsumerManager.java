@@ -15,6 +15,7 @@
 
 package io.confluent.kafkarest.v2;
 
+import io.confluent.kafka.schemaregistry.client.SchemaRegistryClientConfig;
 import io.confluent.kafkarest.ConsumerManager;
 import io.confluent.kafkarest.ConsumerInstanceId;
 import io.confluent.kafkarest.ConsumerReadCallback;
@@ -223,6 +224,12 @@ public class KafkaConsumerManager {
           "schema.registry.url",
           config.getSchemaRegistryUrl()
       );
+
+      boolean isAuthenticationEnabled =
+          config.getBoolean(KafkaRestConfig.ENABLE_AUTHENTICATION_CONFIG);
+      if (isAuthenticationEnabled) {
+        props.setProperty(SchemaRegistryClientConfig.MAPRSASL_AUTH_CONFIG, "true");
+      }
 
       switch (instanceConfig.getFormat()) {
         case AVRO:
