@@ -20,9 +20,7 @@ import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
 
-import java.net.URLDecoder;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class ConsumerSubscriptionRecord {
 
@@ -33,9 +31,6 @@ public class ConsumerSubscriptionRecord {
       @JsonProperty("topics") List<String> topics,
       @JsonProperty("topic_pattern") String topicPattern
   ) {
-    topics = topics.stream()
-            .map(URLDecoder::decode)
-            .collect(Collectors.toList());
     this.topics = topics;
     this.topicPattern = topicPattern;
   }
