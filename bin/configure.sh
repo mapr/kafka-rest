@@ -158,6 +158,11 @@ function register_port_if_available() {
     return 0
 }
 
+function append_hostname_to_properties_file() {
+  HOST_NAME=`hostname --fqdn`
+  echo "host.name=$HOST_NAME" >> $KAFKA_REST_PROPERTIES
+}
+
 function configure() {
     mode=$1
 
@@ -175,6 +180,8 @@ function configure() {
     if ! ${KAFKA_REST_INITIAL_RUN}; then
         write_kafka_rest_restart
     fi
+    append_hostname_to_properties_file
+
     return 0
 }
 

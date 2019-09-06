@@ -34,13 +34,10 @@ public class UriUtils {
       // be reset.
       URI origAbsoluteUri = uriInfo.getAbsolutePath();
       builder.scheme(origAbsoluteUri.getScheme());
-      // Only reset the port if it was set in the original URI
-      if (origAbsoluteUri.getPort() != -1) {
-        try {
-          builder.port(config.consumerPort(origAbsoluteUri.getScheme()));
-        } catch (URISyntaxException e) {
-          throw new ConfigException(e.getMessage());
-        }
+      try {
+        builder.port(config.consumerPort(origAbsoluteUri.getScheme()));
+      } catch (URISyntaxException e) {
+        throw new ConfigException(e.getMessage());
       }
     }
     return builder;
