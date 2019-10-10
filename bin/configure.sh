@@ -44,12 +44,6 @@ KAFKA_REST_PROPERTIES=${KAFKA_REST_PROPERTIES:-${KAFKA_REST_CONF_DIR}/${KAFKA_RE
 # directory contains saved user's configs
 KAFKA_REST_SAVED_PROPS_DIR=${KAFKA_REST_SAVED_PROPS_DIR:-${KAFKA_REST_PACKAGE_DIR}/config/saved}
 
-# indicates whether this is initial run of script
-KAFKA_REST_INITIAL_RUN=true
-if [ -d $KAFKA_REST_SAVED_PROPS_DIR ]; then # directory exists, script was executed
-    KAFKA_REST_INITIAL_RUN=false;
-fi
-
 # MapR ecosystems' restart directory and Kafka REST service restart script
 MAPR_RESTART_SCRIPTS_DIR=${MAPR_RESTART_SCRIPTS_DIR:-${MAPR_HOME}/conf/restart}
 KAFKA_REST_RESTART_SRC=${KAFKA_REST_RESTART_SRC:-${MAPR_RESTART_SCRIPTS_DIR}/${KAFKA_REST_NAME}-${VERSION}.restart}
@@ -117,7 +111,9 @@ function change_permissions() {
 }
 
 function save_current_properties() {
-    cp -p $KAFKA_REST_PROPERTIES ${KAFKA_REST_SAVED_PROPS_DIR}/${KAFKA_REST_NAME}.properties.${NOW}
+    if [ -f $KAFKA_REST_PROPERTIES ]; then
+        cp -p $KAFKA_REST_PROPERTIES ${KAFKA_REST_SAVED_PROPS_DIR}/${KAFKA_REST_NAME}.properties.${NOW}
+    fi
 }
 
 function create_saved_properties_directory() {
@@ -160,7 +156,9 @@ function register_port_if_available() {
 
 function append_hostname_to_properties_file() {
   HOST_NAME=`hostname --fqdn`
-  echo "host.name=$HOST_NAME" >> $KAFKA_REST_PROPERTIES
+  if ! grep -q "host.name=" $KAFKA_REST_PROPERTIES; then
+      echo "host.name=$HOST_NAME" >> $KAFKA_REST_PROPERTIES
+  fi
 }
 
 function configure() {
@@ -174,12 +172,9 @@ function configure() {
         return 1
     fi
     save_current_properties
-    cp ${KAFKA_REST_CONF_TEMPLATE_DIR}/kafka-rest-${mode}.properties ${KAFKA_REST_PROPERTIES}
-    cp ${KAFKA_REST_CONF_TEMPLATE_DIR}/log4j.properties ${KAFKA_REST_CONF_DIR}/log4j.properties
-    cp ${KAFKA_REST_CONF_TEMPLATE_DIR}/warden.kafka-rest.conf ${KAFKA_REST_CONF_DIR}/warden.kafka-rest.conf
-    if ! ${KAFKA_REST_INITIAL_RUN}; then
-        write_kafka_rest_restart
-    fi
+    cp -n ${KAFKA_REST_CONF_TEMPLATE_DIR}/kafka-rest-${mode}.properties ${KAFKA_REST_PROPERTIES}
+    cp -n ${KAFKA_REST_CONF_TEMPLATE_DIR}/log4j.properties ${KAFKA_REST_CONF_DIR}/log4j.properties
+    cp -n ${KAFKA_REST_CONF_TEMPLATE_DIR}/warden.kafka-rest.conf ${KAFKA_REST_CONF_DIR}/warden.kafka-rest.conf
     append_hostname_to_properties_file
 
     return 0
@@ -231,8 +226,9 @@ if $HELP; then
     exit 0
 fi
 
-change_permissions
-setup_warden_config
+if [ ! -f "$KAFKA_REST_CONF_DIR/.not_configured_yet" ]; then
+    write_kafka_rest_restart
+fi
 
 if [[ -z ${isOnlyRoles} ]] ; then
     case ${SECURITY} in
@@ -259,9 +255,11 @@ if [[ -z ${isOnlyRoles} ]] ; then
         ;;
     esac
 fi
+change_permissions
+setup_warden_config
 
-if [[ -f "$KAFKA_REST_PACKAGE_DIR/conf/.not_configured_yet" ]] ; then
-    rm -f "$KAFKA_REST_PACKAGE_DIR/conf/.not_configured_yet"
+if [[ -f "$KAFKA_REST_CONF_DIR/.not_configured_yet" ]] ; then
+    rm -f "$KAFKA_REST_CONF_DIR/.not_configured_yet"
 fi
 
 exit 0
