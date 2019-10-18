@@ -175,6 +175,7 @@ function configure() {
     cp -n ${KAFKA_REST_CONF_TEMPLATE_DIR}/kafka-rest-${mode}.properties ${KAFKA_REST_PROPERTIES}
     cp -n ${KAFKA_REST_CONF_TEMPLATE_DIR}/log4j.properties ${KAFKA_REST_CONF_DIR}/log4j.properties
     cp -n ${KAFKA_REST_CONF_TEMPLATE_DIR}/warden.kafka-rest.conf ${KAFKA_REST_CONF_DIR}/warden.kafka-rest.conf
+    cp -n ${KAFKA_REST_CONF_TEMPLATE_DIR}/headers.xml ${KAFKA_REST_CONF_DIR}/headers.xml
     append_hostname_to_properties_file
 
     return 0
