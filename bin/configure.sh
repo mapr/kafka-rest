@@ -172,10 +172,10 @@ function configure() {
         return 1
     fi
     save_current_properties
-    cp -n ${KAFKA_REST_CONF_TEMPLATE_DIR}/kafka-rest-${mode}.properties ${KAFKA_REST_PROPERTIES}
-    cp -n ${KAFKA_REST_CONF_TEMPLATE_DIR}/log4j.properties ${KAFKA_REST_CONF_DIR}/log4j.properties
-    cp -n ${KAFKA_REST_CONF_TEMPLATE_DIR}/warden.kafka-rest.conf ${KAFKA_REST_CONF_DIR}/warden.kafka-rest.conf
-    cp -n ${KAFKA_REST_CONF_TEMPLATE_DIR}/headers.xml ${KAFKA_REST_CONF_DIR}/headers.xml
+    cp ${KAFKA_REST_CONF_TEMPLATE_DIR}/kafka-rest-${mode}.properties ${KAFKA_REST_PROPERTIES}
+    cp ${KAFKA_REST_CONF_TEMPLATE_DIR}/log4j.properties ${KAFKA_REST_CONF_DIR}/log4j.properties
+    cp ${KAFKA_REST_CONF_TEMPLATE_DIR}/warden.kafka-rest.conf ${KAFKA_REST_CONF_DIR}/warden.kafka-rest.conf
+    cp ${KAFKA_REST_CONF_TEMPLATE_DIR}/headers.xml ${KAFKA_REST_CONF_DIR}/headers.xml
     append_hostname_to_properties_file
 
     return 0
@@ -185,33 +185,37 @@ function configure() {
 # Parse options
 #######################################################################
 
-
-{ OPTS=`getopt -n "$0" -a -o suhR --long secure,unsecure,customSecure,help,EC -- "$@"`; } 2>/dev/null
+# We shouldn't wrap arguments before parsing because parent configure.sh calls this script with
+# extra space, e.g.
+# <path_to_this_script>/configure.sh --secure -EC  -R
+# as result arguments parsed incorrectly and -R option is omitted
+OPTS=$(getopt -n "$0" -a -o suhR --long secure,unsecure,customSecure,help,EC,HS -- $@)
 eval set -- "$OPTS"
 
-SECURITY=disabled
+AUTO_CONFIGURATION=disabled
 HELP=false
 while true; do
   case "$1" in
-    -s | --secure )
-    SECURITY=default
+    -s | --secure | -cs | --customSecure)
+    AUTO_CONFIGURATION=secure
     shift ;;
 
     -u | --unsecure )
-    SECURITY=disabled
+    AUTO_CONFIGURATION=unsecure
     shift ;;
     
-    -cs | --customSecure)
-    SECURITY=custom
+    -R)
+    # If service is already configured do not configure (do not override existing configuration)
+    # and only restart it
+    if [[ ! -f "$KAFKA_REST_CONF_DIR/.not_configured_yet" ]]; then
+        AUTO_CONFIGURATION=disabled
+        write_kafka_rest_restart
+    fi
     shift ;;
     
     -h | --help ) HELP=true; shift ;;
 
-    -R)
-    # sets isOnlyRoles
-    shift ;;
-
-    --EC)
+    --EC | --HS)
      # ignoring
      shift ;;
 
@@ -227,35 +231,29 @@ if $HELP; then
     exit 0
 fi
 
-if [ ! -f "$KAFKA_REST_CONF_DIR/.not_configured_yet" ]; then
-    write_kafka_rest_restart
-fi
+case ${AUTO_CONFIGURATION} in
+    unsecure )
+        if configure unsecure; then
+            logInfo 'Kafka REST successfully configured to run in unsecure mode.'
+        else
+            logErr 'Error: Errors occurred while configuring Kafka REST to run in unsecure mode.'
+            exit 1
+        fi
+    ;;
 
-if [[ -z ${isOnlyRoles} ]] ; then
-    case ${SECURITY} in
-        disabled )
-            if configure unsecure; then
-                logInfo 'Kafka REST successfully configured to run in unsecure mode.'
-            else
-                logErr 'Error: Errors occurred while configuring Kafka REST to run in unsecure mode.'
-                exit 1
-            fi
-        ;;
+    secure )
+        if configure secure; then
+            logInfo 'Kafka REST successfully configured to run in secure mode.'
+        else
+            logErr 'Error: Errors occurred while configuring Kafka REST to run in secure mode.'
+            exit 1
+        fi
+    ;;
 
-        default )
-            if configure secure; then
-                logInfo 'Kafka REST successfully configured to run in secure mode.'
-            else
-                logErr 'Error: Errors occurred while configuring Kafka REST to run in secure mode.'
-                exit 1
-            fi
-        ;;
-
-        custom )
-        # do nothing
-        ;;
-    esac
-fi
+    disabled )
+    # do nothing
+    ;;
+esac
 change_permissions
 setup_warden_config
 
