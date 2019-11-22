@@ -70,7 +70,7 @@ KAFKA_REST_WARDEN_DEST_CONF=${KAFKA_REST_WARDEN_DEST_CONF:-${MAPR_HOME}/conf/con
 
 function print_usage() {
     cat <<EOM
-Usage: $(basename $0) [-s|--secure || -u|--unsecure] [-R] [--EC] [-h|--help]
+Usage: $(basename $0) [-s|--secure || -u|--unsecure] [-R] [-EC <options>] [-h|--help]
 Options:
     --secure    Configure Kafka REST for secure cluster. Enables SSL for Kafka REST.
 
@@ -79,8 +79,8 @@ Options:
     -R          Indicates that cluster is up. If this option is not specified only activities that do not require a
                 cluster to be up will be performed.
 
-    --EC         Common/shared ecosystem parameters. Example:
-                --EC “-OT <openTsdbServerList>”
+    -EC         Common/shared ecosystem parameters. Example:
+                -EC “-OT <openTsdbServerList>”
 
     --help      Provides information about usage of the script.
 EOM
@@ -229,7 +229,7 @@ function configure_secure_mode() {
 #######################################################################
 
 
-{ OPTS=`getopt -n "$0" -a -o suhR --long secure,unsecure,customSecure,help,EC -- "$@"`; } 2>/dev/null
+{ OPTS=`getopt -n "$0" -a -o suhR --long secure,unsecure,customSecure,help,EC: -- "$@"`; } 2>/dev/null
 eval set -- "$OPTS"
 
 SECURE=false
@@ -258,9 +258,9 @@ while true; do
 
     -R) KAFKA_REST_CORE_IS_RUNNING=true; shift ;;
 
-    --EC)
+    -EC | --EC)
      # ignoring
-     shift ;;
+     shift 2;;
 
     -- ) shift; break ;;
 
