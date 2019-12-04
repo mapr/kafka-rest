@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.confluent</groupId>
         <artifactId>rest-utils-parent</artifactId>
-        <version>4.1.0-mapr-1912</version>
+        <version>4.1.0</version>
     </parent>
 
     <artifactId>kafka-rest-parent</artifactId>
@@ -47,7 +47,7 @@
     <properties>
         <confluent.maven.repo>http://packages.confluent.io/maven/</confluent.maven.repo>
         <log4j.version>1.7.25</log4j.version>
-        <licenses.version>4.1.0-mapr-1912</licenses.version>
+        <licenses.version>4.1.0</licenses.version>
         <mapr.version>6.1.0-mapr</mapr.version>
     </properties>
 
