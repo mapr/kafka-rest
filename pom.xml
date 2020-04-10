@@ -46,7 +46,7 @@
 
     <properties>
         <confluent.maven.repo>http://packages.confluent.io/maven/</confluent.maven.repo>
-        <log4j.version>1.7.25</log4j.version>
+        <log4j.version>2.13.1</log4j.version>
         <licenses.version>4.1.0</licenses.version>
         <mapr.version>6.1.0-mapr</mapr.version>
     </properties>
