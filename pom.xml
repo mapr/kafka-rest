@@ -49,6 +49,7 @@
         <log4j.version>2.13.1</log4j.version>
         <licenses.version>4.1.0</licenses.version>
         <checkstyle.suppressions.location>checkstyle/suppressions.xml</checkstyle.suppressions.location>
+        <spotbugs.version>3.1.9</spotbugs.version>
     </properties>
 
     <repositories>
