@@ -16,6 +16,7 @@
 
 package io.confluent.kafkarest;
 
+import io.confluent.kafkarest.util.NotAllowedMethodFilter;
 import org.eclipse.jetty.util.StringUtil;
 import org.apache.kafka.common.security.JaasUtils;
 
@@ -23,6 +24,7 @@ import java.lang.reflect.Proxy;
 import java.util.List;
 import java.util.Properties;
 
+import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.core.Configurable;
 
 import io.confluent.kafkarest.exceptions.ZkExceptionMapper;
@@ -142,9 +144,16 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
     config.register(KafkaRestCleanupFilter.class);
     config.register(new SchemaRegistryEnabledRequestFilter(context));
 
+    disableNotAllowedHttpMethods(config);
+
     for (RestResourceExtension restResourceExtension : restResourceExtensions) {
       restResourceExtension.register(config, appConfig);
     }
+  }
+
+  public static void disableNotAllowedHttpMethods(Configurable<?> config) {
+    ContainerRequestFilter filter = new NotAllowedMethodFilter();
+    config.register(filter);
   }
 
   @Override
