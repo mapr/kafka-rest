@@ -375,7 +375,7 @@ public class KafkaRestConfig extends RestConfig {
   }
 
   protected static ConfigDef baseKafkaRestConfigDef() {
-    return SchemaRegistryDiscoveryConfig.defineDiscoveryProperties(new ConfigDef())
+    return SchemaRegistryDiscoveryConfig.defineDiscoveryProperties(baseConfigDef())
         .defineOverride(
             PORT_CONFIG,
             ConfigDef.Type.INT,
