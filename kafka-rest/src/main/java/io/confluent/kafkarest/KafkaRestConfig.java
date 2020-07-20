@@ -869,13 +869,15 @@ public class KafkaRestConfig extends RestConfig {
   }
 
   private String initSchemaRegistryUrl() {
-    if (getString(SCHEMA_REGISTRY_URL_CONFIG).equals(DUMMY_SCHEMA_REGISTRY_URL)) {
+    String srUrl = getString(SCHEMA_REGISTRY_URL_CONFIG);
+    if (!DUMMY_SCHEMA_REGISTRY_URL.equals(srUrl)) {
+      return srUrl;
+    } else if (getBoolean(SCHEMA_REGISTRY_ENABLE_CONFIG)) {
       SchemaRegistryDiscoveryClient discoveryClient
               = SchemaRegistryDiscoveryConfig.configureDiscoveryClient(this);
-      List<String> urls = discoveryClient.discoverUrls();
-      return String.join(",", urls);
+      return String.join(",", discoveryClient.discoverUrls());
     } else {
-      return getString(SCHEMA_REGISTRY_URL_CONFIG);
+      return SCHEMA_REGISTRY_URL_DEFAULT;
     }
   }
 
