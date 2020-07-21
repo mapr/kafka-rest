@@ -46,7 +46,7 @@
         <dependency>
             <groupId>com.mapr.streams</groupId>
             <artifactId>mapr-streams</artifactId>
-            <version>6.2.0-mapr-SNAPSHOT</version>
+            <version>6.2.0.0-mapr-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -115,7 +115,7 @@
         <dependency>
             <groupId>com.mapr.security</groupId>
             <artifactId>mapr-security-web</artifactId>
-            <version>6.2.0-mapr-SNAPSHOT</version>
+            <version>6.2.0.0-mapr-SNAPSHOT</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.mapr.hadoop</groupId>
