@@ -15,6 +15,7 @@
 
 package io.confluent.kafkarest;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.DescribeClusterResult;
@@ -22,6 +23,7 @@ import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartitionInfo;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -32,6 +34,9 @@ import java.util.Vector;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
+import com.mapr.streams.Admin;
+import com.mapr.streams.Streams;
 
 import io.confluent.kafkarest.entities.Partition;
 import io.confluent.kafkarest.entities.PartitionReplica;
@@ -97,6 +102,23 @@ public class AdminClientWrapper {
               e);
     }
     return allTopics;
+  }
+
+  public boolean streamExistsFromTopicName(String topic) {
+    Configuration conf = new Configuration();
+    String stream;
+    if (isStreamTopic(topic)) {
+      stream = topic.substring(0,topic.indexOf(":"));
+    } else if (isDefaultStreamSet) {
+      stream = defaultStream;
+    } else {
+      throw new IllegalStateException("There is no stream in topic and no default stream was set");
+    }
+    try (Admin admin = Streams.newAdmin(conf)) {
+      return admin.streamExists(stream);
+    } catch (IOException e) {
+      throw Errors.kafkaErrorException(e);
+    }
   }
 
   public boolean topicExists(String topic) {

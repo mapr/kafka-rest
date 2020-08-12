@@ -297,6 +297,7 @@ public class ConsumersResource {
   private void seekToBeginning(UriInfo uriInfo, String group, String instance,
                                ConsumerSeekToRequest seekToRequest) {
     try {
+      checkIfConsumerSeekToRequestIsValid(seekToRequest);
       ctx.getKafkaConsumerManager().seekToBeginning(group, instance, seekToRequest);
     } catch (java.lang.IllegalStateException e) {
       throw Errors.illegalStateException(e);
@@ -321,6 +322,7 @@ public class ConsumersResource {
   private void seekToEnd(UriInfo uriInfo, String group, String instance,
                          ConsumerSeekToRequest seekToRequest) {
     try {
+      checkIfConsumerSeekToRequestIsValid(seekToRequest);
       ctx.getKafkaConsumerManager().seekToEnd(group, instance, seekToRequest);
     } catch (java.lang.IllegalStateException e) {
       throw Errors.illegalStateException(e);
@@ -345,6 +347,7 @@ public class ConsumersResource {
   private void seekToOffset(UriInfo uriInfo, String group, String instance,
                             ConsumerSeekToOffsetRequest seekToOffsetRequest) {
     try {
+      checkIfConsumerSeekToOffsetRequestIsValid(seekToOffsetRequest);
       ctx.getKafkaConsumerManager().seekToOffset(group, instance, seekToOffsetRequest);
     } catch (java.lang.IllegalStateException e) {
       throw Errors.illegalStateException(e);
@@ -416,5 +419,55 @@ public class ConsumersResource {
           }
         }
     );
+  }
+
+  private boolean streamExistsFromTopicName(final String topic) {
+    return ctx.getAdminClientWrapper().streamExistsFromTopicName(topic);
+  }
+
+  private boolean topicExists(final String topic) {
+    return ctx.getAdminClientWrapper().topicExists(topic);
+  }
+
+  private boolean partitionExists(final String topic, int partition) {
+    return ctx.getAdminClientWrapper().partitionExists(topic, partition);
+  }
+
+  private void checkStreamExistsFromTopicName(final String topic) {
+    if (!streamExistsFromTopicName(topic)) {
+      throw Errors.streamNotFoundException();
+    }
+  }
+
+  private void checkTopicExists(final String topic) {
+    if (!topicExists(topic)) {
+      throw Errors.topicNotFoundException();
+    }
+  }
+
+  private void checkPartitionExists(final String topic, int partition) {
+    if (!partitionExists(topic, partition)) {
+      throw Errors.partitionNotFoundException();
+    }
+  }
+
+  private void checkIfTopicAndPartitionExists(final String topic, int partition) {
+    checkStreamExistsFromTopicName(topic);
+    checkTopicExists(topic);
+    checkPartitionExists(topic, partition);
+  }
+
+  private void checkIfConsumerSeekToOffsetRequestIsValid(ConsumerSeekToOffsetRequest request) {
+    if (request != null) {
+      request.offsets.forEach(x ->
+          checkIfTopicAndPartitionExists(x.getTopic(), x.getPartition()));
+    }
+  }
+
+  private void checkIfConsumerSeekToRequestIsValid(ConsumerSeekToRequest seekToRequest) {
+    if (seekToRequest != null) {
+      seekToRequest.partitions.forEach(x ->
+          checkIfTopicAndPartitionExists(x.getTopic(), x.getPartition()));
+    }
   }
 }
