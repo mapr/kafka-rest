@@ -21,7 +21,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 
 import java.util.Queue;
 import java.util.ArrayDeque;
@@ -188,18 +187,14 @@ public abstract class KafkaConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, Cli
    */
   public void seekToOffset(ConsumerSeekToOffsetRequest seekToOffsetRequest) {
     lock.lock();
-    TopicPartition topicPartition = null;
     try {
       if (seekToOffsetRequest != null) {
         for (TopicPartitionOffsetMetadata t : seekToOffsetRequest.offsets) {
-          topicPartition = new TopicPartition(t.getTopic(), t.getPartition());
+          TopicPartition topicPartition = new TopicPartition(t.getTopic(), t.getPartition());
           consumer.seek(topicPartition, t.getOffset());
         }
 
       }
-    } catch (UnknownTopicOrPartitionException e) {
-      throw new IllegalStateException(String.format("No current assignment for partition %s-%d", 
-          topicPartition.topic(), topicPartition.partition()));
     } finally {
       lock.unlock();
     }
