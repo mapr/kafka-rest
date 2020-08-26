@@ -15,6 +15,8 @@
 
 package io.confluent.kafkarest.resources.v2;
 
+import java.util.List;
+
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.Consumes;
@@ -47,6 +49,8 @@ import io.confluent.kafkarest.entities.ConsumerSeekToRequest;
 import io.confluent.kafkarest.entities.ConsumerSubscriptionRecord;
 import io.confluent.kafkarest.entities.ConsumerSubscriptionResponse;
 import io.confluent.kafkarest.entities.CreateConsumerInstanceResponse;
+import io.confluent.kafkarest.entities.TopicPartition;
+import io.confluent.kafkarest.entities.TopicPartitionOffsetMetadata;
 import io.confluent.kafkarest.extension.SchemaRegistryEnabled;
 import io.confluent.kafkarest.v2.AvroKafkaConsumerState;
 import io.confluent.kafkarest.v2.BinaryKafkaConsumerState;
@@ -243,19 +247,26 @@ public class ConsumersResource {
 
   private void commitOffsets(AsyncResponse asyncResponse, String group, String instance,
                              String async, ConsumerOffsetCommitRequest offsetCommitRequest) {
-    ctx.getKafkaConsumerManager().commitOffsets(
-        group,
-        instance,
-        async,
-        offsetCommitRequest,
-        (offsets, e) -> {
-          if (e != null) {
-            asyncResponse.resume(e);
-          } else {
-            asyncResponse.resume(offsets);
+    try {
+      if (offsetCommitRequest != null) {
+        checkIfAllTopicPartitionOffsetsIsValid(offsetCommitRequest.offsets);
+      }
+      ctx.getKafkaConsumerManager().commitOffsets(
+          group,
+          instance,
+          async,
+          offsetCommitRequest,
+          (offsets, e) -> {
+            if (e != null) {
+              asyncResponse.resume(e);
+            } else {
+              asyncResponse.resume(offsets);
+            }
           }
-        }
-    );
+      );
+    } catch (java.lang.IllegalStateException e) {
+      throw Errors.illegalStateException(e);
+    }
   }
 
   @GET
@@ -273,10 +284,15 @@ public class ConsumersResource {
 
   private ConsumerCommittedResponse committedOffsets(String group, String instance,
                                                      ConsumerCommittedRequest request) {
-    if (request == null) {
-      throw Errors.partitionNotFoundException();
+    try {
+      if (request == null) {
+        throw Errors.partitionNotFoundException();
+      }
+      checkIfAllTopicPartitionsIsValid(request.partitions);
+      return ctx.getKafkaConsumerManager().committed(group, instance, request);
+    } catch (java.lang.IllegalStateException e) {
+      throw Errors.illegalStateException(e);
     }
-    return ctx.getKafkaConsumerManager().committed(group, instance, request);
   }
 
   @POST
@@ -297,7 +313,9 @@ public class ConsumersResource {
   private void seekToBeginning(UriInfo uriInfo, String group, String instance,
                                ConsumerSeekToRequest seekToRequest) {
     try {
-      checkIfConsumerSeekToRequestIsValid(seekToRequest);
+      if (seekToRequest != null) {
+        checkIfAllTopicPartitionsIsValid(seekToRequest.partitions);
+      }
       ctx.getKafkaConsumerManager().seekToBeginning(group, instance, seekToRequest);
     } catch (java.lang.IllegalStateException e) {
       throw Errors.illegalStateException(e);
@@ -322,7 +340,9 @@ public class ConsumersResource {
   private void seekToEnd(UriInfo uriInfo, String group, String instance,
                          ConsumerSeekToRequest seekToRequest) {
     try {
-      checkIfConsumerSeekToRequestIsValid(seekToRequest);
+      if (seekToRequest != null) {
+        checkIfAllTopicPartitionsIsValid(seekToRequest.partitions);
+      }
       ctx.getKafkaConsumerManager().seekToEnd(group, instance, seekToRequest);
     } catch (java.lang.IllegalStateException e) {
       throw Errors.illegalStateException(e);
@@ -347,7 +367,9 @@ public class ConsumersResource {
   private void seekToOffset(UriInfo uriInfo, String group, String instance,
                             ConsumerSeekToOffsetRequest seekToOffsetRequest) {
     try {
-      checkIfConsumerSeekToOffsetRequestIsValid(seekToOffsetRequest);
+      if (seekToOffsetRequest != null) {
+        checkIfAllTopicPartitionOffsetsIsValid(seekToOffsetRequest.offsets);
+      }
       ctx.getKafkaConsumerManager().seekToOffset(group, instance, seekToOffsetRequest);
     } catch (java.lang.IllegalStateException e) {
       throw Errors.illegalStateException(e);
@@ -457,17 +479,13 @@ public class ConsumersResource {
     checkPartitionExists(topic, partition);
   }
 
-  private void checkIfConsumerSeekToOffsetRequestIsValid(ConsumerSeekToOffsetRequest request) {
-    if (request != null) {
-      request.offsets.forEach(x ->
-          checkIfTopicAndPartitionExists(x.getTopic(), x.getPartition()));
-    }
+  private void checkIfAllTopicPartitionOffsetsIsValid(List<TopicPartitionOffsetMetadata> offsets) {
+    offsets.forEach(x ->
+        checkIfTopicAndPartitionExists(x.getTopic(), x.getPartition()));
   }
 
-  private void checkIfConsumerSeekToRequestIsValid(ConsumerSeekToRequest seekToRequest) {
-    if (seekToRequest != null) {
-      seekToRequest.partitions.forEach(x ->
-          checkIfTopicAndPartitionExists(x.getTopic(), x.getPartition()));
-    }
+  private void checkIfAllTopicPartitionsIsValid(List<TopicPartition> partitions) {
+    partitions.forEach(x ->
+        checkIfTopicAndPartitionExists(x.getTopic(), x.getPartition()));
   }
 }
