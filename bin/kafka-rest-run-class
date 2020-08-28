@@ -80,6 +80,10 @@ fi
 # Add native library path to LD_LIBRARY_PATH
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$(get_hadoop_libpath)" # function in mapr-config.sh
 
+# main class should be assigned before jmx options
+MAIN=$1
+shift
+
 # JMX settings
 isSecure="false"
 if [ -f "${MAPR_HOME:-/opt/mapr}/conf/mapr-clusters.conf" ]; then
@@ -112,7 +116,7 @@ if [ -z "$MAPR_JMXDISABLE" ] && [ -z "$MAPR_JMXLOCALHOST" ] && [ -z "$MAPR_JMXRE
   echo "No MapR JMX options given - defaulting to local binding"
 fi
 
-if [[ ( -z "$MAPR_JMXDISABLE" || "$MAPR_JMXDISABLE" = 'false' ) && \
+if [[ ( -z "$MAPR_JMXDISABLE" || "$MAPR_JMXDISABLE" = 'false' ) && ( $MAIN == *"KafkaRestMain" ) && \
       ( -z "$MAPR_JMX_KAFKA_REST_ENABLE" || "$MAPR_JMX_KAFKA_REST_ENABLE" = "true" ) ]]; then
 
   # default setting for localBinding
@@ -194,7 +198,11 @@ if [[ ( -z "$MAPR_JMXDISABLE" || "$MAPR_JMXDISABLE" = 'false' ) && \
     MAPR_JMX_OPTS="-Dcom.sun.management.jmxremote"
   fi
 else
-  echo "JMX disabled by user request"
+  if [[ $MAIN != *"KafkaRestMain" ]]; then
+    echo "JMX disabled - It is used for only Kafka Rest server (skipped for avro consumer and producer)."
+  else
+    echo "JMX disabled by user request"
+  fi
   MAPR_JMX_OPTS=""
 fi
 
@@ -221,9 +229,6 @@ fi
 if [ -z "$KAFKAREST_JVM_PERFORMANCE_OPTS" ]; then
   KAFKAREST_JVM_PERFORMANCE_OPTS="-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent -Djava.awt.headless=true"
 fi
-
-MAIN=$1
-shift
 
 while [ $# -gt 0 ]; do
   COMMAND=$1
