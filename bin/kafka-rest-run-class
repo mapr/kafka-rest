@@ -92,6 +92,8 @@ fi
 
 MAPR_JMX_PORT=${MAPR_JMX_KAFKA_REST_PORT:-3416}
 
+JMX_JAR=$(echo ${MAPR_HOME:-/opt/mapr}/lib/jmxagent*)
+
 if [ -z "$MAPR_JMXLOCALBINDING" ]; then
   MAPR_JMXLOCALBINDING="false"
 fi
@@ -128,7 +130,6 @@ if [[ ( -z "$MAPR_JMXDISABLE" || "$MAPR_JMXDISABLE" = 'false' ) && ( $MAIN == *"
   fi
 
   if [ "$isSecure" = "true" ] && [ "$MAPR_JMXREMOTEHOST" = "true" ]; then
-    JMX_JAR=$(echo ${MAPR_HOME:-/opt/mapr}/lib/jmxagent*)
     if [ -n "$JMX_JAR" ] && [ -f ${JMX_JAR} ]; then
       MAPR_JMX_OPTS="-javaagent:$JMX_JAR \
       -Dmapr.jmx.agent.login.config=$MAPR_LOGIN_CONFIG"
@@ -268,6 +269,10 @@ KAFKAREST_CLASSPATH=$CLASSPATH:$MAPR_CLIENT_CLASSPATH
 
 KAFKA_VERSION=$(cat "/opt/mapr/kafka/kafkaversion")
 KAFKAREST_CLASSPATH=$KAFKAREST_CLASSPATH:/opt/mapr/kafka/kafka-$KAFKA_VERSION/libs/*
+
+if [ -f ${JMX_JAR} ]; then
+  KAFKAREST_CLASSPATH=$KAFKAREST_CLASSPATH:$JMX_JAR
+fi
 
 # Launch mode
 if [ "x$DAEMON_MODE" = "xtrue" ]; then
