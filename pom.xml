@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.confluent</groupId>
         <artifactId>rest-utils-parent</artifactId>
-        <version>5.1.2.0-mapr-SNAPSHOT</version>
+        <version>5.1.2.0-mapr</version>
     </parent>
 
     <artifactId>kafka-rest-parent</artifactId>
@@ -23,6 +23,7 @@
         produce and consume messages, view the state of the cluster, and perform administrative
         actions without using the native Kafka protocol or clients.
     </description>
+    <version>5.1.2.0-mapr-700</version>
 
     <licenses>
         <license>
