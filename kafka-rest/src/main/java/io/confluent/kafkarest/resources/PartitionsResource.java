@@ -367,7 +367,7 @@ public class PartitionsResource {
   }
 
   private void checkTopicExists(KafkaStreamsMetadataObserver metadataObserver, String topic) {
-    if (metadataObserver.topicExists(topic)) {
+    if (!metadataObserver.topicExists(topic)) {
       throw Errors.topicNotFoundException();
     }
   }
