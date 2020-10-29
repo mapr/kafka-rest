@@ -236,7 +236,9 @@ public class ConsumerManager {
       if (mdObserver.isImpersonationEnabled()){
           KafkaStreamsMetadataObserver mdUserObserver =  new KafkaStreamsMetadataObserver(config, mdObserver.getZkUtils(),
                   mdObserver.isStreams(), true);
-          if (!mdUserObserver.topicExists(topic)) {
+          boolean topicExists = mdUserObserver.topicExists(topic);
+          mdUserObserver.shutdown();
+          if (!topicExists) {
               callback.onCompletion(null, Errors.topicNotFoundException());
               return null;
           }
@@ -248,14 +250,9 @@ public class ConsumerManager {
       }
 
       ConsumerWorker worker;
-      if (mdObserver.isImpersonationEnabled()){
-          worker = new ConsumerWorker(config);
-          worker.start();
-      } else {
-          int workerId = nextWorker.getAndIncrement() % workers.size();
-          worker = workers.get(workerId);
-      }
-  
+
+    int workerId = nextWorker.getAndIncrement() % workers.size();
+    worker = workers.get(workerId);
       
 
     return worker.readTopic(

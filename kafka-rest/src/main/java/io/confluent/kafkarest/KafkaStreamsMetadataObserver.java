@@ -246,6 +246,11 @@ public class KafkaStreamsMetadataObserver extends MetadataObserver {
     }
   }
 
+  @Override
+  protected void finalize() throws Throwable {
+    super.finalize();
+  }
+
   public Partition getTopicPartition(String topic, int partition) {
     List<Partition> partitions = getTopicPartitions(topic);
     for (Partition p : partitions) {
