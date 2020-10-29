@@ -81,13 +81,21 @@ public class PartitionsResource {
       return (List<Partition>) runProxyQuery(new PrivilegedExceptionAction() {
           @Override
           public List<Partition> run() throws Exception {
-              checkTopicExists(topic);
-              KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
-              List<Partition> partitions = metadataObserver.getTopicPartitions(topic);
-              if (ctx.isImpersonationEnabled()){
-                  metadataObserver.shutdown();
+              final KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
+              try {
+                  checkTopicExists(metadataObserver, topic);
+                  List<Partition> partitions = metadataObserver.getTopicPartitions(topic);
+                  return partitions;
+              } finally {
+                  if (ctx.isImpersonationEnabled()) {
+                      new Thread() {
+                          @Override
+                          public void run() {
+                              metadataObserver.shutdown();
+                          }
+                      }.start();
+                  }
               }
-              return partitions;
           }
       }, httpRequest.getRemoteUser());
   }
@@ -100,16 +108,24 @@ public class PartitionsResource {
       return (Partition) runProxyQuery(new PrivilegedExceptionAction() {
           @Override
           public Partition run() throws Exception {
-              checkTopicExists(topic);
-              KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
-              Partition part = metadataObserver.getTopicPartition(topic, partition);
-              if (ctx.isImpersonationEnabled()){
-                  metadataObserver.shutdown();
+              final KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
+              try {
+                  checkTopicExists(metadataObserver, topic);
+                  Partition part = metadataObserver.getTopicPartition(topic, partition);
+                  if (part == null) {
+                      throw Errors.partitionNotFoundException();
+                  }
+                  return part;
+              } finally {
+                  if (ctx.isImpersonationEnabled()) {
+                      new Thread() {
+                          @Override
+                          public void run() {
+                              metadataObserver.shutdown();
+                          }
+                      }.start();
+                  }
               }
-              if (part == null) {
-                  throw Errors.partitionNotFoundException();
-              }
-              return part;
           }
       }, httpRequest.getRemoteUser());
   }
@@ -350,12 +366,8 @@ public class PartitionsResource {
     }
   }
 
-  private boolean topicExists(final String topic) {
-    return ctx.getMetadataObserver().topicExists(topic);
-  }
-
-  private void checkTopicExists(final String topic) {
-    if (!topicExists(topic)) {
+  private void checkTopicExists(KafkaStreamsMetadataObserver metadataObserver, String topic) {
+    if (!metadataObserver.topicExists(topic)) {
       throw Errors.topicNotFoundException();
     }
   }

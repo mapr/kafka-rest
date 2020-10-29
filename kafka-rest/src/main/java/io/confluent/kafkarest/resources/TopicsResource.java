@@ -76,15 +76,18 @@ public class TopicsResource {
           @Override
           public Collection<String> run() throws Exception {
               final KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
-              Collection<String> topics = metadataObserver.getTopicNames();
-              if (ctx.isImpersonationEnabled()){
-                new Thread(){
-                  @Override
-                  public void run() {
-                    metadataObserver.shutdown();
+              try {
+                  return metadataObserver.getTopicNames();
+              } finally {
+                  if (ctx.isImpersonationEnabled()) {
+                      new Thread() {
+                          @Override
+                          public void run() {
+                              metadataObserver.shutdown();
+                          }
+                      }.start();
                   }
-                }.start();              }
-              return topics;
+              }
           }
       }, httpRequest.getRemoteUser());
   }
@@ -98,15 +101,18 @@ public class TopicsResource {
           @Override
           public Topic run() throws Exception {
               final KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
-              Topic topic = metadataObserver.getTopic(topicName);
-              if (ctx.isImpersonationEnabled()){
-                new Thread(){
-                  @Override
-                  public void run() {
-                    metadataObserver.shutdown();
+              try {
+                  return metadataObserver.getTopic(topicName);
+              } finally {
+                  if (ctx.isImpersonationEnabled()) {
+                      new Thread() {
+                          @Override
+                          public void run() {
+                              metadataObserver.shutdown();
+                          }
+                      }.start();
                   }
-                }.start();              }
-              return topic;
+              }
           }
       }, httpRequest.getRemoteUser());
     if (topic == null) {
@@ -194,11 +200,23 @@ public class TopicsResource {
       final EmbeddedFormat format,
       final TopicProduceRequest<R> request
   ) {
-    log.trace("Executing topic produce request id={} topic={} format={} request={}",
+      log.trace("Executing topic produce request id={} topic={} format={} request={}",
               asyncResponse, topicName, format, request
-    );
-      if (!ctx.getConfig().isStreams() && !ctx.getMetadataObserver().topicExists(topicName)) {
-          throw Errors.topicNotFoundException();
+      );
+      final KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
+      try {
+          if (!ctx.getConfig().isStreams() && !metadataObserver.topicExists(topicName)) {
+              throw Errors.topicNotFoundException();
+          }
+      } finally {
+          if (ctx.isImpersonationEnabled()) {
+              new Thread() {
+                  @Override
+                  public void run() {
+                      metadataObserver.shutdown();
+                  }
+              }.start();
+          }
       }
       ProducerPool producerPool = ctx.getProducerPool();
       producerPool.produce(

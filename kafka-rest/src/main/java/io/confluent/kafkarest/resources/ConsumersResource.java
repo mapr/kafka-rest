@@ -41,6 +41,7 @@ import io.confluent.kafkarest.ConsumerManager;
 import io.confluent.kafkarest.ConsumerState;
 import io.confluent.kafkarest.KafkaRestContext;
 import io.confluent.kafkarest.JsonConsumerState;
+import io.confluent.kafkarest.KafkaStreamsMetadataObserver;
 import io.confluent.kafkarest.UriUtils;
 import io.confluent.kafkarest.Versions;
 import io.confluent.kafkarest.entities.*;
@@ -193,25 +194,33 @@ public class ConsumersResource {
       Class<? extends ConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, ClientValueT>>
           consumerStateType, String user
   ) {
-    maxBytes = (maxBytes <= 0) ? Long.MAX_VALUE : maxBytes;
-    String fqTopic = ctx.getMetadataObserver().toFullyQualifiedTopic(topic);
-    
-    ctx.getConsumerManager().readTopic(
-        group, instance, fqTopic, consumerStateType, maxBytes,
-        new ConsumerManager.ReadCallback<ClientKeyT, ClientValueT>() {
-          @Override
-          public void onCompletion(
-              List<? extends AbstractConsumerRecord<ClientKeyT, ClientValueT>> records,
-              Exception e
-          ) {
-            if (e != null) {
-              asyncResponse.resume(e);
-            } else {
-              asyncResponse.resume(records);
-            }
-          }
-        }
-    );
+      maxBytes = (maxBytes <= 0) ? Long.MAX_VALUE : maxBytes;
+      final KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
+      String fqTopic = metadataObserver.toFullyQualifiedTopic(topic);
+      if (ctx.isImpersonationEnabled()) {
+          new Thread() {
+              @Override
+              public void run() {
+                  metadataObserver.shutdown();
+              }
+          }.start();
+      }
+      ctx.getConsumerManager().readTopic(
+              group, instance, fqTopic, consumerStateType, maxBytes,
+              new ConsumerManager.ReadCallback<ClientKeyT, ClientValueT>() {
+                  @Override
+                  public void onCompletion(
+                          List<? extends AbstractConsumerRecord<ClientKeyT, ClientValueT>> records,
+                          Exception e
+                  ) {
+                      if (e != null) {
+                          asyncResponse.resume(e);
+                      } else {
+                          asyncResponse.resume(records);
+                      }
+                  }
+              }
+      );
   }
 
     public Object runProxyQuery(PrivilegedExceptionAction action, String remoteUser) throws Exception {

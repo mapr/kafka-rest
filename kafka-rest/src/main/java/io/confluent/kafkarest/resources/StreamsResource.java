@@ -2,6 +2,7 @@ package io.confluent.kafkarest.resources;
 
 
 import io.confluent.kafkarest.KafkaRestContext;
+import io.confluent.kafkarest.KafkaStreamsMetadataObserver;
 import io.confluent.kafkarest.Versions;
 import io.confluent.rest.annotations.PerformanceMetric;
 
@@ -37,7 +38,19 @@ public class StreamsResource {
     return  (Collection<String>) runProxyQuery(new PrivilegedExceptionAction<Collection<String>>() {
         @Override
         public Collection<String> run() throws Exception {
-            return  ctx.getMetadataObserver().getTopicNames(stream);
+            final KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
+            try {
+                return metadataObserver.getTopicNames(stream);
+            } finally {
+                if (ctx.isImpersonationEnabled()) {
+                    new Thread() {
+                        @Override
+                        public void run() {
+                            metadataObserver.shutdown();
+                        }
+                    }.start();
+                }
+            }
         }
     }, httpRequest.getRemoteUser());
   }
