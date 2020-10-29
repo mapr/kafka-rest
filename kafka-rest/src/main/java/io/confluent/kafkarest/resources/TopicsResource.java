@@ -76,18 +76,15 @@ public class TopicsResource {
           @Override
           public Collection<String> run() throws Exception {
               final KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
-              try {
-                  return metadataObserver.getTopicNames();
-              } finally {
-                  if (ctx.isImpersonationEnabled()) {
-                      new Thread() {
-                          @Override
-                          public void run() {
-                              metadataObserver.shutdown();
-                          }
-                      }.start();
+              Collection<String> topics = metadataObserver.getTopicNames();
+              if (ctx.isImpersonationEnabled()){
+                new Thread(){
+                  @Override
+                  public void run() {
+                    metadataObserver.shutdown();
                   }
-              }
+                }.start();              }
+              return topics;
           }
       }, httpRequest.getRemoteUser());
   }
@@ -101,18 +98,15 @@ public class TopicsResource {
           @Override
           public Topic run() throws Exception {
               final KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
-              try {
-                  return metadataObserver.getTopic(topicName);
-              } finally {
-                  if (ctx.isImpersonationEnabled()) {
-                      new Thread() {
-                          @Override
-                          public void run() {
-                              metadataObserver.shutdown();
-                          }
-                      }.start();
+              Topic topic = metadataObserver.getTopic(topicName);
+              if (ctx.isImpersonationEnabled()){
+                new Thread(){
+                  @Override
+                  public void run() {
+                    metadataObserver.shutdown();
                   }
-              }
+                }.start();              }
+              return topic;
           }
       }, httpRequest.getRemoteUser());
     if (topic == null) {
