@@ -19,6 +19,7 @@ import com.mapr.streams.Admin;
 import com.mapr.streams.Streams;
 import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.KafkaRestContext;
+import io.confluent.kafkarest.KafkaStreamsMetadataObserver;
 import io.confluent.kafkarest.Versions;
 import io.confluent.rest.annotations.PerformanceMetric;
 
@@ -61,8 +62,18 @@ public class StreamsResource {
     } catch (IOException e) {
       throw Errors.kafkaErrorException(e);
     }
-    return ImpersonationUtils.runAsUserIfImpersonationEnabled(
-        () -> ctx.getMetadataObserver().getTopicNames(stream), auth, cookie);
+    return ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> list(stream), auth, cookie);
+  }
+
+  private Collection<String> list(String stream) {
+    final KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
+    try {
+      return metadataObserver.getTopicNames(stream);
+    } finally {
+      if (ImpersonationUtils.isImpersonationEnabled()) {
+        new Thread(() -> metadataObserver.shutdown()).start();
+      }
+    }
   }
 }
 

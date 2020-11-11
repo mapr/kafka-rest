@@ -15,6 +15,7 @@
 
 package io.confluent.kafkarest.resources.v2;
 
+import io.confluent.kafkarest.KafkaStreamsMetadataObserver;
 import io.confluent.rest.impersonation.ImpersonationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -172,11 +173,18 @@ public class PartitionsResource {
       final PartitionProduceRequest<R> request
   ) {
 
-    if (!ctx.getMetadataObserver().topicExists(topic)) {
-      throw Errors.topicNotFoundException();
-    }
-    if (!ctx.getMetadataObserver().partitionExists(topic, partition)) {
-      throw Errors.partitionNotFoundException();
+    final KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
+    try {
+      if (!metadataObserver.topicExists(topic)) {
+        throw Errors.topicNotFoundException();
+      }
+      if (!metadataObserver.partitionExists(topic, partition)) {
+        throw Errors.partitionNotFoundException();
+      }
+    } finally {
+      if (ImpersonationUtils.isImpersonationEnabled()) {
+        new Thread(() -> metadataObserver.shutdown()).start();
+      }
     }
 
     log.trace(

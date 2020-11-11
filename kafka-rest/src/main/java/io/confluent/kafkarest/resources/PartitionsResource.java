@@ -83,13 +83,15 @@ public class PartitionsResource {
   }
 
   private List<Partition> list(String topic) {
-    checkTopicExists(topic);
-    KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
-    List<Partition> partitions = metadataObserver.getTopicPartitions(topic);
-    if (ctx.getConfig().isImpersonationEnabled()) {
-      metadataObserver.shutdown();
+    final KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
+    try {
+      checkTopicExists(metadataObserver, topic);
+      return metadataObserver.getTopicPartitions(topic);
+    } finally {
+      if (ImpersonationUtils.isImpersonationEnabled()) {
+        new Thread(() -> metadataObserver.shutdown()).start();
+      }
     }
-    return partitions;
   }
 
   @GET
@@ -104,16 +106,19 @@ public class PartitionsResource {
   }
 
   private Partition getPartition(String topic, int partition) {
-    checkTopicExists(topic);
-    KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
-    Partition part = metadataObserver.getTopicPartition(topic, partition);
-    if (ctx.getConfig().isImpersonationEnabled()) {
-      metadataObserver.shutdown();
+    final KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
+    try {
+      checkTopicExists(metadataObserver, topic);
+      Partition part = metadataObserver.getTopicPartition(topic, partition);
+      if (part == null) {
+        throw Errors.partitionNotFoundException();
+      }
+      return part;
+    } finally {
+      if (ImpersonationUtils.isImpersonationEnabled()) {
+        new Thread(() -> metadataObserver.shutdown()).start();
+      }
     }
-    if (part == null) {
-      throw Errors.partitionNotFoundException();
-    }
-    return part;
   }
 
   @GET
@@ -281,11 +286,18 @@ public class PartitionsResource {
       final PartitionProduceRequest<R> request
   ) {
 
-    if (!ctx.getMetadataObserver().topicExists(topic)) {
-      throw Errors.topicNotFoundException();
-    }
-    if (!ctx.getMetadataObserver().partitionExists(topic, partition)) {
-      throw Errors.partitionNotFoundException();
+    final KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
+    try {
+      if (!metadataObserver.topicExists(topic)) {
+        throw Errors.topicNotFoundException();
+      }
+      if (!metadataObserver.partitionExists(topic, partition)) {
+        throw Errors.partitionNotFoundException();
+      }
+    } finally {
+      if (ImpersonationUtils.isImpersonationEnabled()) {
+        new Thread(() -> metadataObserver.shutdown()).start();
+      }
     }
 
     log.trace("Executing topic produce request id={} topic={} partition={} format={} request={}",
@@ -327,12 +339,8 @@ public class PartitionsResource {
     }
   }
 
-  private boolean topicExists(final String topic) {
-    return ctx.getMetadataObserver().topicExists(topic);
-  }
-
-  private void checkTopicExists(final String topic) {
-    if (!topicExists(topic)) {
+  private void checkTopicExists(KafkaStreamsMetadataObserver metadataObserver, String topic) {
+    if (!metadataObserver.topicExists(topic)) {
       throw Errors.topicNotFoundException();
     }
   }

@@ -36,6 +36,7 @@ import io.confluent.kafkarest.BinaryConsumerState;
 import io.confluent.kafkarest.ConsumerState;
 import io.confluent.kafkarest.KafkaRestContext;
 import io.confluent.kafkarest.JsonConsumerState;
+import io.confluent.kafkarest.KafkaStreamsMetadataObserver;
 import io.confluent.kafkarest.UriUtils;
 import io.confluent.kafkarest.Versions;
 import io.confluent.kafkarest.entities.ConsumerInstanceConfig;
@@ -189,8 +190,11 @@ public class ConsumersResource {
       Class<? extends ConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, ClientValueT>>
           consumerStateType) {
     maxBytes = (maxBytes <= 0) ? Long.MAX_VALUE : maxBytes;
-    String fqTopic = ctx.getMetadataObserver().toFullyQualifiedTopic(topic);
-
+    final KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
+    String fqTopic = metadataObserver.toFullyQualifiedTopic(topic);
+    if (ImpersonationUtils.isImpersonationEnabled()) {
+      new Thread(() -> metadataObserver.shutdown()).start();
+    }
     ctx.getConsumerManager().readTopic(
         group, instance, fqTopic, consumerStateType, maxBytes,
         (records, e) -> {

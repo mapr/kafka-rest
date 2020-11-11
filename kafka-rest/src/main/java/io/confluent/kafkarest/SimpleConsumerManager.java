@@ -222,6 +222,7 @@ public class SimpleConsumerManager {
 
   public void shutdown() {
     simpleConsumersPool.shutdown();
+    mdObserver.shutdown();
   }
 
 }

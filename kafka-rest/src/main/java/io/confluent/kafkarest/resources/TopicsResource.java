@@ -16,6 +16,7 @@
 package io.confluent.kafkarest.resources;
 
 
+import io.confluent.kafkarest.KafkaStreamsMetadataObserver;
 import io.confluent.rest.impersonation.ImpersonationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,7 +75,18 @@ public class TopicsResource {
   public Collection<String> list(@HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
                                  @HeaderParam(HttpHeaders.COOKIE) String cookie) {
     return ImpersonationUtils.runAsUserIfImpersonationEnabled(
-        () -> ctx.getMetadataObserver().getTopicNames(), auth, cookie);
+        () -> list(), auth, cookie);
+  }
+
+  private Collection<String> list() {
+    final KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
+    try {
+      return metadataObserver.getTopicNames();
+    } finally {
+      if (ImpersonationUtils.isImpersonationEnabled()) {
+        new Thread(() -> metadataObserver.shutdown()).start();
+      }
+    }
   }
 
   @GET
@@ -88,11 +100,18 @@ public class TopicsResource {
   }
 
   private Topic getTopic(final String topicName) {
-    Topic topic = ctx.getMetadataObserver().getTopic(topicName);
-    if (topic == null) {
-      throw Errors.topicNotFoundException();
+    final KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
+    try {
+      Topic topic = metadataObserver.getTopic(topicName);
+      if (topic == null) {
+        throw Errors.topicNotFoundException();
+      }
+      return topic;
+    } finally {
+      if (ImpersonationUtils.isImpersonationEnabled()) {
+        new Thread(() -> metadataObserver.shutdown()).start();
+      }
     }
-    return topic;
   }
 
   @POST
