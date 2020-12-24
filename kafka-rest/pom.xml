@@ -36,13 +36,14 @@
 
     <properties>
         <jackson.version>2.10.3</jackson.version>
+        <jetty.version>9.4.35.v20201120</jetty.version>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>io.confluent</groupId>
             <artifactId>rest-utils</artifactId>
-            <version>4.0.0-mapr</version>
+            <version>4.0.0-mapr-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>
@@ -93,6 +94,7 @@
         <dependency>
             <groupId>io.confluent</groupId>
             <artifactId>rest-utils-test</artifactId>
+            <version>4.0.0-mapr-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
         <!--
