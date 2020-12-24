@@ -66,6 +66,12 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
+            <groupId>com.mapr.streams</groupId>
+            <artifactId>mapr-streams</artifactId>
+            <version>6.1.0-mapr</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
             <groupId>io.confluent</groupId>
             <artifactId>kafka-avro-serializer</artifactId>
             <version>4.0.0</version>
