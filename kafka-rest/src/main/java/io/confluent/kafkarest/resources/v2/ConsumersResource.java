@@ -52,6 +52,8 @@ import io.confluent.kafkarest.entities.ConsumerSubscriptionRecord;
 import io.confluent.kafkarest.entities.ConsumerSubscriptionResponse;
 import io.confluent.kafkarest.entities.CreateConsumerInstanceResponse;
 import io.confluent.kafkarest.entities.TopicPartitionOffset;
+import io.confluent.kafkarest.entities.TopicPartition;
+import io.confluent.kafkarest.entities.TopicPartitionOffsetMetadata;
 import io.confluent.kafkarest.extension.SchemaRegistryEnabled;
 import io.confluent.kafkarest.v2.AvroKafkaConsumerState;
 import io.confluent.kafkarest.v2.BinaryKafkaConsumerState;
@@ -143,6 +145,7 @@ public class ConsumersResource {
             @Override
             public Object run() throws Exception {
               try { 
+                checkIfAllTopicsIsValid(subscription.topics);
                 ctx.getKafkaConsumerManager().subscribe(group, instance, subscription);
                 } catch (java.lang.IllegalStateException e) {
               throw Errors.illegalStateException(e);
@@ -269,25 +272,32 @@ public class ConsumersResource {
       runProxyQuery(new PrivilegedExceptionAction() {
           @Override
           public Object run() throws Exception {
-              ctx.getKafkaConsumerManager().commitOffsets(
-                      group,
-                      instance,
-                      async,
-                      offsetCommitRequest,
-                      new KafkaConsumerManager.CommitCallback() {
-                          @Override
-                          public void onCompletion(
-                                  List<TopicPartitionOffset> offsets,
-                                  Exception e
-                          ) {
-                              if (e != null) {
-                                  asyncResponse.resume(e);
-                              } else {
-                                  asyncResponse.resume(offsets);
-                              }
-                          }
-                      }
-              );              return null;
+              try {
+                if (offsetCommitRequest != null) {
+                  checkIfAllTopicPartitionOffsetsIsValid(offsetCommitRequest.offsets);
+                }
+                ctx.getKafkaConsumerManager().commitOffsets(
+                        group,
+                        instance,
+                        async,
+                        offsetCommitRequest,
+                        new KafkaConsumerManager.CommitCallback() {
+                            @Override
+                            public void onCompletion(
+                                    List<TopicPartitionOffset> offsets,
+                                    Exception e
+                            ) {
+                                if (e != null) {
+                                    asyncResponse.resume(e);
+                                } else {
+                                    asyncResponse.resume(offsets);
+                                }
+                            }
+                        }
+                );              return null;
+              } catch (java.lang.IllegalStateException e) {
+                throw Errors.illegalStateException(e);
+              }   
           }
       }, httpRequest.getRemoteUser());
   }
@@ -307,7 +317,12 @@ public class ConsumersResource {
       return (ConsumerCommittedResponse)runProxyQuery(new PrivilegedExceptionAction() {
           @Override
           public ConsumerCommittedResponse run() throws Exception {
-              return ctx.getKafkaConsumerManager().committed(group, instance, request);
+              try {
+                checkIfAllTopicPartitionsIsValid(request.partitions);
+                return ctx.getKafkaConsumerManager().committed(group, instance, request);
+              } catch (java.lang.IllegalStateException e) {
+                throw Errors.illegalStateException(e);
+              }
           }
       }, httpRequest.getRemoteUser());
   }
@@ -326,6 +341,9 @@ public class ConsumersResource {
           @Override
           public Object run() throws Exception {
               try {
+                  if (seekToRequest != null) {
+                    checkIfAllTopicPartitionsIsValid(seekToRequest.partitions);
+                  }
                   ctx.getKafkaConsumerManager().seekToBeginning(group, instance, seekToRequest);
               } catch (java.lang.IllegalStateException e) {
                   throw Errors.illegalStateException(e);
@@ -350,6 +368,9 @@ public class ConsumersResource {
           @Override
           public Object run() throws Exception {
               try {
+                  if (seekToRequest != null) {
+                    checkIfAllTopicPartitionsIsValid(seekToRequest.partitions);
+                  }
                   ctx.getKafkaConsumerManager().seekToEnd(group, instance, seekToRequest);
               } catch (java.lang.IllegalStateException e) {
                   throw Errors.illegalStateException(e);
@@ -373,6 +394,9 @@ public class ConsumersResource {
               @Override
               public Object run() throws Exception {
                   try {
+                      if (seekToOffsetRequest != null) {
+                        checkIfAllTopicPartitionOffsetsIsValid(seekToOffsetRequest.offsets);
+                      }
                       ctx.getKafkaConsumerManager().seekToOffset(group, instance, seekToOffsetRequest);
                   } catch (java.lang.IllegalStateException e) {
                       throw Errors.illegalStateException(e);
@@ -397,6 +421,7 @@ public class ConsumersResource {
           @Override
           public Object run() throws Exception {
               try {
+                  checkIfAllTopicPartitionsIsValid(assignmentRequest.partitions);
                   ctx.getKafkaConsumerManager().assign(group, instance, assignmentRequest);
               } catch (java.lang.IllegalStateException e) {
                   throw Errors.illegalStateException(e);
@@ -464,5 +489,63 @@ public class ConsumersResource {
       } else {
           return action.run();
       }
+  }
+
+  private boolean streamExistsFromTopicName(final String topic) {
+    return ctx.getAdminClientWrapper().streamExistsFromTopicName(topic);
+  }
+
+  private boolean topicExists(final String topic) {
+    return ctx.getAdminClientWrapper().topicExists(topic);
+  }
+
+  private boolean partitionExists(final String topic, int partition) {
+    return ctx.getAdminClientWrapper().partitionExists(topic, partition);
+  }
+
+  private void checkStreamExistsFromTopicName(final String topic) {
+    if (!streamExistsFromTopicName(topic)) {
+      throw Errors.streamNotFoundException();
+    }
+  }
+
+  private void checkTopicExists(final String topic) {
+    if (!topicExists(topic)) {
+      throw Errors.topicNotFoundException();
+    }
+  }
+
+  private void checkPartitionExists(final String topic, int partition) {
+    if (!partitionExists(topic, partition)) {
+      throw Errors.partitionNotFoundException();
+    }
+  }
+
+  private void checkIfStreamAndTopicExists(final String topic) {
+    checkStreamExistsFromTopicName(topic);
+    checkTopicExists(topic);
+  }
+
+  private void checkIfTopicAndPartitionExists(final String topic, int partition) {
+    checkIfStreamAndTopicExists(topic);
+    checkPartitionExists(topic, partition);
+  }
+
+  private void checkIfAllTopicPartitionOffsetsIsValid(List<TopicPartitionOffsetMetadata> offsets) {
+    for (TopicPartitionOffsetMetadata offset : offsets) {
+      checkIfTopicAndPartitionExists(offset.getTopic(), offset.getPartition());
+    }
+  }
+
+  private void checkIfAllTopicPartitionsIsValid(List<TopicPartition> partitions) {
+    for (TopicPartition partition : partitions) {
+      checkIfTopicAndPartitionExists(partition.getTopic(), partition.getPartition());
+    }
+  }
+
+  private void checkIfAllTopicsIsValid(List<String> topics) {
+    for (String topic : topics) {
+      checkIfStreamAndTopicExists(topic);
+    }
   }
 }
