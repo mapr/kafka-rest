@@ -180,11 +180,12 @@ public class PartitionsResource {
       final EmbeddedFormat format,
       final PartitionProduceRequest<R> request
   ) {
-    // If the topic already exists, we can proactively check for the partition
-    if (topicExists(topic)) {
-      if (!ctx.getAdminClientWrapper().partitionExists(topic, partition)) {
-        throw Errors.partitionNotFoundException();
-      }
+
+    if (!ctx.getMetadataObserver().topicExists(topic)) {
+      throw Errors.topicNotFoundException();
+    }
+    if (!ctx.getMetadataObserver().partitionExists(topic, partition)) {
+      throw Errors.partitionNotFoundException();
     }
 
     log.trace(
