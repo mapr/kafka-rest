@@ -308,7 +308,7 @@ public class ConsumersResource {
       @javax.ws.rs.core.Context HttpServletRequest httpRequest,
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
-      final @Valid ConsumerCommittedRequest request
+      final @Valid @NotNull ConsumerCommittedRequest request
   ) throws Exception {
     if (request == null) {
       throw Errors.partitionNotFoundException();

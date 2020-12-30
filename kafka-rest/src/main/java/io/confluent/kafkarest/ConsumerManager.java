@@ -197,6 +197,8 @@ public class ConsumerManager {
         return name;
       } catch (InvalidConfigException e) {
         throw Errors.invalidConsumerConfigException(e);
+      } catch (ConfigException e) {
+        throw Errors.invalidConsumerConfigException(e);
       }
 
     } finally {
