@@ -145,7 +145,6 @@ public class ConsumersResource {
             @Override
             public Object run() throws Exception {
               try { 
-                checkIfAllTopicsIsValid(subscription.topics);
                 ctx.getKafkaConsumerManager().subscribe(group, instance, subscription);
                 } catch (java.lang.IllegalStateException e) {
               throw Errors.illegalStateException(e);
@@ -421,7 +420,6 @@ public class ConsumersResource {
           @Override
           public Object run() throws Exception {
               try {
-                  checkIfAllTopicPartitionsIsValid(assignmentRequest.partitions);
                   ctx.getKafkaConsumerManager().assign(group, instance, assignmentRequest);
               } catch (java.lang.IllegalStateException e) {
                   throw Errors.illegalStateException(e);
