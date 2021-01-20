@@ -23,6 +23,7 @@
         produce and consume messages, view the state of the cluster, and perform administrative
         actions without using the native Kafka protocol or clients.
     </description>
+    <version>4.1.0-mapr-2101</version>
 
     <licenses>
         <license>
