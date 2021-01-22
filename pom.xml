@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.confluent</groupId>
         <artifactId>rest-utils-parent</artifactId>
-        <version>4.1.0</version>
+        <version>4.0.0-mapr-2101</version>
     </parent>
 
     <artifactId>kafka-rest-parent</artifactId>
@@ -62,13 +62,7 @@
         <!-- MapR repository -->
         <repository>
             <id>mapr-releases</id>
-            <url>http://repository.mapr.com/nexus/content/repositories/releases</url>
-            <snapshots><enabled>true</enabled></snapshots>
-            <releases><enabled>true</enabled></releases>
-        </repository>
-        <repository>
-            <id>repository_cv</id>
-            <name>Private MapR repo for CyberVision</name>
+            <name>MapR repo</name>
             <url>${env.MAPR_MAVEN_REPO}</url>
             <releases>
                 <enabled>true</enabled>
@@ -91,6 +85,7 @@
         <dependency>
             <groupId>com.google.code.findbugs</groupId>
             <artifactId>annotations</artifactId>
+            <version>3.0.1</version>
         </dependency>
     </dependencies>
 

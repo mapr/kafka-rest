@@ -18,6 +18,7 @@
         produce and consume messages, view the state of the cluster, and perform administrative
         actions without using the native Kafka protocol or clients.
     </description>
+    <version>4.1.0-mapr-2101</version>
     <repositories>
         <repository>
             <id>confluent</id>
@@ -28,7 +29,8 @@
         <!-- MapR repository -->
         <repository>
             <id>mapr-releases</id>
-            <url>http://repository.mapr.com/nexus/content/repositories/releases</url>
+            <name>MapR repo</name>
+            <url>${env.MAPR_MAVEN_REPO}</url>
             <snapshots><enabled>true</enabled></snapshots>
             <releases><enabled>true</enabled></releases>
         </repository>
