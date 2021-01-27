@@ -25,6 +25,8 @@ import io.confluent.kafkarest.entities.Topic;
 import io.confluent.kafkarest.entities.v2.GetTopicResponse;
 import io.confluent.kafkarest.resources.AsyncResponses;
 import io.confluent.rest.annotations.PerformanceMetric;
+import io.confluent.rest.impersonation.ImpersonationUtils;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -32,11 +34,13 @@ import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
+import javax.ws.rs.core.HttpHeaders;
 
 @Path("/topics")
 @Consumes({Versions.KAFKA_V2_JSON})
@@ -56,7 +60,16 @@ public final class TopicsResource {
 
   @GET
   @PerformanceMetric("topics.list+v2")
-  public void list(@Suspended AsyncResponse asyncResponse) {
+  public void list(@Suspended AsyncResponse asyncResponse,
+                   @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                   @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      list(asyncResponse);
+      return null;
+    }, auth, cookie);
+  }
+
+  private void list(AsyncResponse asyncResponse) {
     TopicManager topicManager = topicManagerProvider.get();
 
     CompletableFuture<List<String>> response =
@@ -70,7 +83,16 @@ public final class TopicsResource {
   @Path("/{topic}")
   @PerformanceMetric("topic.get+v2")
   public void getTopic(
-      @Suspended AsyncResponse asyncResponse, @PathParam("topic") String topicName) {
+      @Suspended AsyncResponse asyncResponse, @PathParam("topic") String topicName,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      getTopic(asyncResponse, topicName);
+      return null;
+    }, auth, cookie);
+  }
+
+  private void getTopic(AsyncResponse asyncResponse, String topicName) {
     TopicManager topicManager = topicManagerProvider.get();
     TopicConfigManager topicConfigManager = topicConfigManagerProvider.get();
 
@@ -78,11 +100,8 @@ public final class TopicsResource {
         topicManager.getLocalTopic(topicName)
             .thenApply(topic -> topic.orElseThrow(Errors::topicNotFoundException));
     CompletableFuture<GetTopicResponse> response =
-        topicFuture.thenCompose(
-            topic -> topicConfigManager.listTopicConfigs(topic.getClusterId(), topicName))
-            .thenCombine(
-                topicFuture,
-                (configs, topic) -> GetTopicResponse.fromTopic(topic, configs));
+        topicFuture.thenApply(
+            topic -> GetTopicResponse.fromTopic(topic, Collections.emptyList()));
 
     AsyncResponses.asyncResume(asyncResponse, response);
   }

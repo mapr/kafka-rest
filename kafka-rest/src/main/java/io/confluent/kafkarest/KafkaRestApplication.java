@@ -28,6 +28,7 @@ import io.confluent.kafkarest.extension.InstantConverterProvider;
 import io.confluent.kafkarest.extension.KafkaRestCleanupFilter;
 import io.confluent.kafkarest.extension.KafkaRestContextProvider;
 import io.confluent.kafkarest.extension.RestResourceExtension;
+import io.confluent.kafkarest.extension.SchemaRegistryEnabledRequestFilter;
 import io.confluent.kafkarest.resources.ResourcesFeature;
 import io.confluent.kafkarest.response.ResponseModule;
 import io.confluent.kafkarest.v2.KafkaConsumerManager;
@@ -40,8 +41,6 @@ import java.util.List;
 import java.util.Properties;
 import javax.ws.rs.core.Configurable;
 import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.util.StringUtil;
-
 
 /**
  * Utilities for configuring and running an embedded Kafka server.
@@ -93,8 +92,18 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
       ProducerPool producerPool,
       KafkaConsumerManager kafkaConsumerManager
   ) {
-    if (StringUtil.isBlank(appConfig.getString(KafkaRestConfig.BOOTSTRAP_SERVERS_CONFIG))) {
-      throw new RuntimeException(KafkaRestConfig.BOOTSTRAP_SERVERS_CONFIG + " must be configured");
+    boolean impersonationEnabled = appConfig.isImpersonationEnabled();
+    boolean isAuthenticationEnabled =
+            appConfig.getBoolean(KafkaRestConfig.ENABLE_AUTHENTICATION_CONFIG);
+
+    if (impersonationEnabled
+            && !isAuthenticationEnabled) {
+      throw new RuntimeException(KafkaRestConfig.ENABLE_AUTHENTICATION_CONFIG
+              + " must be enabled in order to support MapR Streams impersonation");
+    }
+
+    if (producerPool == null) {
+      producerPool = new ProducerPool(appConfig, null);
     }
 
     KafkaRestContextProvider.initialize(config, appConfig, producerPool,
@@ -115,6 +124,7 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
     config.register(new ResponseModule());
 
     config.register(KafkaRestCleanupFilter.class);
+    config.register(new SchemaRegistryEnabledRequestFilter(context));
 
     config.register(EnumConverterProvider.class);
     config.register(InstantConverterProvider.class);

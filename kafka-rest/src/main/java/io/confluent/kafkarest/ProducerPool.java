@@ -15,6 +15,8 @@
 
 package io.confluent.kafkarest;
 
+import io.confluent.kafka.schemaregistry.client.SchemaRegistryClientConfig;
+import org.apache.hadoop.security.UserGroupInformation;
 import io.confluent.kafka.schemaregistry.avro.AvroSchemaProvider;
 import io.confluent.kafka.schemaregistry.json.JsonSchemaProvider;
 import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchemaProvider;
@@ -35,9 +37,19 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.Serializer;
+import  io.confluent.rest.exceptions.RestServerErrorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentMap;
+
+import javax.ws.rs.core.Response;
+
+// CHECKSTYLE_RULES.OFF: ClassDataAbstractionCoupling
 /**
  * Shared pool of Kafka producers used to send messages. The pool manages batched sends, tracking
  * all required acks for a batch and managing timeouts. Currently this pool only contains one
@@ -48,6 +60,11 @@ public class ProducerPool {
   private static final Logger log = LoggerFactory.getLogger(ProducerPool.class);
   private Map<EmbeddedFormat, RestProducer> producers =
       new HashMap<EmbeddedFormat, RestProducer>();
+  private SimpleProducerCache producerCache;
+  private boolean defaultStreamSet;
+  private boolean isImpersonationEnabled;
+  private Map<String, Object> standardProps;
+  private Map<String, Object> schemaProps;
 
   public ProducerPool(KafkaRestConfig appConfig) {
     this(appConfig, null);
@@ -65,26 +82,21 @@ public class ProducerPool {
       String bootstrapBrokers,
       Properties producerConfigOverrides
   ) {
+    this.defaultStreamSet = appConfig.isDefaultStreamSet();
+    this.isImpersonationEnabled = appConfig.isImpersonationEnabled();
 
-    Map<String, Object> binaryProps =
-        buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
-    producers.put(EmbeddedFormat.BINARY, buildBinaryProducer(binaryProps));
+    standardProps = buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
+    schemaProps = buildSchemaConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
 
-    Map<String, Object> jsonProps =
-        buildStandardConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
-    producers.put(EmbeddedFormat.JSON, buildJsonProducer(jsonProps));
-
-    Map<String, Object> avroProps =
-        buildSchemaConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
-    producers.put(EmbeddedFormat.AVRO, buildAvroProducer(avroProps));
-
-    Map<String, Object> jsonSchemaProps =
-        buildSchemaConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
-    producers.put(EmbeddedFormat.JSONSCHEMA, buildJsonSchemaProducer(jsonSchemaProps));
-
-    Map<String, Object> protobufProps =
-        buildSchemaConfig(appConfig, bootstrapBrokers, producerConfigOverrides);
-    producers.put(EmbeddedFormat.PROTOBUF, buildProtobufProducer(protobufProps));
+    if (!isImpersonationEnabled) {
+      producers.put(EmbeddedFormat.BINARY, buildBinaryProducer(standardProps));
+      producers.put(EmbeddedFormat.JSON, buildJsonProducer(standardProps));
+      producers.put(EmbeddedFormat.AVRO, buildAvroProducer(schemaProps));
+      producers.put(EmbeddedFormat.JSONSCHEMA, buildJsonSchemaProducer(schemaProps));
+      producers.put(EmbeddedFormat.PROTOBUF, buildProtobufProducer(schemaProps));
+    } else {
+      producerCache = new SimpleProducerCache(appConfig);
+    }
   }
 
   private Map<String, Object> buildStandardConfig(
@@ -96,6 +108,14 @@ public class ProducerPool {
     props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapBrokers);
 
     Properties producerProps = (Properties) appConfig.getProducerProperties();
+    // configure default stream
+    String defaultStream = appConfig.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
+    if (!"".equals(defaultStream)) {
+      props.put(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG, defaultStream);
+    }
+    int streamBuffer = appConfig.getInt(KafkaRestConfig.STREAM_BUFFER_MAX_TIME_CONFIG);
+    props.put(ProducerConfig.STREAMS_BUFFER_TIME_CONFIG, streamBuffer);
+
     return buildConfig(props, producerProps, producerConfigOverrides);
   }
 
@@ -131,8 +151,20 @@ public class ProducerPool {
     schemaDefaults.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapBrokers);
     schemaDefaults.put(
         "schema.registry.url",
-        appConfig.getString(KafkaRestConfig.SCHEMA_REGISTRY_URL_CONFIG)
+        appConfig.getSchemaRegistryUrl()
     );
+    // configure default stream
+    String defaultStream = appConfig.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
+    if (!"".equals(defaultStream)) {
+      schemaDefaults.put(ProducerConfig.STREAMS_PRODUCER_DEFAULT_STREAM_CONFIG, defaultStream);
+    }
+    boolean isAuthenticationEnabled =
+            appConfig.getBoolean(KafkaRestConfig.ENABLE_AUTHENTICATION_CONFIG);
+    if (isAuthenticationEnabled) {
+      schemaDefaults.put(SchemaRegistryClientConfig.MAPRSASL_AUTH_CONFIG, "true");
+    }
+    int streamBuffer = appConfig.getInt(KafkaRestConfig.STREAM_BUFFER_MAX_TIME_CONFIG);
+    schemaDefaults.put(ProducerConfig.STREAMS_BUFFER_TIME_CONFIG, streamBuffer);
 
     Properties producerProps = (Properties) appConfig.getProducerProperties();
     return buildConfig(schemaDefaults, producerProps, producerConfigOverrides);
@@ -205,7 +237,50 @@ public class ProducerPool {
             callback);
     log.trace("Starting produce task " + task.toString());
     @SuppressWarnings("unchecked")
-    RestProducer<K, V> restProducer = (RestProducer<K, V>) producers.get(recordFormat);
+    RestProducer<K, V> restProducer;
+    if (!defaultStreamSet && !topic.contains(":")) {
+      throw Errors.topicNotFoundException();
+    }
+    //we enclose it only for streams producer
+    //because there can be exception due to permissions
+    if (isImpersonationEnabled) {
+      String userName = null;
+      try {
+        userName = UserGroupInformation.getCurrentUser().getUserName();
+      } catch (IOException e) {
+        // Never happens because authentication is required for MapR impersonation
+      }
+      switch (recordFormat) {
+        case BINARY:
+          restProducer = (RestProducer<K, V>) producerCache
+                  .getBinaryProducer(userName);
+          break;
+        case JSON:
+          restProducer = (RestProducer<K, V>) producerCache
+                  .getJsonProducer(userName);
+          break;
+        case AVRO:
+          restProducer = (RestProducer<K, V>) producerCache
+                  .getAvroProducer(userName);
+          break;
+        case JSONSCHEMA:
+          restProducer = (RestProducer<K, V>) producerCache
+                  .getJsonSchemaProducer(userName);
+          break;
+        case PROTOBUF:
+          restProducer = (RestProducer<K, V>) producerCache
+                  .getProtobufProducer(userName);
+          break;
+        default:
+          throw new RestServerErrorException(
+              "Invalid embedded format for new producer.",
+              Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()
+          );
+      }
+    } else {
+      restProducer = (RestProducer<K, V>) producers.get(recordFormat);
+    }
+
     restProducer.produce(
         task,
         topic,
@@ -216,6 +291,9 @@ public class ProducerPool {
   public void shutdown() {
     for (RestProducer restProducer : producers.values()) {
       restProducer.close();
+    }
+    if (producerCache != null) {
+      producerCache.shutdown();
     }
   }
 
@@ -232,5 +310,179 @@ public class ProducerPool {
         Integer valueSchemaId,
         List<RecordMetadataOrException> results
     );
+  }
+
+  class SimpleProducerCache {
+    private final int maxCachesNum;
+
+    /**
+     * Stores insertion order of producer caches.
+     */
+    private Queue<String> binaryOldestCache;
+    private Queue<String> jsonOldestCache;
+    private Queue<String> avroOldestCache;
+    private Queue<String> jsonSchemaOldestCache;
+    private Queue<String> protobufOldestCache;
+
+    private ConcurrentMap<String, RestProducer> binaryHighLevelCache;
+    private ConcurrentMap<String, RestProducer> jsonHighLevelCache;
+    private ConcurrentMap<String, RestProducer> avroHighLevelCache;
+    private ConcurrentMap<String, RestProducer> jsonSchemaHighLevelCache;
+    private ConcurrentMap<String, RestProducer> protobufHighLevelCache;
+
+    SimpleProducerCache(final KafkaRestConfig config) {
+      this.maxCachesNum = config.getInt(KafkaRestConfig.PRODUCERS_MAX_CACHES_NUM_CONFIG);
+
+      this.binaryHighLevelCache = new ConcurrentHashMap<>(maxCachesNum);
+      this.jsonHighLevelCache = new ConcurrentHashMap<>(maxCachesNum);
+      this.avroHighLevelCache = new ConcurrentHashMap<>(maxCachesNum);
+      this.jsonSchemaHighLevelCache = new ConcurrentHashMap<>(maxCachesNum);
+      this.protobufHighLevelCache = new ConcurrentHashMap<>(maxCachesNum);
+
+      this.binaryOldestCache = new ConcurrentLinkedQueue<>();
+      this.jsonOldestCache = new ConcurrentLinkedQueue<>();
+      this.avroOldestCache = new ConcurrentLinkedQueue<>();
+      this.jsonSchemaOldestCache = new ConcurrentLinkedQueue<>();
+      this.protobufOldestCache = new ConcurrentLinkedQueue<>();
+    }
+
+    RestProducer getBinaryProducer(final String userName) {
+      RestProducer cache;
+      if (maxCachesNum > 0) {
+        cache = binaryHighLevelCache.get(userName);
+
+
+        if (cache == null) {
+          if (binaryHighLevelCache.size() >= maxCachesNum) {
+            // remove eldest element from the cache
+            String eldest = binaryOldestCache.poll();
+            binaryHighLevelCache.remove(eldest).close();
+          }
+
+          // add new entry
+          cache = buildBinaryProducer(standardProps);
+          binaryHighLevelCache.put(userName, cache);
+          binaryOldestCache.add(userName);
+        }
+      } else {
+        // caching is disabled. Create producer for each request.
+        cache = buildBinaryProducer(standardProps);
+      }
+      return cache;
+    }
+
+    RestProducer getJsonProducer(final String userName) {
+      RestProducer cache;
+      if (maxCachesNum > 0) {
+        cache = jsonHighLevelCache.get(userName);
+
+        if (cache == null) {
+          if (jsonHighLevelCache.size() >= maxCachesNum) {
+            // remove eldest element from the cache
+            String eldest = jsonOldestCache.poll();
+            jsonHighLevelCache.remove(eldest).close();
+          }
+
+          // add new entry
+          cache = buildJsonProducer(standardProps);
+          jsonHighLevelCache.put(userName, cache);
+          jsonOldestCache.add(userName);
+        }
+      } else {
+        // caching is disabled. Create producer for each request.
+        cache = buildJsonProducer(standardProps);
+      }
+      return cache;
+    }
+
+    RestProducer getAvroProducer(String userName) {
+      RestProducer cache;
+      if (maxCachesNum > 0) {
+        cache = avroHighLevelCache.get(userName);
+
+        if (cache == null) {
+          if (avroHighLevelCache.size() >= maxCachesNum) {
+            // remove eldest element from the cache
+            String eldest = avroOldestCache.poll();
+            avroHighLevelCache.remove(eldest).close();
+          }
+
+          // add new entry
+          cache = buildAvroProducer(schemaProps);
+          avroHighLevelCache.put(userName, cache);
+          avroOldestCache.add(userName);
+        }
+      } else {
+        // caching is disabled. Create producer for each request.
+        cache = buildAvroProducer(schemaProps);
+      }
+      return cache;
+    }
+
+    RestProducer getJsonSchemaProducer(String userName) {
+      RestProducer cache;
+      if (maxCachesNum > 0) {
+        cache = jsonSchemaHighLevelCache.get(userName);
+
+        if (cache == null) {
+          if (jsonSchemaHighLevelCache.size() >= maxCachesNum) {
+            // remove eldest element from the cache
+            String eldest = jsonSchemaOldestCache.poll();
+            jsonSchemaHighLevelCache.remove(eldest).close();
+          }
+
+          // add new entry
+          cache = buildJsonSchemaProducer(schemaProps);
+          jsonSchemaHighLevelCache.put(userName, cache);
+          jsonSchemaOldestCache.add(userName);
+        }
+      } else {
+        // caching is disabled. Create producer for each request.
+        cache = buildJsonSchemaProducer(schemaProps);
+      }
+      return cache;
+    }
+
+    RestProducer getProtobufProducer(String userName) {
+      RestProducer cache;
+      if (maxCachesNum > 0) {
+        cache = protobufHighLevelCache.get(userName);
+
+        if (cache == null) {
+          if (protobufHighLevelCache.size() >= maxCachesNum) {
+            // remove eldest element from the cache
+            String eldest = protobufOldestCache.poll();
+            protobufHighLevelCache.remove(eldest).close();
+          }
+
+          // add new entry
+          cache = buildProtobufProducer(schemaProps);
+          protobufHighLevelCache.put(userName, cache);
+          protobufOldestCache.add(userName);
+        }
+      } else {
+        // caching is disabled. Create producer for each request.
+        cache = buildProtobufProducer(schemaProps);
+      }
+      return cache;
+    }
+
+    void shutdown() {
+      for (RestProducer binaryRestProducer : binaryHighLevelCache.values()) {
+        binaryRestProducer.close();
+      }
+      for (RestProducer jsonRestProducer : jsonHighLevelCache.values()) {
+        jsonRestProducer.close();
+      }
+      for (RestProducer avroRestProducer : avroHighLevelCache.values()) {
+        avroRestProducer.close();
+      }
+      for (RestProducer jsonSchemaRestProducer : jsonSchemaHighLevelCache.values()) {
+        jsonSchemaRestProducer.close();
+      }
+      for (RestProducer protobufRestProducer : protobufHighLevelCache.values()) {
+        protobufRestProducer.close();
+      }
+    }
   }
 }

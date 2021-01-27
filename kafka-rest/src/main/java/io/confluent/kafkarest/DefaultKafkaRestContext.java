@@ -31,6 +31,7 @@ public class DefaultKafkaRestContext implements KafkaRestContext {
   private ProducerPool producerPool;
   private KafkaConsumerManager kafkaConsumerManager;
   private Admin adminClient;
+  private ResourcesExistenceChecker resourcesExistenceChecker;
 
   public DefaultKafkaRestContext(
       KafkaRestConfig config,
@@ -92,5 +93,13 @@ public class DefaultKafkaRestContext implements KafkaRestContext {
     if (adminClient != null) {
       adminClient.close();
     }
+  }
+
+  @Override
+  public ResourcesExistenceChecker getResourcesExistenceChecker() {
+    if (resourcesExistenceChecker == null) {
+      resourcesExistenceChecker = new ResourcesExistenceChecker(config, getAdmin());
+    }
+    return resourcesExistenceChecker;
   }
 }

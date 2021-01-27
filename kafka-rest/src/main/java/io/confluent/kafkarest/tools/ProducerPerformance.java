@@ -25,6 +25,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 public class ProducerPerformance extends AbstractPerformanceTest {
@@ -81,7 +83,8 @@ public class ProducerPerformance extends AbstractPerformanceTest {
     this.bytesPerIteration = recordsPerIteration * recordSize;
 
     /* setup perf test */
-    targetUrl = baseUrl + "/topics/" + topic;
+    String encodedTopic = URLEncoder.encode(topic, StandardCharsets.UTF_8.name());
+    targetUrl = baseUrl + "/topics/" + encodedTopic;
     BinaryTopicProduceRequest.BinaryTopicProduceRecord record =
             new BinaryTopicProduceRequest.BinaryTopicProduceRecord(null, "payload", null);
     BinaryTopicProduceRequest.BinaryTopicProduceRecord[] records =

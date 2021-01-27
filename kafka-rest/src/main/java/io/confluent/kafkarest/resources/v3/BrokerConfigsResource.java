@@ -17,29 +17,20 @@ package io.confluent.kafkarest.resources.v3;
 
 import static java.util.Objects.requireNonNull;
 
+import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.controllers.BrokerConfigManager;
 import io.confluent.kafkarest.entities.BrokerConfig;
 import io.confluent.kafkarest.entities.v3.BrokerConfigData;
-import io.confluent.kafkarest.entities.v3.BrokerConfigDataList;
-import io.confluent.kafkarest.entities.v3.GetBrokerConfigResponse;
-import io.confluent.kafkarest.entities.v3.ListBrokerConfigsResponse;
 import io.confluent.kafkarest.entities.v3.Resource;
-import io.confluent.kafkarest.entities.v3.ResourceCollection;
 import io.confluent.kafkarest.entities.v3.UpdateBrokerConfigRequest;
-import io.confluent.kafkarest.resources.AsyncResponses;
-import io.confluent.kafkarest.resources.AsyncResponses.AsyncResponseBuilder;
 import io.confluent.kafkarest.response.CrnFactory;
 import io.confluent.kafkarest.response.UrlFactory;
-import java.util.Comparator;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
-import javax.ws.rs.NotFoundException;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -47,8 +38,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 
 @Path("/v3/clusters/{clusterId}/brokers/{brokerId}/configs")
 public final class BrokerConfigsResource {
@@ -74,32 +63,34 @@ public final class BrokerConfigsResource {
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
       @PathParam("brokerId") int brokerId) {
-    CompletableFuture<ListBrokerConfigsResponse> response =
-        brokerConfigManager.get()
-            .listBrokerConfigs(clusterId, brokerId)
-            .thenApply(
-                configs ->
-                    ListBrokerConfigsResponse.create(
-                        BrokerConfigDataList.builder()
-                            .setMetadata(
-                                ResourceCollection.Metadata.builder()
-                                    .setSelf(
-                                        urlFactory.create(
-                                            "v3",
-                                            "clusters",
-                                            clusterId,
-                                            "brokers",
-                                            String.valueOf(brokerId),
-                                            "configs"))
-                                    .build())
-                            .setData(
-                                configs.stream()
-                                    .sorted(Comparator.comparing(BrokerConfig::getName))
-                                    .map(this::toBrokerConfigData)
-                                    .collect(Collectors.toList()))
-                            .build()));
+    throw Errors.notSupportedByMapRStreams();
 
-    AsyncResponses.asyncResume(asyncResponse, response);
+    //CompletableFuture<ListBrokerConfigsResponse> response =
+    //    brokerConfigManager.get()
+    //        .listBrokerConfigs(clusterId, brokerId)
+    //        .thenApply(
+    //            configs ->
+    //                ListBrokerConfigsResponse.create(
+    //                    BrokerConfigDataList.builder()
+    //                        .setMetadata(
+    //                            ResourceCollection.Metadata.builder()
+    //                                .setSelf(
+    //                                    urlFactory.create(
+    //                                        "v3",
+    //                                        "clusters",
+    //                                        clusterId,
+    //                                        "brokers",
+    //                                        String.valueOf(brokerId),
+    //                                        "configs"))
+    //                                .build())
+    //                        .setData(
+    //                            configs.stream()
+    //                                .sorted(Comparator.comparing(BrokerConfig::getName))
+    //                                .map(this::toBrokerConfigData)
+    //                                .collect(Collectors.toList()))
+    //                        .build()));
+    //
+    //AsyncResponses.asyncResume(asyncResponse, response);
   }
 
   @GET
@@ -111,13 +102,15 @@ public final class BrokerConfigsResource {
       @PathParam("brokerId") int brokerId,
       @PathParam("name") String name
   ) {
-    CompletableFuture<GetBrokerConfigResponse> response =
-        brokerConfigManager.get()
-            .getBrokerConfig(clusterId, brokerId, name)
-            .thenApply(broker -> broker.orElseThrow(NotFoundException::new))
-            .thenApply(broker -> GetBrokerConfigResponse.create(toBrokerConfigData(broker)));
+    throw Errors.notSupportedByMapRStreams();
 
-    AsyncResponses.asyncResume(asyncResponse, response);
+    //CompletableFuture<GetBrokerConfigResponse> response =
+    //    brokerConfigManager.get()
+    //        .getBrokerConfig(clusterId, brokerId, name)
+    //        .thenApply(broker -> broker.orElseThrow(NotFoundException::new))
+    //        .thenApply(broker -> GetBrokerConfigResponse.create(toBrokerConfigData(broker)));
+    //
+    //AsyncResponses.asyncResume(asyncResponse, response);
   }
 
   @PUT
@@ -131,14 +124,16 @@ public final class BrokerConfigsResource {
       @PathParam("name") String name,
       @Valid UpdateBrokerConfigRequest request
   ) {
-    String newValue = request.getValue().orElse(null);
+    throw Errors.notSupportedByMapRStreams();
 
-    CompletableFuture<Void> response =
-        brokerConfigManager.get().updateBrokerConfig(clusterId, brokerId, name, newValue);
-
-    AsyncResponseBuilder.from(Response.status(Status.NO_CONTENT))
-        .entity(response)
-        .asyncResume(asyncResponse);
+    //String newValue = request.getValue().orElse(null);
+    //
+    //CompletableFuture<Void> response =
+    //    brokerConfigManager.get().updateBrokerConfig(clusterId, brokerId, name, newValue);
+    //
+    //AsyncResponseBuilder.from(Response.status(Status.NO_CONTENT))
+    //    .entity(response)
+    //    .asyncResume(asyncResponse);
   }
 
   @DELETE
@@ -150,12 +145,14 @@ public final class BrokerConfigsResource {
       @PathParam("brokerId") int brokerId,
       @PathParam("name") String name
   ) {
-    CompletableFuture<Void> response =
-        brokerConfigManager.get().resetBrokerConfig(clusterId, brokerId, name);
+    throw Errors.notSupportedByMapRStreams();
 
-    AsyncResponseBuilder.from(Response.status(Status.NO_CONTENT))
-        .entity(response)
-        .asyncResume(asyncResponse);
+    //CompletableFuture<Void> response =
+    //    brokerConfigManager.get().resetBrokerConfig(clusterId, brokerId, name);
+    //
+    //AsyncResponseBuilder.from(Response.status(Status.NO_CONTENT))
+    //    .entity(response)
+    //    .asyncResume(asyncResponse);
   }
 
   private BrokerConfigData toBrokerConfigData(BrokerConfig brokerConfig) {

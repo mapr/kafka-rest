@@ -28,17 +28,20 @@ import io.confluent.kafkarest.entities.v3.ResourceCollection;
 import io.confluent.kafkarest.resources.AsyncResponses;
 import io.confluent.kafkarest.response.CrnFactory;
 import io.confluent.kafkarest.response.UrlFactory;
+import io.confluent.rest.impersonation.ImpersonationUtils;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 
 @Path("/v3/clusters")
@@ -61,7 +64,16 @@ public final class ClustersResource {
 
   @GET
   @Produces(MediaType.APPLICATION_JSON)
-  public void listClusters(@Suspended AsyncResponse asyncResponse) {
+  public void listClusters(@Suspended AsyncResponse asyncResponse,
+                           @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+                           @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      listClusters(asyncResponse);
+      return null;
+    }, auth, cookie);
+  }
+
+  private void listClusters(AsyncResponse asyncResponse) {
     CompletableFuture<ListClustersResponse> response =
         clusterManager.get()
             .listClusters()
@@ -86,7 +98,16 @@ public final class ClustersResource {
   @Path("/{clusterId}")
   @Produces(MediaType.APPLICATION_JSON)
   public void getCluster(
-      @Suspended AsyncResponse asyncResponse, @PathParam("clusterId") String clusterId) {
+      @Suspended AsyncResponse asyncResponse, @PathParam("clusterId") String clusterId,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      getCluster(asyncResponse, clusterId);
+      return null;
+    }, auth, cookie);
+  }
+
+  private void getCluster(AsyncResponse asyncResponse, String clusterId) {
     CompletableFuture<GetClusterResponse> response =
         clusterManager.get()
             .getCluster(clusterId)

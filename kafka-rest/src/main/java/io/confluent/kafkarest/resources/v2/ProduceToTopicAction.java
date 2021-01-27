@@ -22,15 +22,18 @@ import io.confluent.kafkarest.entities.v2.BinaryTopicProduceRequest;
 import io.confluent.kafkarest.entities.v2.JsonTopicProduceRequest;
 import io.confluent.kafkarest.entities.v2.SchemaTopicProduceRequest;
 import io.confluent.rest.annotations.PerformanceMetric;
+import io.confluent.rest.impersonation.ImpersonationUtils;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
+import javax.ws.rs.core.HttpHeaders;
 
 @Path("/topics")
 @Consumes({
@@ -54,14 +57,19 @@ public final class ProduceToTopicAction extends AbstractProduceAction {
   public void produceBinary(
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topicName,
-      @Valid @NotNull BinaryTopicProduceRequest request
+      @Valid @NotNull BinaryTopicProduceRequest request,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie
   ) {
-    produce(
-        asyncResponse,
-        topicName,
-        /* partition= */ null,
-        EmbeddedFormat.BINARY,
-        request.toProduceRequest());
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      produce(
+          asyncResponse,
+          topicName,
+          /* partition= */ null,
+          EmbeddedFormat.BINARY,
+          request.toProduceRequest());
+      return null;
+    }, auth, cookie);
   }
 
   @POST
@@ -71,14 +79,19 @@ public final class ProduceToTopicAction extends AbstractProduceAction {
   public void produceJson(
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topicName,
-      @Valid @NotNull JsonTopicProduceRequest request
+      @Valid @NotNull JsonTopicProduceRequest request,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie
   ) {
-    produce(
-        asyncResponse,
-        topicName,
-        /* partition= */ null,
-        EmbeddedFormat.JSON,
-        request.toProduceRequest());
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      produce(
+          asyncResponse,
+          topicName,
+          /* partition= */ null,
+          EmbeddedFormat.JSON,
+          request.toProduceRequest());
+      return null;
+    }, auth, cookie);
   }
 
   @POST
@@ -88,14 +101,19 @@ public final class ProduceToTopicAction extends AbstractProduceAction {
   public void produceAvro(
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topicName,
-      @Valid @NotNull SchemaTopicProduceRequest request
+      @Valid @NotNull SchemaTopicProduceRequest request,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie
   ) {
-    produceSchema(
-        asyncResponse,
-        topicName,
-        /* partition= */ null,
-        request.toProduceRequest(),
-        EmbeddedFormat.AVRO);
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      produceSchema(
+          asyncResponse,
+          topicName,
+          /* partition= */ null,
+          request.toProduceRequest(),
+          EmbeddedFormat.AVRO);
+      return null;
+    }, auth, cookie);
   }
 
   @POST
@@ -105,14 +123,19 @@ public final class ProduceToTopicAction extends AbstractProduceAction {
   public void produceJsonSchema(
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topicName,
-      @Valid @NotNull SchemaTopicProduceRequest request
+      @Valid @NotNull SchemaTopicProduceRequest request,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie
   ) {
-    produceSchema(
-        asyncResponse,
-        topicName,
-        /* partition= */ null,
-        request.toProduceRequest(),
-        EmbeddedFormat.JSONSCHEMA);
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      produceSchema(
+          asyncResponse,
+          topicName,
+          /* partition= */ null,
+          request.toProduceRequest(),
+          EmbeddedFormat.JSONSCHEMA);
+      return null;
+    }, auth, cookie);
   }
 
   @POST
@@ -122,13 +145,18 @@ public final class ProduceToTopicAction extends AbstractProduceAction {
   public void produceProtobuf(
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topicName,
-      @Valid @NotNull SchemaTopicProduceRequest request
+      @Valid @NotNull SchemaTopicProduceRequest request,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie
   ) {
-    produceSchema(
-        asyncResponse,
-        topicName,
-        /* partition= */ null,
-        request.toProduceRequest(),
-        EmbeddedFormat.PROTOBUF);
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      produceSchema(
+          asyncResponse,
+          topicName,
+          /* partition= */ null,
+          request.toProduceRequest(),
+          EmbeddedFormat.PROTOBUF);
+      return null;
+    }, auth, cookie);
   }
 }

@@ -34,6 +34,18 @@ public class Errors {
   public static final int KAFKA_RETRIABLE_ERROR_ERROR_CODE =
       KafkaExceptionMapper.KAFKA_RETRIABLE_ERROR_ERROR_CODE;
 
+  public static final String NO_PERMISSIONS_ERROR_MESSAGE =
+          "You have no permissions to perform that action.";
+  public static final int NO_PERMISSIONS_ERROR_CODE = 403001;
+
+  public static RestException noPermissionsException() {
+    return new RestException(
+            NO_PERMISSIONS_ERROR_MESSAGE,
+            Response.Status.FORBIDDEN.getStatusCode(),
+            NO_PERMISSIONS_ERROR_CODE
+    );
+  }
+
   public static final String TOPIC_NOT_FOUND_MESSAGE = "Topic not found.";
   public static final int TOPIC_NOT_FOUND_ERROR_CODE =
       KafkaExceptionMapper.TOPIC_NOT_FOUND_ERROR_CODE;
@@ -67,6 +79,16 @@ public class Errors {
     return new RestNotFoundException(
         LEADER_NOT_AVAILABLE_MESSAGE,
         LEADER_NOT_AVAILABLE_ERROR_CODE
+    );
+  }
+
+  public static final String STREAM_NOT_FOUND_MESSAGE = "Stream not found.";
+  public static final int STREAM_NOT_FOUND_ERROR_CODE = 40405;
+
+  public static RestException streamNotFoundException() {
+    return new RestNotFoundException(
+        STREAM_NOT_FOUND_MESSAGE,
+        STREAM_NOT_FOUND_ERROR_CODE
     );
   }
 
@@ -229,6 +251,20 @@ public class Errors {
         NO_SIMPLE_CONSUMER_AVAILABLE_ERROR_MESSAGE,
         NO_SIMPLE_CONSUMER_AVAILABLE_ERROR_CODE
     );
+  }
+
+  public static final String NOT_SUPPORTED_API_BY_STREAMS_ERROR_MESSAGE =
+      "MapR Streams do not currently support this API ";
+  public static final int NOT_SUPPORTED_API_BY_STREAMS_ERROR_CODE = 80001;
+
+  public static RestConstraintViolationException notSupportedByMapRStreams() {
+    return new RestConstraintViolationException(NOT_SUPPORTED_API_BY_STREAMS_ERROR_MESSAGE,
+      NOT_SUPPORTED_API_BY_STREAMS_ERROR_CODE);
+  }
+
+  public static RestConstraintViolationException notSupportedByMapRStreams(String message) {
+    return new RestConstraintViolationException(NOT_SUPPORTED_API_BY_STREAMS_ERROR_MESSAGE
+            + message, NOT_SUPPORTED_API_BY_STREAMS_ERROR_CODE);
   }
 
 }

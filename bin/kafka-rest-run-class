@@ -16,6 +16,39 @@
 
 base_dir=$(dirname $0)/..
 
+
+# This will set MAPR_HOME, etc.
+source `which mapr-config.sh` # Both "mapr" and "mapr-config.sh" are symlinked in "/usr/bin"
+
+add_streams_paths(){
+  local MAPR_LIB_DIR="${BASEMAPR:-/opt/mapr}/lib"
+  local MAPR_STREAMS_LIB=$(ls ${MAPR_LIB_DIR}/mapr-streams*.jar 2> /dev/null | grep -v "tests.jar$" )
+  local PROTOBUF_LIB=$(ls ${MAPR_LIB_DIR}/protobuf-java*.jar 2> /dev/null | grep -v "tests.jar$" )
+  local MAPRFS_LIB=$(ls ${MAPR_LIB_DIR}/maprfs-*.jar 2> /dev/null | grep -v "maprfs-diagnostic-tools" | grep -v "tests.jar$" )
+  local STREAMS_CLIENTS_LIB=$(ls ${MAPR_LIB_DIR}/kafka-clients*.jar 2> /dev/null | grep -v "tests.jar$" )
+  local MAPRDB_LIB=$(ls ${MAPR_LIB_DIR}/maprdb-*.jar 2> /dev/null| grep -v "tests.jar$" | tr '\n' ':')
+
+  local HADOOP_LIB=$(ls ${MAPR_LIB_DIR}/hadoop*.jar 2> /dev/null | grep -v "tests.jar$" | tr '\n' ':' )
+  local COMMONS_LIB=$(ls ${MAPR_LIB_DIR}/commons*.jar 2> /dev/null | grep -v "tests.jar$" | tr '\n' ':' )
+  local GUAVA_LIB=$(ls ${MAPR_LIB_DIR}/guava*.jar 2> /dev/null | grep -v "tests.jar$")
+  local JSON_LIB=$(ls ${MAPR_LIB_DIR}/json*.jar 2> /dev/null | grep -v "tests.jar$" | tr '\n' ':' )
+  local OJAI_LIB=$(ls ${MAPR_LIB_DIR}/ojai-3*.jar 2> /dev/null)
+  local ANTLR_LIB=$(ls ${MAPR_LIB_DIR}/antlr4*.jar 2> /dev/null)
+
+  CLASSPATH="${MAPR_STREAMS_LIB}:${CLASSPATH}"
+  CLASSPATH="${PROTOBUF_LIB}:${CLASSPATH}"
+  CLASSPATH="${MAPRFS_LIB}:${CLASSPATH}"
+  CLASSPATH="${STREAMS_CLIENTS_LIB}:${CLASSPATH}"
+  CLASSPATH="${MAPRDB_LIB}:${CLASSPATH}"
+
+  CLASSPATH="${HADOOP_LIB}:${CLASSPATH}"
+  CLASSPATH="${COMMONS_LIB}:${CLASSPATH}"
+  CLASSPATH="${GUAVA_LIB}:${CLASSPATH}"
+  CLASSPATH="${JSON_LIB}:${CLASSPATH}"
+  CLASSPATH="${OJAI_LIB}:${CLASSPATH}"
+  CLASSPATH="${ANTLR_LIB}:${CLASSPATH}"
+}
+
 # Development jars. `mvn package` should collect all the required dependency jars here
 for dir in $base_dir/kafka-rest/target/kafka-rest-*-development; do
   CLASSPATH=$CLASSPATH:$dir/share/java/kafka-rest-bin/*:$dir/share/java/kafka-rest-lib/*
@@ -44,15 +77,137 @@ if [[ -n $LOG_DIR ]]; then
     KAFKAREST_LOG4J_OPTS="-Dkafka-rest.log.dir=$LOG_DIR ${KAFKAREST_LOG4J_OPTS}"
 fi
 
+# Add native library path to LD_LIBRARY_PATH
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$(get_hadoop_libpath)" # function in mapr-config.sh
+
+# main class should be assigned before jmx options
+MAIN=$1
+shift
+
 # JMX settings
-if [ -z "$KAFKAREST_JMX_OPTS" ]; then
-  KAFKAREST_JMX_OPTS="-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false "
+isSecure="false"
+if [ -f "${MAPR_HOME:-/opt/mapr}/conf/mapr-clusters.conf" ]; then
+  isSecure=$(head -1 ${MAPR_HOME:-/opt/mapr}/conf/mapr-clusters.conf | grep -o 'secure=\w*' | cut -d= -f2)
 fi
 
-# JMX port to use
-if [  $JMX_PORT ]; then
-  KAFKAREST_JMX_OPTS="$KAFKAREST_JMX_OPTS -Dcom.sun.management.jmxremote.port=$JMX_PORT "
+MAPR_JMX_PORT=${MAPR_JMX_KAFKA_REST_PORT:-3416}
+
+JMX_JAR=$(echo ${MAPR_HOME:-/opt/mapr}/lib/jmxagent*)
+
+if [ -z "$MAPR_JMXLOCALBINDING" ]; then
+  MAPR_JMXLOCALBINDING="false"
 fi
+
+if [ -z "$MAPR_JMXAUTH" ]; then
+  MAPR_JMXAUTH="false"
+fi
+
+if [ -z "$MAPR_JMXSSL" ]; then
+  MAPR_JMXSSL="false"
+fi
+
+if [ -z "$MAPR_AUTH_LOGIN_CONFIG_FILE" ]; then
+  MAPR_AUTH_LOGIN_CONFIG_FILE="${MAPR_HOME:-/opt/mapr}/conf/mapr.login.conf"
+fi
+
+if [ -z "$MAPR_LOGIN_CONFIG" ]; then
+  MAPR_LOGIN_CONFIG="JMX_AGENT_LOGIN"
+fi
+
+if [ -z "$MAPR_JMXDISABLE" ] && [ -z "$MAPR_JMXLOCALHOST" ] && [ -z "$MAPR_JMXREMOTEHOST" ]; then
+  echo "No MapR JMX options given - defaulting to local binding"
+fi
+
+if [[ ( -z "$MAPR_JMXDISABLE" || "$MAPR_JMXDISABLE" = 'false' ) && ( $MAIN == *"KafkaRestMain" ) && \
+      ( -z "$MAPR_JMX_KAFKA_REST_ENABLE" || "$MAPR_JMX_KAFKA_REST_ENABLE" = "true" ) ]]; then
+
+  # default setting for localBinding
+  MAPR_JMX_OPTS="-Dcom.sun.management.jmxremote"
+
+  if [ "$MAPR_JMXLOCALHOST" = "true" ] && [ "$MAPR_JMXREMOTEHOST" = "true" ]; then
+    echo "WARNING: Both MAPR_JMXLOCALHOST and MAPR_JMXREMOTEHOST options are enabled - defaulting to MAPR_JMXLOCAHOST config"
+    MAPR_JMXREMOTEHOST=false
+  fi
+
+  if [ "$isSecure" = "true" ] && [ "$MAPR_JMXREMOTEHOST" = "true" ]; then
+    if [ -n "$JMX_JAR" ] && [ -f ${JMX_JAR} ]; then
+      MAPR_JMX_OPTS="-javaagent:$JMX_JAR \
+      -Dmapr.jmx.agent.login.config=$MAPR_LOGIN_CONFIG"
+      MAPR_JMXAUTH="true"
+    else
+      echo "jmxagent jar file missed"
+      exit 1
+    fi
+  fi
+
+  if [ "$MAPR_JMXAUTH" = "true" ]; then
+    if [ "$isSecure" = "true" ]; then
+      if [ -f "$MAPR_AUTH_LOGIN_CONFIG_FILE" ] && [ -f "${MAPR_HOME:-/opt/mapr}/conf/jmxremote.access" ]; then
+        MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.authenticate=true \
+        -Djava.security.auth.login.config=$MAPR_AUTH_LOGIN_CONFIG_FILE \
+        -Dcom.sun.management.jmxremote.access.file=${MAPR_HOME:-/opt/mapr}/conf/jmxremote.access"
+      else
+        echo "JMX login config or access file missing - not starting since we are in secure mode"
+        exit 1
+      fi
+
+      if [ "$MAPR_JMXREMOTEHOST" = "false" ]; then
+        MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.login.config=$MAPR_LOGIN_CONFIG"
+      fi
+    else
+      echo "JMX Authentication configured - not starting since we are not in secure mode"
+      exit 1
+    fi
+  else
+    MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.authenticate=false"
+  fi
+
+  if [ "$MAPR_JMXLOCALHOST" = "true" ] || [ "$MAPR_JMXREMOTEHOST" = "true" ]; then
+    if [ "$MAPR_JMXSSL" = "true" ] && [ "$MAPR_JMXLOCALHOST" = "true" ] ; then
+      echo "WARNING: ssl is not supported in localhost. Setting default to false"
+      MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.ssl=false"
+    else
+      MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.ssl=false"
+    fi
+
+    if [ "$MAPR_JMXLOCALHOST" = "true" ]; then
+      MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Djava.rmi.server.hostname=localhost \
+      -Dcom.sun.management.jmxremote.host=localhost \
+      -Dcom.sun.management.jmxremote.local.only=true"
+    fi
+
+    if [ -z "$MAPR_JMX_PORT" ]; then
+      echo "WARNING: No JMX port given for Kafka Rest - disabling TCP base JMX service"
+      MAPR_JMX_OPTS=""
+    else
+      if [ "$MAPR_JMXREMOTEHOST" = "true" ] && [ "$isSecure" = "true" ]; then
+        MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dmapr.jmx.agent.port=$MAPR_JMX_PORT"
+        echo "Enabling TCP JMX for Kafka Rest on port $MAPR_JMX_PORT"
+      else
+        MAPR_JMX_OPTS="$MAPR_JMX_OPTS -Dcom.sun.management.jmxremote.port=$MAPR_JMX_PORT"
+        if [ "$MAPR_JMXLOCALHOST" = "true" ]; then
+          echo "Enabling TCP JMX for Kafka Rest only on localhost port $MAPR_JMX_PORT"
+        else
+          echo "Enabling TCP JMX for Kafka Rest on port $MAPR_JMX_PORT"
+        fi
+      fi
+    fi
+  fi
+    
+  if [ "$MAPR_JMXLOCALBINDING" = "true" ] && [ -z "$MAPR_JMX_OPTS" ]; then
+    echo "Enabling JMX local binding only"
+    MAPR_JMX_OPTS="-Dcom.sun.management.jmxremote"
+  fi
+else
+  if [[ $MAIN != *"KafkaRestMain" ]]; then
+    echo "JMX disabled - It is used for only Kafka Rest server (skipped for avro consumer and producer)."
+  else
+    echo "JMX disabled by user request"
+  fi
+  MAPR_JMX_OPTS=""
+fi
+
+KAFKAREST_JMX_OPTS=$MAPR_JMX_OPTS
 
 # Generic jvm settings you want to add
 if [ -z "$KAFKAREST_OPTS" ]; then
@@ -76,9 +231,6 @@ if [ -z "$KAFKAREST_JVM_PERFORMANCE_OPTS" ]; then
   KAFKAREST_JVM_PERFORMANCE_OPTS="-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent -Djava.awt.headless=true"
 fi
 
-MAIN=$1
-shift
-
 while [ $# -gt 0 ]; do
   COMMAND=$1
   case $COMMAND in
@@ -101,9 +253,31 @@ if [ "x$HELP" = "xtrue" ]; then
   exit 0
 fi
 
+add_streams_paths
+pid="${BASEMAPR:-/opt/mapr}/pid/kafka-rest.pid"
+env=${BASEMAPR:-/opt/mapr}/conf/env.sh
+[ -f $env ] && . $env
+
+if [ "$MAPR_SECURITY_STATUS" = "true" ]; then
+  KAFKAREST_SECURITY_OPTS="$KAFKAREST_SECURITY_OPTS $MAPR_AUTH_CLIENT_OPTS -Djava.library.path=/opt/mapr/lib -Dmapr.library.flatclass"
+else
+  KAFKAREST_SECURITY_OPTS="$KAFKAREST_SECURITY_OPTS $SIMPLE_LOGIN_OPTS -Djava.library.path=/opt/mapr/lib -Dmapr.library.flatclass"
+fi
+
+MAPR_CLIENT_CLASSPATH=$(mapr clientclasspath)
+KAFKAREST_CLASSPATH=$CLASSPATH:$MAPR_CLIENT_CLASSPATH
+
+KAFKA_VERSION=$(cat "/opt/mapr/kafka/kafkaversion")
+KAFKAREST_CLASSPATH=$KAFKAREST_CLASSPATH:/opt/mapr/kafka/kafka-$KAFKA_VERSION/libs/*
+
+if [ -f ${JMX_JAR} ]; then
+  KAFKAREST_CLASSPATH=$KAFKAREST_CLASSPATH:$JMX_JAR
+fi
+
 # Launch mode
 if [ "x$DAEMON_MODE" = "xtrue" ]; then
-  nohup $JAVA $KAFKAREST_HEAP_OPTS $KAFKAREST_JVM_PERFORMANCE_OPTS $KAFKAREST_JMX_OPTS $KAFKAREST_LOG4J_OPTS -cp $CLASSPATH $KAFKAREST_OPTS "$MAIN" "$@" 2>&1 < /dev/null &
+  nohup $JAVA $KAFKAREST_HEAP_OPTS $KAFKAREST_JVM_PERFORMANCE_OPTS $KAFKAREST_JMX_OPTS $KAFKAREST_LOG4J_OPTS $KAFKAREST_SECURITY_OPTS -cp $KAFKAREST_CLASSPATH $KAFKAREST_OPTS "$MAIN" "$@" 2>&1 < /dev/null &
+  echo $! > $pid
 else
-  exec $JAVA $KAFKAREST_HEAP_OPTS $KAFKAREST_JVM_PERFORMANCE_OPTS $KAFKAREST_JMX_OPTS $KAFKAREST_LOG4J_OPTS -cp $CLASSPATH $KAFKAREST_OPTS "$MAIN" "$@"
+  exec $JAVA $KAFKAREST_HEAP_OPTS $KAFKAREST_JVM_PERFORMANCE_OPTS $KAFKAREST_JMX_OPTS $KAFKAREST_LOG4J_OPTS $KAFKAREST_SECURITY_OPTS -cp $KAFKAREST_CLASSPATH $KAFKAREST_OPTS "$MAIN" "$@" & echo $! > $pid
 fi

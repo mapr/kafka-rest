@@ -32,6 +32,7 @@ import io.confluent.kafkarest.resources.AsyncResponses;
 import io.confluent.kafkarest.resources.AsyncResponses.AsyncResponseBuilder;
 import io.confluent.kafkarest.response.CrnFactory;
 import io.confluent.kafkarest.response.UrlFactory;
+import io.confluent.rest.impersonation.ImpersonationUtils;
 import java.net.URI;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -44,6 +45,7 @@ import javax.validation.Valid;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
@@ -51,6 +53,7 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -76,7 +79,16 @@ public final class TopicsResource {
   @GET
   @Produces(MediaType.APPLICATION_JSON)
   public void listTopics(
-      @Suspended AsyncResponse asyncResponse, @PathParam("clusterId") String clusterId) {
+      @Suspended AsyncResponse asyncResponse, @PathParam("clusterId") String clusterId,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      listTopics(asyncResponse, clusterId);
+      return null;
+    }, auth, cookie);
+  }
+
+  private void listTopics(AsyncResponse asyncResponse, String clusterId) {
     CompletableFuture<ListTopicsResponse> response =
         topicManager.get()
             .listTopics(clusterId)
@@ -105,8 +117,17 @@ public final class TopicsResource {
   public void getTopic(
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
-      @PathParam("topicName") String topicName
+      @PathParam("topicName") String topicName,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie
   ) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      getTopic(asyncResponse, clusterId, topicName);
+      return null;
+    }, auth, cookie);
+  }
+
+  private void getTopic(AsyncResponse asyncResponse, String clusterId, String topicName) {
     CompletableFuture<GetTopicResponse> response =
         topicManager.get()
             .getTopic(clusterId, topicName)
@@ -122,8 +143,18 @@ public final class TopicsResource {
   public void createTopic(
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
-      @Valid CreateTopicRequest request
+      @Valid CreateTopicRequest request,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie
   ) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      createTopic(asyncResponse, clusterId, request);
+      return null;
+    }, auth, cookie);
+  }
+
+  private void createTopic(AsyncResponse asyncResponse,
+                           String clusterId, CreateTopicRequest request) {
     String topicName = request.getTopicName();
     int partitionsCount = request.getPartitionsCount();
     short replicationFactor = request.getReplicationFactor();
@@ -159,8 +190,17 @@ public final class TopicsResource {
   public void deleteTopic(
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
-      @PathParam("topicName") String topicName
+      @PathParam("topicName") String topicName,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie
   ) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      deleteTopic(asyncResponse, clusterId, topicName);
+      return null;
+    }, auth, cookie);
+  }
+
+  private void deleteTopic(AsyncResponse asyncResponse, String clusterId, String topicName) {
     CompletableFuture<Void> response = topicManager.get().deleteTopic(clusterId, topicName);
 
     AsyncResponseBuilder.from(Response.status(Status.NO_CONTENT))

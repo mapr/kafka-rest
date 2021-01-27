@@ -17,14 +17,10 @@ package io.confluent.kafkarest.resources.v2;
 
 import static java.util.Objects.requireNonNull;
 
+import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.Versions;
 import io.confluent.kafkarest.controllers.BrokerManager;
-import io.confluent.kafkarest.entities.Broker;
-import io.confluent.kafkarest.entities.v2.BrokerList;
-import io.confluent.kafkarest.resources.AsyncResponses;
 import io.confluent.rest.annotations.PerformanceMetric;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.ws.rs.Consumes;
@@ -52,15 +48,6 @@ public final class BrokersResource {
   @GET
   @PerformanceMetric("brokers.list+v2")
   public void list(@Suspended AsyncResponse asyncResponse) {
-    CompletableFuture<BrokerList> response =
-        brokerManager.get()
-            .listLocalBrokers()
-            .thenApply(
-                brokers ->
-                    new BrokerList(
-                        brokers.stream().map(Broker::getBrokerId).collect(Collectors.toList())));
-
-
-    AsyncResponses.asyncResume(asyncResponse, response);
+    throw Errors.notSupportedByMapRStreams();
   }
 }

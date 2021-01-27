@@ -16,7 +16,10 @@
 package io.confluent.kafkarest.common;
 
 import java.util.concurrent.CompletableFuture;
+import com.mapr.db.exceptions.AccessDeniedException;
+import io.confluent.kafkarest.Errors;
 import org.apache.kafka.common.KafkaFuture;
+import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.apache.kafka.common.internals.KafkaFutureImpl;
 
 public final class KafkaFutures {
@@ -44,9 +47,29 @@ public final class KafkaFutures {
           if (exception == null) {
             completableFuture.complete(value);
           } else {
+            if (exception instanceof UnknownTopicOrPartitionException) {
+              exception = convertUnknownResourceException(exception);
+            }
+            if (exception instanceof AccessDeniedException) {
+              exception = Errors.noPermissionsException();
+            }
             completableFuture.completeExceptionally(exception);
           }
         });
     return completableFuture;
+  }
+
+  private static Throwable convertUnknownResourceException(Throwable e) {
+    String resource = e.getMessage().split(" ")[0];
+    switch (resource) {
+      case "Stream":
+        return Errors.streamNotFoundException();
+      case "Topic":
+        return Errors.topicNotFoundException();
+      case "Partition":
+        return Errors.partitionNotFoundException();
+      default:
+        return e;
+    }
   }
 }

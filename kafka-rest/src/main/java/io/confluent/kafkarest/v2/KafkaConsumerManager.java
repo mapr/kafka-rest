@@ -18,7 +18,7 @@ package io.confluent.kafkarest.v2;
 import static io.confluent.kafkarest.KafkaRestConfig.CONSUMER_MAX_THREADS_CONFIG;
 import static io.confluent.kafkarest.KafkaRestConfig.MAX_POLL_RECORDS_CONFIG;
 import static io.confluent.kafkarest.KafkaRestConfig.MAX_POLL_RECORDS_VALUE;
-
+import io.confluent.kafka.schemaregistry.client.SchemaRegistryClientConfig;
 import io.confluent.kafkarest.ConsumerInstanceId;
 import io.confluent.kafkarest.ConsumerReadCallback;
 import io.confluent.kafkarest.Errors;
@@ -69,6 +69,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.concurrent.GuardedBy;
 import javax.ws.rs.core.Response;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigException;
@@ -202,6 +203,12 @@ public class KafkaConsumerManager {
       Properties props = config.getConsumerProperties();
       props.setProperty(KafkaRestConfig.BOOTSTRAP_SERVERS_CONFIG, this.bootstrapServers);
       props.setProperty(MAX_POLL_RECORDS_CONFIG, MAX_POLL_RECORDS_VALUE);
+      // configure default stream
+      String defaultStream = config.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
+      if (!"".equals(defaultStream)) {
+        props.put(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, defaultStream);
+      }
+
       props.setProperty("group.id", group);
       // This ID we pass here has to be unique, only pass a value along if the deprecated ID field
       // was passed in. This generally shouldn't be used, but is maintained for compatibility.
@@ -222,8 +229,14 @@ public class KafkaConsumerManager {
 
       props.setProperty(
           "schema.registry.url",
-          config.getString(KafkaRestConfig.SCHEMA_REGISTRY_URL_CONFIG)
+          config.getSchemaRegistryUrl()
       );
+
+      boolean isAuthenticationEnabled =
+          config.getBoolean(KafkaRestConfig.ENABLE_AUTHENTICATION_CONFIG);
+      if (isAuthenticationEnabled) {
+        props.setProperty(SchemaRegistryClientConfig.MAPRSASL_AUTH_CONFIG, "true");
+      }
 
       switch (instanceConfig.getFormat()) {
         case AVRO:

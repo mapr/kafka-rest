@@ -17,18 +17,13 @@ package io.confluent.kafkarest.resources.v3;
 
 import static java.util.Objects.requireNonNull;
 
+import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.controllers.ReassignmentManager;
 import io.confluent.kafkarest.entities.Reassignment;
 import io.confluent.kafkarest.entities.v3.ReassignmentData;
-import io.confluent.kafkarest.entities.v3.ReassignmentDataList;
 import io.confluent.kafkarest.entities.v3.Resource;
-import io.confluent.kafkarest.entities.v3.ResourceCollection;
-import io.confluent.kafkarest.entities.v3.SearchReassignmentsByTopicResponse;
-import io.confluent.kafkarest.resources.AsyncResponses;
 import io.confluent.kafkarest.response.CrnFactory;
 import io.confluent.kafkarest.response.UrlFactory;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.ws.rs.GET;
@@ -62,32 +57,34 @@ public final class SearchReassignmentsByTopicAction {
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
       @PathParam("topicName") String topicName) {
-    CompletableFuture<SearchReassignmentsByTopicResponse> response =
-        reassignmentManager.get().searchReassignmentsByTopicName(clusterId, topicName)
-            .thenApply(
-                reassignments ->
-                    SearchReassignmentsByTopicResponse.create(
-                        ReassignmentDataList.builder()
-                            .setMetadata(
-                                ResourceCollection.Metadata.builder()
-                                    .setSelf(
-                                        urlFactory.create(
-                                            "v3",
-                                            "clusters",
-                                            clusterId,
-                                            "topics",
-                                            topicName,
-                                            "partitions",
-                                            "-",
-                                            "reassignments"))
-                                    .build())
-                            .setData(
-                                reassignments.stream()
-                                    .map(this::toReassignmentData)
-                                    .collect(Collectors.toList()))
-                            .build()));
+    throw Errors.notSupportedByMapRStreams();
 
-    AsyncResponses.asyncResume(asyncResponse, response);
+    //CompletableFuture<SearchReassignmentsByTopicResponse> response =
+    //    reassignmentManager.get().searchReassignmentsByTopicName(clusterId, topicName)
+    //        .thenApply(
+    //            reassignments ->
+    //                SearchReassignmentsByTopicResponse.create(
+    //                    ReassignmentDataList.builder()
+    //                        .setMetadata(
+    //                            ResourceCollection.Metadata.builder()
+    //                                .setSelf(
+    //                                    urlFactory.create(
+    //                                        "v3",
+    //                                        "clusters",
+    //                                        clusterId,
+    //                                        "topics",
+    //                                        topicName,
+    //                                        "partitions",
+    //                                        "-",
+    //                                        "reassignments"))
+    //                                .build())
+    //                        .setData(
+    //                            reassignments.stream()
+    //                                .map(this::toReassignmentData)
+    //                                .collect(Collectors.toList()))
+    //                        .build()));
+    //
+    //AsyncResponses.asyncResume(asyncResponse, response);
   }
 
   private ReassignmentData toReassignmentData(Reassignment reassignment) {

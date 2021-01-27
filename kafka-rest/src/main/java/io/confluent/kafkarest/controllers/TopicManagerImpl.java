@@ -19,12 +19,14 @@ import static io.confluent.kafkarest.controllers.Entities.checkEntityExists;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.Objects.requireNonNull;
-
+import io.confluent.kafkarest.Errors;
+import io.confluent.kafkarest.KafkaRestConfig;
 import io.confluent.kafkarest.common.KafkaFutures;
 import io.confluent.kafkarest.entities.Partition;
 import io.confluent.kafkarest.entities.PartitionReplica;
 import io.confluent.kafkarest.entities.Topic;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +39,8 @@ import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.clients.admin.TopicListing;
+import org.apache.kafka.common.KafkaException;
+import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartitionInfo;
 
@@ -56,7 +60,7 @@ final class TopicManagerImpl implements TopicManager {
     return clusterManager.getCluster(clusterId)
         .thenApply(cluster -> checkEntityExists(cluster, "Cluster %s cannot be found.", clusterId))
         .thenCompose(
-            cluster -> KafkaFutures.toCompletableFuture(adminClient.listTopics().listings()))
+            cluster -> KafkaFutures.toCompletableFuture(getTopicsList()))
         .thenCompose(
             topicListings -> {
               if (topicListings == null) {
@@ -73,7 +77,7 @@ final class TopicManagerImpl implements TopicManager {
     return clusterManager.getLocalCluster()
         .thenCompose(
             cluster ->
-                KafkaFutures.toCompletableFuture(adminClient.listTopics().listings())
+                KafkaFutures.toCompletableFuture(getTopicsList())
                     .thenCompose(
                         topicListings -> {
                           if (topicListings == null) {
@@ -127,6 +131,16 @@ final class TopicManagerImpl implements TopicManager {
               }
               return Optional.of(topics.get(0));
             });
+  }
+
+  private KafkaFuture<Collection<TopicListing>> getTopicsList() {
+    try {
+      return adminClient.listTopics().listings();
+    } catch (KafkaException e) {
+      throw Errors.notSupportedByMapRStreams(
+              "Please try to set " + KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG
+                      + " to return topics for default stream");
+    }
   }
 
   private CompletableFuture<List<Topic>> describeTopics(String clusterId, List<String> topicNames) {

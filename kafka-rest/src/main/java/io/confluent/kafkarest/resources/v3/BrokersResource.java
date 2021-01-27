@@ -17,23 +17,16 @@ package io.confluent.kafkarest.resources.v3;
 
 import static java.util.Objects.requireNonNull;
 
+import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.controllers.BrokerManager;
 import io.confluent.kafkarest.entities.Broker;
 import io.confluent.kafkarest.entities.v3.BrokerData;
-import io.confluent.kafkarest.entities.v3.BrokerDataList;
-import io.confluent.kafkarest.entities.v3.GetBrokerResponse;
-import io.confluent.kafkarest.entities.v3.ListBrokersResponse;
 import io.confluent.kafkarest.entities.v3.Resource;
-import io.confluent.kafkarest.entities.v3.ResourceCollection;
-import io.confluent.kafkarest.resources.AsyncResponses;
 import io.confluent.kafkarest.response.CrnFactory;
 import io.confluent.kafkarest.response.UrlFactory;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.ws.rs.GET;
-import javax.ws.rs.NotFoundException;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -63,25 +56,27 @@ public final class BrokersResource {
   @Produces(MediaType.APPLICATION_JSON)
   public void listBrokers(
       @Suspended AsyncResponse asyncResponse, @PathParam("clusterId") String clusterId) {
-    CompletableFuture<ListBrokersResponse> response =
-        brokerManager.get()
-            .listBrokers(clusterId)
-            .thenApply(
-                brokers ->
-                    ListBrokersResponse.create(
-                        BrokerDataList.builder()
-                            .setMetadata(
-                                ResourceCollection.Metadata.builder()
-                                    .setSelf(
-                                        urlFactory.create("v3", "clusters", clusterId, "brokers"))
-                                    .build())
-                            .setData(
-                                brokers.stream()
-                                    .map(this::toBrokerData)
-                                    .collect(Collectors.toList()))
-                            .build()));
+    throw Errors.notSupportedByMapRStreams();
 
-    AsyncResponses.asyncResume(asyncResponse, response);
+    //CompletableFuture<ListBrokersResponse> response =
+    //    brokerManager.get()
+    //        .listBrokers(clusterId)
+    //        .thenApply(
+    //            brokers ->
+    //                ListBrokersResponse.create(
+    //                    BrokerDataList.builder()
+    //                        .setMetadata(
+    //                            ResourceCollection.Metadata.builder()
+    //                                .setSelf(
+    //                                    urlFactory.create("v3", "clusters", clusterId, "brokers"))
+    //                                .build())
+    //                        .setData(
+    //                            brokers.stream()
+    //                                .map(this::toBrokerData)
+    //                                .collect(Collectors.toList()))
+    //                        .build()));
+    //
+    //AsyncResponses.asyncResume(asyncResponse, response);
   }
 
   @GET
@@ -92,13 +87,15 @@ public final class BrokersResource {
       @PathParam("clusterId") String clusterId,
       @PathParam("brokerId") Integer brokerId
   ) {
-    CompletableFuture<GetBrokerResponse> response =
-        brokerManager.get()
-            .getBroker(clusterId, brokerId)
-            .thenApply(broker -> broker.orElseThrow(NotFoundException::new))
-            .thenApply(broker -> GetBrokerResponse.create(toBrokerData(broker)));
+    throw Errors.notSupportedByMapRStreams();
 
-    AsyncResponses.asyncResume(asyncResponse, response);
+    //CompletableFuture<GetBrokerResponse> response =
+    //    brokerManager.get()
+    //        .getBroker(clusterId, brokerId)
+    //        .thenApply(broker -> broker.orElseThrow(NotFoundException::new))
+    //        .thenApply(broker -> GetBrokerResponse.create(toBrokerData(broker)));
+    //
+    //AsyncResponses.asyncResume(asyncResponse, response);
   }
 
   private BrokerData toBrokerData(Broker broker) {

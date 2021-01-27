@@ -16,6 +16,7 @@
 package io.confluent.kafkarest.resources.v2;
 
 import static java.util.Objects.requireNonNull;
+import io.confluent.rest.impersonation.ImpersonationUtils;
 
 import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.Versions;
@@ -31,11 +32,13 @@ import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
+import javax.ws.rs.core.HttpHeaders;
 
 @Path("/topics/{topic}/partitions")
 @Consumes({Versions.KAFKA_V2_JSON})
@@ -51,7 +54,20 @@ public final class PartitionsResource {
 
   @GET
   @PerformanceMetric("partitions.list+v2")
-  public void list(@Suspended AsyncResponse asyncResponse, @PathParam("topic") String topic) {
+  public void list(
+      @Suspended AsyncResponse asyncResponse,
+      final @PathParam("topic") String topic,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie
+  ) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      list(asyncResponse, topic);
+      return null;
+    }, auth, cookie);
+  }
+
+  private void list(@Suspended AsyncResponse asyncResponse,
+                    @PathParam("topic") String topic) {
     CompletableFuture<List<GetPartitionResponse>> response =
         partitionManager.get()
             .listLocalPartitions(topic)
@@ -70,7 +86,20 @@ public final class PartitionsResource {
   public void getPartition(
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topic,
-      @PathParam("partition") int partitionId
+      @PathParam("partition") int partitionId,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie
+  ) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      getPartition(asyncResponse, topic, partitionId);
+      return null;
+    }, auth, cookie);
+  }
+
+  private void getPartition(
+          @Suspended AsyncResponse asyncResponse,
+          @PathParam("topic") String topic,
+          @PathParam("partition") int partitionId
   ) {
     CompletableFuture<GetPartitionResponse> response =
         partitionManager.get()
@@ -93,16 +122,30 @@ public final class PartitionsResource {
   public void getOffsets(
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topic,
-      @PathParam("partition") int partitionId
+      @PathParam("partition") int partitionId,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie
+  ) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      getOffsets(asyncResponse, topic, partitionId);
+      return null;
+    }, auth, cookie);
+  }
+
+  private void getOffsets(
+          @Suspended AsyncResponse asyncResponse,
+          @PathParam("topic") String topic,
+          @PathParam("partition") int partitionId
   ) {
     CompletableFuture<TopicPartitionOffsetResponse> response =
-        partitionManager.get()
-            .getLocalPartition(topic, partitionId)
-            .thenApply(partition -> partition.orElseThrow(Errors::partitionNotFoundException))
-            .thenApply(
-                partition ->
-                    new TopicPartitionOffsetResponse(
-                        partition.getEarliestOffset(), partition.getLatestOffset()));
+            partitionManager.get()
+                    .getLocalPartition(topic, partitionId)
+                    .thenApply(partition ->
+                            partition.orElseThrow(Errors::partitionNotFoundException))
+                    .thenApply(
+                      partition ->
+                              new TopicPartitionOffsetResponse(
+                                      partition.getEarliestOffset(), partition.getLatestOffset()));
 
     AsyncResponses.asyncResume(asyncResponse, response);
   }

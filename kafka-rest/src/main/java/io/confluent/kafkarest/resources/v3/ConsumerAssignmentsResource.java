@@ -17,21 +17,17 @@ package io.confluent.kafkarest.resources.v3;
 
 import static java.util.Objects.requireNonNull;
 
+import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.controllers.ConsumerAssignmentManager;
 import io.confluent.kafkarest.entities.ConsumerAssignment;
 import io.confluent.kafkarest.entities.v3.ConsumerAssignmentData;
-import io.confluent.kafkarest.entities.v3.ConsumerAssignmentDataList;
 import io.confluent.kafkarest.entities.v3.GetConsumerAssignmentResponse;
-import io.confluent.kafkarest.entities.v3.ListConsumerAssignmentsResponse;
 import io.confluent.kafkarest.entities.v3.Resource;
 import io.confluent.kafkarest.entities.v3.Resource.Relationship;
-import io.confluent.kafkarest.entities.v3.ResourceCollection;
 import io.confluent.kafkarest.resources.AsyncResponses;
 import io.confluent.kafkarest.response.CrnFactory;
 import io.confluent.kafkarest.response.UrlFactory;
-import java.util.Comparator;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.ws.rs.GET;
@@ -71,36 +67,39 @@ public final class ConsumerAssignmentsResource {
       @PathParam("consumerGroupId") String consumerGroupId,
       @PathParam("consumerId") String consumerId
   ) {
-    CompletableFuture<ListConsumerAssignmentsResponse> response =
-        consumerAssignmentManager.get()
-            .listConsumerAssignments(clusterId, consumerGroupId, consumerId)
-            .thenApply(
-                assignments ->
-                    ListConsumerAssignmentsResponse.create(
-                        ConsumerAssignmentDataList.builder()
-                            .setMetadata(
-                                ResourceCollection.Metadata.builder()
-                                    .setSelf(
-                                        urlFactory.create(
-                                            "v3",
-                                            "clusters",
-                                            clusterId,
-                                            "consumer-groups",
-                                            consumerGroupId,
-                                            "consumers",
-                                            consumerId,
-                                            "assignments"))
-                                    .build())
-                            .setData(
-                                assignments.stream()
-                                    .map(this::toConsumerAssignmentData)
-                                    .sorted(
-                                        Comparator.comparing(ConsumerAssignmentData::getTopicName)
-                                            .thenComparing(ConsumerAssignmentData::getPartitionId))
-                                    .collect(Collectors.toList()))
-                            .build()));
+    throw Errors.notSupportedByMapRStreams();
 
-    AsyncResponses.asyncResume(asyncResponse, response);
+    //CompletableFuture<ListConsumerAssignmentsResponse> response =
+    //    consumerAssignmentManager.get()
+    //        .listConsumerAssignments(clusterId, consumerGroupId, consumerId)
+    //        .thenApply(
+    //            assignments ->
+    //                ListConsumerAssignmentsResponse.create(
+    //                    ConsumerAssignmentDataList.builder()
+    //                        .setMetadata(
+    //                            ResourceCollection.Metadata.builder()
+    //                                .setSelf(
+    //                                    urlFactory.create(
+    //                                        "v3",
+    //                                        "clusters",
+    //                                        clusterId,
+    //                                        "consumer-groups",
+    //                                        consumerGroupId,
+    //                                        "consumers",
+    //                                        consumerId,
+    //                                        "assignments"))
+    //                                .build())
+    //                        .setData(
+    //                            assignments.stream()
+    //                                .map(this::toConsumerAssignmentData)
+    //                                .sorted(
+    //                                    Comparator.comparing(ConsumerAssignmentData::getTopicName)
+    //                                        .thenComparing
+    //                                        (ConsumerAssignmentData::getPartitionId))
+    //                                .collect(Collectors.toList()))
+    //                        .build()));
+    //
+    //AsyncResponses.asyncResume(asyncResponse, response);
   }
 
   @GET

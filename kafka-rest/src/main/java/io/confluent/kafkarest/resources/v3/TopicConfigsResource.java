@@ -17,29 +17,20 @@ package io.confluent.kafkarest.resources.v3;
 
 import static java.util.Objects.requireNonNull;
 
+import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.controllers.TopicConfigManager;
 import io.confluent.kafkarest.entities.TopicConfig;
-import io.confluent.kafkarest.entities.v3.GetTopicConfigResponse;
-import io.confluent.kafkarest.entities.v3.ListTopicConfigsResponse;
 import io.confluent.kafkarest.entities.v3.Resource;
-import io.confluent.kafkarest.entities.v3.ResourceCollection;
 import io.confluent.kafkarest.entities.v3.TopicConfigData;
-import io.confluent.kafkarest.entities.v3.TopicConfigDataList;
 import io.confluent.kafkarest.entities.v3.UpdateTopicConfigRequest;
-import io.confluent.kafkarest.resources.AsyncResponses;
-import io.confluent.kafkarest.resources.AsyncResponses.AsyncResponseBuilder;
 import io.confluent.kafkarest.response.CrnFactory;
 import io.confluent.kafkarest.response.UrlFactory;
-import java.util.Comparator;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
-import javax.ws.rs.NotFoundException;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -47,8 +38,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 
 @Path("/v3/clusters/{clusterId}/topics/{topicName}/configs")
 public final class TopicConfigsResource {
@@ -74,32 +63,34 @@ public final class TopicConfigsResource {
       @PathParam("clusterId") String clusterId,
       @PathParam("topicName") String topicName
   ) {
-    CompletableFuture<ListTopicConfigsResponse> response =
-        topicConfigManager.get()
-            .listTopicConfigs(clusterId, topicName)
-            .thenApply(
-                configs ->
-                    ListTopicConfigsResponse.create(
-                        TopicConfigDataList.builder()
-                            .setMetadata(
-                                ResourceCollection.Metadata.builder()
-                                    .setSelf(
-                                        urlFactory.create(
-                                            "v3",
-                                            "clusters",
-                                            clusterId,
-                                            "topics",
-                                            topicName,
-                                            "configs"))
-                                    .build())
-                            .setData(
-                                configs.stream()
-                                    .sorted(Comparator.comparing(TopicConfig::getName))
-                                    .map(this::toTopicConfigData)
-                                    .collect(Collectors.toList()))
-                            .build()));
+    throw Errors.notSupportedByMapRStreams();
 
-    AsyncResponses.asyncResume(asyncResponse, response);
+    //CompletableFuture<ListTopicConfigsResponse> response =
+    //    topicConfigManager.get()
+    //        .listTopicConfigs(clusterId, topicName)
+    //        .thenApply(
+    //            configs ->
+    //                ListTopicConfigsResponse.create(
+    //                    TopicConfigDataList.builder()
+    //                        .setMetadata(
+    //                            ResourceCollection.Metadata.builder()
+    //                                .setSelf(
+    //                                    urlFactory.create(
+    //                                        "v3",
+    //                                        "clusters",
+    //                                        clusterId,
+    //                                        "topics",
+    //                                        topicName,
+    //                                        "configs"))
+    //                                .build())
+    //                        .setData(
+    //                            configs.stream()
+    //                                .sorted(Comparator.comparing(TopicConfig::getName))
+    //                                .map(this::toTopicConfigData)
+    //                                .collect(Collectors.toList()))
+    //                        .build()));
+    //
+    //AsyncResponses.asyncResume(asyncResponse, response);
   }
 
   @GET
@@ -111,13 +102,15 @@ public final class TopicConfigsResource {
       @PathParam("topicName") String topicName,
       @PathParam("name") String name
   ) {
-    CompletableFuture<GetTopicConfigResponse> response =
-        topicConfigManager.get()
-            .getTopicConfig(clusterId, topicName, name)
-            .thenApply(topic -> topic.orElseThrow(NotFoundException::new))
-            .thenApply(topic -> GetTopicConfigResponse.create(toTopicConfigData(topic)));
+    throw Errors.notSupportedByMapRStreams();
 
-    AsyncResponses.asyncResume(asyncResponse, response);
+    //CompletableFuture<GetTopicConfigResponse> response =
+    //    topicConfigManager.get()
+    //        .getTopicConfig(clusterId, topicName, name)
+    //        .thenApply(topic -> topic.orElseThrow(NotFoundException::new))
+    //        .thenApply(topic -> GetTopicConfigResponse.create(toTopicConfigData(topic)));
+    //
+    //AsyncResponses.asyncResume(asyncResponse, response);
   }
 
   @PUT
@@ -131,14 +124,16 @@ public final class TopicConfigsResource {
       @PathParam("name") String name,
       @Valid UpdateTopicConfigRequest request
   ) {
-    String newValue = request.getValue().orElse(null);
+    throw Errors.notSupportedByMapRStreams();
 
-    CompletableFuture<Void> response =
-        topicConfigManager.get().updateTopicConfig(clusterId, topicName, name, newValue);
-
-    AsyncResponseBuilder.from(Response.status(Status.NO_CONTENT))
-        .entity(response)
-        .asyncResume(asyncResponse);
+    //String newValue = request.getValue().orElse(null);
+    //
+    //CompletableFuture<Void> response =
+    //    topicConfigManager.get().updateTopicConfig(clusterId, topicName, name, newValue);
+    //
+    //AsyncResponseBuilder.from(Response.status(Status.NO_CONTENT))
+    //    .entity(response)
+    //    .asyncResume(asyncResponse);
   }
 
   @DELETE
@@ -150,12 +145,14 @@ public final class TopicConfigsResource {
       @PathParam("topicName") String topicName,
       @PathParam("name") String name
   ) {
-    CompletableFuture<Void> response =
-        topicConfigManager.get().resetTopicConfig(clusterId, topicName, name);
+    throw Errors.notSupportedByMapRStreams();
 
-    AsyncResponseBuilder.from(Response.status(Status.NO_CONTENT))
-        .entity(response)
-        .asyncResume(asyncResponse);
+    //CompletableFuture<Void> response =
+    //    topicConfigManager.get().resetTopicConfig(clusterId, topicName, name);
+    //
+    //AsyncResponseBuilder.from(Response.status(Status.NO_CONTENT))
+    //    .entity(response)
+    //    .asyncResume(asyncResponse);
   }
 
   private TopicConfigData toTopicConfigData(TopicConfig topicConfig) {

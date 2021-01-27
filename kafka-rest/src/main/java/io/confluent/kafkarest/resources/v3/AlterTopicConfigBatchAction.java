@@ -17,10 +17,9 @@ package io.confluent.kafkarest.resources.v3;
 
 import static java.util.Objects.requireNonNull;
 
+import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.controllers.TopicConfigManager;
 import io.confluent.kafkarest.entities.v3.AlterTopicConfigBatchRequest;
-import io.confluent.kafkarest.resources.AsyncResponses.AsyncResponseBuilder;
-import java.util.concurrent.CompletableFuture;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.validation.Valid;
@@ -32,8 +31,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 
 @Path("/v3/clusters/{clusterId}/topics/{topicName}/configs:alter")
 public final class AlterTopicConfigBatchAction {
@@ -54,12 +51,14 @@ public final class AlterTopicConfigBatchAction {
       @PathParam("topicName") String topicName,
       @Valid AlterTopicConfigBatchRequest request
   ) {
-    CompletableFuture<Void> response =
-        topicConfigManager.get()
-            .alterTopicConfigs(clusterId, topicName, request.getValue().toAlterConfigCommands());
+    throw Errors.notSupportedByMapRStreams();
 
-    AsyncResponseBuilder.from(Response.status(Status.NO_CONTENT))
-        .entity(response)
-        .asyncResume(asyncResponse);
+    //CompletableFuture<Void> response =
+    //    topicConfigManager.get()
+    //        .alterTopicConfigs(clusterId, topicName, request.getValue().toAlterConfigCommands());
+    //
+    //AsyncResponseBuilder.from(Response.status(Status.NO_CONTENT))
+    //    .entity(response)
+    //    .asyncResume(asyncResponse);
   }
 }

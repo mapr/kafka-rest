@@ -17,29 +17,20 @@ package io.confluent.kafkarest.resources.v3;
 
 import static java.util.Objects.requireNonNull;
 
+import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.controllers.ClusterConfigManager;
 import io.confluent.kafkarest.entities.ClusterConfig;
 import io.confluent.kafkarest.entities.v3.ClusterConfigData;
-import io.confluent.kafkarest.entities.v3.ClusterConfigDataList;
-import io.confluent.kafkarest.entities.v3.GetClusterConfigResponse;
-import io.confluent.kafkarest.entities.v3.ListClusterConfigsResponse;
 import io.confluent.kafkarest.entities.v3.Resource;
-import io.confluent.kafkarest.entities.v3.ResourceCollection;
 import io.confluent.kafkarest.entities.v3.UpdateClusterConfigRequest;
-import io.confluent.kafkarest.resources.AsyncResponses;
-import io.confluent.kafkarest.resources.AsyncResponses.AsyncResponseBuilder;
 import io.confluent.kafkarest.response.CrnFactory;
 import io.confluent.kafkarest.response.UrlFactory;
-import java.util.Comparator;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
-import javax.ws.rs.NotFoundException;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -47,8 +38,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 
 @Path("/v3/clusters/{clusterId}/{config_type}-configs")
 public final class ClusterConfigsResource {
@@ -75,32 +64,34 @@ public final class ClusterConfigsResource {
       @PathParam("clusterId") String clusterId,
       @PathParam("config_type") ClusterConfig.Type configType
   ) {
-    CompletableFuture<ListClusterConfigsResponse> response =
-        clusterConfigManager.get().listClusterConfigs(clusterId, configType)
-            .thenApply(
-                configs ->
-                    ListClusterConfigsResponse.create(
-                        ClusterConfigDataList.builder()
-                            .setMetadata(
-                                ResourceCollection.Metadata.builder()
-                                    .setSelf(
-                                        urlFactory.create(
-                                            "v3",
-                                            "clusters",
-                                            clusterId,
-                                            String.format(
-                                                "%s-configs", configType.name().toLowerCase())))
-                                    .build())
-                            .setData(
-                                configs.stream()
-                                    .sorted(
-                                        Comparator.comparing(ClusterConfig::getType)
-                                            .thenComparing(ClusterConfig::getName))
-                                    .map(this::toClusterConfigData)
-                                    .collect(Collectors.toList()))
-                            .build()));
+    throw Errors.notSupportedByMapRStreams();
 
-    AsyncResponses.asyncResume(asyncResponse, response);
+    //CompletableFuture<ListClusterConfigsResponse> response =
+    //    clusterConfigManager.get().listClusterConfigs(clusterId, configType)
+    //        .thenApply(
+    //            configs ->
+    //                ListClusterConfigsResponse.create(
+    //                    ClusterConfigDataList.builder()
+    //                        .setMetadata(
+    //                            ResourceCollection.Metadata.builder()
+    //                                .setSelf(
+    //                                    urlFactory.create(
+    //                                        "v3",
+    //                                        "clusters",
+    //                                        clusterId,
+    //                                        String.format(
+    //                                            "%s-configs", configType.name().toLowerCase())))
+    //                                .build())
+    //                        .setData(
+    //                            configs.stream()
+    //                                .sorted(
+    //                                    Comparator.comparing(ClusterConfig::getType)
+    //                                        .thenComparing(ClusterConfig::getName))
+    //                                .map(this::toClusterConfigData)
+    //                                .collect(Collectors.toList()))
+    //                        .build()));
+    //
+    //AsyncResponses.asyncResume(asyncResponse, response);
   }
 
   @GET
@@ -112,13 +103,15 @@ public final class ClusterConfigsResource {
       @PathParam("config_type") ClusterConfig.Type configType,
       @PathParam("name") String name
   ) {
-    CompletableFuture<GetClusterConfigResponse> response =
-        clusterConfigManager.get()
-            .getClusterConfig(clusterId, configType, name)
-            .thenApply(config -> config.orElseThrow(NotFoundException::new))
-            .thenApply(config -> GetClusterConfigResponse.create(toClusterConfigData(config)));
+    throw Errors.notSupportedByMapRStreams();
 
-    AsyncResponses.asyncResume(asyncResponse, response);
+    //CompletableFuture<GetClusterConfigResponse> response =
+    //    clusterConfigManager.get()
+    //        .getClusterConfig(clusterId, configType, name)
+    //        .thenApply(config -> config.orElseThrow(NotFoundException::new))
+    //        .thenApply(config -> GetClusterConfigResponse.create(toClusterConfigData(config)));
+    //
+    //AsyncResponses.asyncResume(asyncResponse, response);
   }
 
   @PUT
@@ -132,14 +125,16 @@ public final class ClusterConfigsResource {
       @PathParam("name") String name,
       @Valid UpdateClusterConfigRequest request
   ) {
-    String newValue = request.getValue().orElse(null);
+    throw Errors.notSupportedByMapRStreams();
 
-    CompletableFuture<Void> response =
-        clusterConfigManager.get().upsertClusterConfig(clusterId, configType, name, newValue);
-
-    AsyncResponseBuilder.from(Response.status(Status.NO_CONTENT))
-        .entity(response)
-        .asyncResume(asyncResponse);
+    //String newValue = request.getValue().orElse(null);
+    //
+    //CompletableFuture<Void> response =
+    //    clusterConfigManager.get().upsertClusterConfig(clusterId, configType, name, newValue);
+    //
+    //AsyncResponseBuilder.from(Response.status(Status.NO_CONTENT))
+    //    .entity(response)
+    //    .asyncResume(asyncResponse);
   }
 
   @DELETE
@@ -151,12 +146,14 @@ public final class ClusterConfigsResource {
       @PathParam("config_type") ClusterConfig.Type configType,
       @PathParam("name") String name
   ) {
-    CompletableFuture<Void> response =
-        clusterConfigManager.get().deleteClusterConfig(clusterId, configType, name);
+    throw Errors.notSupportedByMapRStreams();
 
-    AsyncResponseBuilder.from(Response.status(Status.NO_CONTENT))
-        .entity(response)
-        .asyncResume(asyncResponse);
+    //CompletableFuture<Void> response =
+    //    clusterConfigManager.get().deleteClusterConfig(clusterId, configType, name);
+    //
+    //AsyncResponseBuilder.from(Response.status(Status.NO_CONTENT))
+    //    .entity(response)
+    //    .asyncResume(asyncResponse);
   }
 
   private ClusterConfigData toClusterConfigData(ClusterConfig clusterConfig) {

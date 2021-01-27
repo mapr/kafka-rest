@@ -341,7 +341,7 @@ public class TopicsResourceTest {
     replay(topicManager);
 
     FakeAsyncResponse response = new FakeAsyncResponse();
-    topicsResource.listTopics(response, CLUSTER_ID);
+    topicsResource.listTopics(response, CLUSTER_ID, null, null);
 
     ListTopicsResponse expected =
         ListTopicsResponse.create(
@@ -427,7 +427,7 @@ public class TopicsResourceTest {
     replay(topicManager);
 
     FakeAsyncResponse response = new FakeAsyncResponse();
-    topicsResource.listTopics(response, CLUSTER_ID);
+    topicsResource.listTopics(response, CLUSTER_ID, null, null);
 
     assertEquals(TimeoutException.class, response.getException().getClass());
   }
@@ -439,7 +439,7 @@ public class TopicsResourceTest {
     replay(topicManager);
 
     FakeAsyncResponse response = new FakeAsyncResponse();
-    topicsResource.listTopics(response, CLUSTER_ID);
+    topicsResource.listTopics(response, CLUSTER_ID, null, null);
 
     assertEquals(NotFoundException.class, response.getException().getClass());
   }
@@ -451,7 +451,7 @@ public class TopicsResourceTest {
     replay(topicManager);
 
     FakeAsyncResponse response = new FakeAsyncResponse();
-    topicsResource.getTopic(response, TOPIC_1.getClusterId(), TOPIC_1.getName());
+    topicsResource.getTopic(response, TOPIC_1.getClusterId(), TOPIC_1.getName(), null, null);
 
     GetTopicResponse expected =
         GetTopicResponse.create(
@@ -486,7 +486,7 @@ public class TopicsResourceTest {
     replay(topicManager);
 
     FakeAsyncResponse response = new FakeAsyncResponse();
-    topicsResource.getTopic(response, CLUSTER_ID, TOPIC_1.getName());
+    topicsResource.getTopic(response, CLUSTER_ID, TOPIC_1.getName(), null, null);
 
     assertEquals(NotFoundException.class, response.getException().getClass());
   }
@@ -498,7 +498,7 @@ public class TopicsResourceTest {
     replay(topicManager);
 
     FakeAsyncResponse response = new FakeAsyncResponse();
-    topicsResource.getTopic(response, TOPIC_1.getClusterId(), TOPIC_1.getName());
+    topicsResource.getTopic(response, TOPIC_1.getClusterId(), TOPIC_1.getName(), null, null);
 
     assertEquals(NotFoundException.class, response.getException().getClass());
   }
@@ -525,7 +525,7 @@ public class TopicsResourceTest {
             .setReplicationFactor(TOPIC_1.getReplicationFactor())
             .setConfigs(
                 singletonList(CreateTopicRequest.ConfigEntry.create("cleanup.policy", "compact")))
-            .build());
+            .build(), null, null);
 
     CreateTopicResponse expected =
         CreateTopicResponse.create(
@@ -576,7 +576,7 @@ public class TopicsResourceTest {
             .setReplicationFactor(TOPIC_1.getReplicationFactor())
             .setConfigs(
                 singletonList(CreateTopicRequest.ConfigEntry.create("cleanup.policy", "compact")))
-            .build());
+            .build(), null, null);
 
     assertEquals(TopicExistsException.class, response.getException().getClass());
   }
@@ -603,7 +603,7 @@ public class TopicsResourceTest {
             .setReplicationFactor(TOPIC_1.getReplicationFactor())
             .setConfigs(
                 singletonList(CreateTopicRequest.ConfigEntry.create("cleanup.policy", "compact")))
-            .build());
+            .build(), null, null);
 
     assertEquals(NotFoundException.class, response.getException().getClass());
   }
@@ -615,7 +615,7 @@ public class TopicsResourceTest {
     replay(topicManager);
 
     FakeAsyncResponse response = new FakeAsyncResponse();
-    topicsResource.deleteTopic(response, TOPIC_1.getClusterId(), TOPIC_1.getName());
+    topicsResource.deleteTopic(response, TOPIC_1.getClusterId(), TOPIC_1.getName(), null, null);
 
     assertNull(response.getValue());
     assertNull(response.getException());
@@ -629,7 +629,7 @@ public class TopicsResourceTest {
     replay(topicManager);
 
     FakeAsyncResponse response = new FakeAsyncResponse();
-    topicsResource.deleteTopic(response, TOPIC_1.getClusterId(), TOPIC_1.getName());
+    topicsResource.deleteTopic(response, TOPIC_1.getClusterId(), TOPIC_1.getName(), null, null);
 
     assertEquals(UnknownTopicOrPartitionException.class, response.getException().getClass());
   }
@@ -641,7 +641,7 @@ public class TopicsResourceTest {
     replay(topicManager);
 
     FakeAsyncResponse response = new FakeAsyncResponse();
-    topicsResource.deleteTopic(response, TOPIC_1.getClusterId(), TOPIC_1.getName());
+    topicsResource.deleteTopic(response, TOPIC_1.getClusterId(), TOPIC_1.getName(), null, null);
 
     assertEquals(NotFoundException.class, response.getException().getClass());
   }

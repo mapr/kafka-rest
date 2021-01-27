@@ -22,15 +22,18 @@ import io.confluent.kafkarest.entities.v2.BinaryPartitionProduceRequest;
 import io.confluent.kafkarest.entities.v2.JsonPartitionProduceRequest;
 import io.confluent.kafkarest.entities.v2.SchemaPartitionProduceRequest;
 import io.confluent.rest.annotations.PerformanceMetric;
+import io.confluent.rest.impersonation.ImpersonationUtils;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
+import javax.ws.rs.core.HttpHeaders;
 
 @Path("/topics/{topic}/partitions")
 @Consumes({
@@ -55,14 +58,19 @@ public final class ProduceToPartitionAction extends AbstractProduceAction {
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topic,
       @PathParam("partition") int partition,
-      @Valid @NotNull BinaryPartitionProduceRequest request
+      @Valid @NotNull BinaryPartitionProduceRequest request,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie
   ) {
-    produce(
-        asyncResponse,
-        topic,
-        partition,
-        EmbeddedFormat.BINARY,
-        request.toProduceRequest());
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      produce(
+          asyncResponse,
+          topic,
+          partition,
+          EmbeddedFormat.BINARY,
+          request.toProduceRequest());
+      return null;
+    }, auth, cookie);
   }
 
   @POST
@@ -73,14 +81,19 @@ public final class ProduceToPartitionAction extends AbstractProduceAction {
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topic,
       @PathParam("partition") int partition,
-      @Valid @NotNull JsonPartitionProduceRequest request
+      @Valid @NotNull JsonPartitionProduceRequest request,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie
   ) {
-    produce(
-        asyncResponse,
-        topic,
-        partition,
-        EmbeddedFormat.JSON,
-        request.toProduceRequest());
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      produce(
+          asyncResponse,
+          topic,
+          partition,
+          EmbeddedFormat.JSON,
+          request.toProduceRequest());
+      return null;
+    }, auth, cookie);
   }
 
   @POST
@@ -91,14 +104,19 @@ public final class ProduceToPartitionAction extends AbstractProduceAction {
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topic,
       @PathParam("partition") int partition,
-      @Valid @NotNull SchemaPartitionProduceRequest request
+      @Valid @NotNull SchemaPartitionProduceRequest request,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie
   ) {
-    produceSchema(
-        asyncResponse,
-        topic,
-        partition,
-        request.toProduceRequest(),
-        EmbeddedFormat.AVRO);
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      produceSchema(
+          asyncResponse,
+          topic,
+          partition,
+          request.toProduceRequest(),
+          EmbeddedFormat.AVRO);
+      return null;
+    }, auth, cookie);
   }
 
   @POST
@@ -109,14 +127,19 @@ public final class ProduceToPartitionAction extends AbstractProduceAction {
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topic,
       @PathParam("partition") int partition,
-      @Valid @NotNull SchemaPartitionProduceRequest request
+      @Valid @NotNull SchemaPartitionProduceRequest request,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie
   ) {
-    produceSchema(
-        asyncResponse,
-        topic,
-        partition,
-        request.toProduceRequest(),
-        EmbeddedFormat.JSONSCHEMA);
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      produceSchema(
+          asyncResponse,
+          topic,
+          partition,
+          request.toProduceRequest(),
+          EmbeddedFormat.JSONSCHEMA);
+      return null;
+    }, auth, cookie);
   }
 
   @POST
@@ -127,13 +150,18 @@ public final class ProduceToPartitionAction extends AbstractProduceAction {
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topic,
       @PathParam("partition") int partition,
-      @Valid @NotNull SchemaPartitionProduceRequest request
+      @Valid @NotNull SchemaPartitionProduceRequest request,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie
   ) {
-    produceSchema(
-        asyncResponse,
-        topic,
-        partition,
-        request.toProduceRequest(),
-        EmbeddedFormat.PROTOBUF);
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(() -> {
+      produceSchema(
+          asyncResponse,
+          topic,
+          partition,
+          request.toProduceRequest(),
+          EmbeddedFormat.PROTOBUF);
+      return null;
+    }, auth, cookie);
   }
 }

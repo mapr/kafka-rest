@@ -15,8 +15,12 @@
 
 package io.confluent.kafkarest;
 
+import com.google.common.base.Suppliers;
+import io.confluent.kafka.schemaregistry.client.rest.utils.SchemaRegistryDiscoveryClient;
+import io.confluent.kafka.schemaregistry.client.rest.utils.SchemaRegistryDiscoveryConfig;
 import io.confluent.rest.metrics.RestMetricsContext;
 import javax.ws.rs.core.MediaType;
+import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Range;
@@ -31,6 +35,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.Properties;
+import java.util.function.Supplier;
 
 import javax.ws.rs.core.Response;
 
@@ -103,10 +108,17 @@ public class KafkaRestConfig extends RestConfig {
       + "in case a server is down).";
   public static final String BOOTSTRAP_SERVERS_DEFAULT = "";
 
-  public static final String SCHEMA_REGISTRY_URL_CONFIG = "schema.registry.url";
+  public static final String SCHEMA_REGISTRY_ENABLE_CONFIG = "schema.registry.enable";
+  private static final String SCHEMA_REGISTRY_ENABLE_DOC =
+      "Flag for enabling Avro serialization and deserialization support with Schema Registry.";
+  private static final String SCHEMA_REGISTRY_ENABLE_DEFAULT = "false";
+
   private static final String SCHEMA_REGISTRY_URL_DOC =
-      "The base URL for the schema registry that should be used by the Avro serializer.";
-  private static final String SCHEMA_REGISTRY_URL_DEFAULT = "http://localhost:8081";
+      "The base URL for the schema registry that should be used by the Avro serializer. "
+      + "NOTE: this setting will be ignored if `schema.registry.enable` is set to false.";
+  private static final String SCHEMA_REGISTRY_URL_CONFIG = "schema.registry.url";
+  private static final String SCHEMA_REGISTRY_URL_DEFAULT = "http://localhost:8087";
+  private static final String DUMMY_SCHEMA_REGISTRY_URL = "__INTERNAL_DUMMY_SR_URL__";
 
   public static final String PROXY_FETCH_MIN_BYTES_CONFIG =
           "fetch.min.bytes";
@@ -145,7 +157,7 @@ public class KafkaRestConfig extends RestConfig {
   private static final String CONSUMER_REQUEST_TIMEOUT_MS_DOC =
       "The maximum total time to wait for messages for a "
       + "request if the maximum number of messages has not yet been reached.";
-  public static final String CONSUMER_REQUEST_TIMEOUT_MS_DEFAULT = "1000";
+  public static final String CONSUMER_REQUEST_TIMEOUT_MS_DEFAULT = "1";
 
   public static final String CONSUMER_REQUEST_MAX_BYTES_CONFIG = "consumer.request.max.bytes";
   private static final String CONSUMER_REQUEST_MAX_BYTES_DOC =
@@ -175,6 +187,35 @@ public class KafkaRestConfig extends RestConfig {
       "Amount of time to wait for an available SimpleConsumer from the pool before failing."
       + " Use 0 for no timeout";
   public static final String SIMPLE_CONSUMER_POOL_TIMEOUT_MS_DEFAULT = "1000";
+
+  public static final String SIMPLE_CONSUMER_MAX_POLL_TIME_CONFIG = "simpleconsumer.max.poll.time";
+  private static final String SIMPLE_CONSUMER_MAX_POLL_TIME_DOC =
+      "Maximum amount of time to poll for records by a consumer.";
+  public static final int SIMPLE_CONSUMER_MAX_POLL_TIME_DEFAULT = 1000;
+
+  public static final String SIMPLE_CONSUMER_MAX_CACHES_NUM_CONFIG =
+      "simpleconsumer.max.caches.num";
+  private static final String SIMPLE_CONSUMER_MAX_CACHES_NUM_DOC =
+      "Maximum number topic-partition combinations for which records are cached."
+      + " If 0, then caching is disabled and extra records are thrown away."
+      + " Cache improves performance if end user fetches records sequentially"
+      + " increasing offsets.";
+  public static final int SIMPLE_CONSUMER_MAX_CACHES_NUM_DEFAULT = 0;
+
+  public static final String SIMPLE_CONSUMER_CACHE_MAX_RECORDS_CONFIG =
+      "simpleconsumer.cache.max.records";
+  private static final String SIMPLE_CONSUMER_CACHE_MAX_RECORDS_DOC =
+      "Maximum number of records that can be stored for a specific topic-partition combination."
+      + " Records with higher offsets replace records with lower ones"
+      + " Must be greater that 0.";
+  public static final int SIMPLE_CONSUMER_CACHE_MAX_RECORDS_DEFAULT = 1000;
+
+  public static final String STREAM_BUFFER_MAX_TIME_CONFIG = "producer.streams.buffer.max.time.ms";
+  private static final String STREAM_BUFFER_MAX_TIME_DOC = "Messages are buffered in the producer"
+      + " for at most the specified time. A thread will flush "
+      + "all the messages that have been buffered for more than the time specified";
+
+  public static final String STREAM_BUFFER_MAX_TIME_DEFAULT = "1";
 
   // TODO: change this to "http://0.0.0.0:8082" when PORT_CONFIG is deleted.
   private static final String KAFKAREST_LISTENERS_DEFAULT = "";
@@ -309,9 +350,26 @@ public class KafkaRestConfig extends RestConfig {
   public static final String API_V3_ENABLE_CONFIG = "api.v3.enable";
   private static final String API_V3_ENABLE_DOC =
       "Whether to enable REST Proxy V3 API. Default is true.";
-  private static final boolean API_V3_ENABLE_DEFAULT = true;
+  private static final boolean API_V3_ENABLE_DEFAULT = false;
 
   private static final ConfigDef config;
+  private static final String SSL_ENABLED_PROTOCOLS_DEFAULT_OVERRIDE = "TLSv1.1,TLSv1.2";
+
+  public static final String PRODUCERS_MAX_CACHES_NUM_CONFIG = "producers.max.caches.num";
+  private static final String
+          PRODUCERS_MAX_CACHES_NUM_DOC =
+          "Maximum number user names for which producers are cached. "
+                  + "If 0, then caching is disabled and producer will be created for each request.";
+
+  public static final int PRODUCERS_MAX_CACHES_NUM_DEFAULT = 20;
+
+  public static final String STREAMS_DEFAULT_STREAM_CONFIG = "streams.default.stream";
+  private static final String STREAMS_DEFAULT_STREAM_DOC = "The default stream the consumer "
+           + "should poll messages from and"
+           + "the producer should send messages to, if the topic name does "
+           + "not specify the stream path and the property has "
+           + "a valid value, then this topic name is looked in the default stream.";
+  private static final String STREAMS_DEFAULT_STREAM_DEFAULT = "";
 
   public static final String HTTPS = "https";
   public static final String HTTP = "http";
@@ -321,13 +379,13 @@ public class KafkaRestConfig extends RestConfig {
   }
 
   protected static ConfigDef baseKafkaRestConfigDef() {
-    return baseConfigDef(
+    return SchemaRegistryDiscoveryConfig.defineDiscoveryProperties(baseConfigDef(
         KAFKAREST_PORT_DEFAULT,
         KAFKAREST_LISTENERS_DEFAULT,
         String.join("," , Versions.PREFERRED_RESPONSE_TYPES),
         MediaType.APPLICATION_JSON,
         METRICS_JMX_PREFIX_DEFAULT_OVERRIDE
-    )
+    ))
     .define(
         ID_CONFIG,
         Type.STRING,
@@ -363,9 +421,16 @@ public class KafkaRestConfig extends RestConfig {
         BOOTSTRAP_SERVERS_DOC
     )
     .define(
+        SCHEMA_REGISTRY_ENABLE_CONFIG,
+        Type.BOOLEAN,
+        SCHEMA_REGISTRY_ENABLE_DEFAULT,
+        Importance.HIGH,
+        SCHEMA_REGISTRY_ENABLE_DOC
+    )
+    .define(
         SCHEMA_REGISTRY_URL_CONFIG,
         Type.STRING,
-        SCHEMA_REGISTRY_URL_DEFAULT,
+        DUMMY_SCHEMA_REGISTRY_URL,
         Importance.HIGH,
         SCHEMA_REGISTRY_URL_DOC
     )
@@ -376,6 +441,27 @@ public class KafkaRestConfig extends RestConfig {
         PROXY_FETCH_MIN_BYTES_VALIDATOR,
         Importance.LOW,
         PROXY_FETCH_MIN_BYTES_DOC
+    )
+    .define(
+        SIMPLE_CONSUMER_MAX_POLL_TIME_CONFIG,
+        Type.INT,
+        SIMPLE_CONSUMER_MAX_POLL_TIME_DEFAULT,
+        Importance.LOW,
+        SIMPLE_CONSUMER_MAX_POLL_TIME_DOC
+    )
+    .define(
+        SIMPLE_CONSUMER_MAX_CACHES_NUM_CONFIG,
+        Type.INT,
+        SIMPLE_CONSUMER_MAX_CACHES_NUM_DEFAULT,
+        Importance.MEDIUM,
+        SIMPLE_CONSUMER_MAX_CACHES_NUM_DOC
+    )
+    .define(
+        SIMPLE_CONSUMER_CACHE_MAX_RECORDS_CONFIG,
+        Type.INT,
+        SIMPLE_CONSUMER_CACHE_MAX_RECORDS_DEFAULT,
+        Importance.MEDIUM,
+        SIMPLE_CONSUMER_CACHE_MAX_RECORDS_DOC
     )
     .define(
         PRODUCER_THREADS_CONFIG,
@@ -522,7 +608,7 @@ public class KafkaRestConfig extends RestConfig {
     .define(
         KAFKACLIENT_SSL_ENABLED_PROTOCOLS_CONFIG,
         Type.STRING,
-        "TLSv1.2,TLSv1.1,TLSv1",
+        SSL_ENABLED_PROTOCOLS_DEFAULT_OVERRIDE,
         Importance.MEDIUM,
         KAFAKSTORE_SSL_ENABLED_PROTOCOLS_DOC
     )
@@ -622,11 +708,40 @@ public class KafkaRestConfig extends RestConfig {
         Type.BOOLEAN,
         API_V3_ENABLE_DEFAULT,
         Importance.LOW,
-        API_V3_ENABLE_DOC);
+        API_V3_ENABLE_DOC
+    )
+    .define(
+        STREAMS_DEFAULT_STREAM_CONFIG,
+        Type.STRING,
+        STREAMS_DEFAULT_STREAM_DEFAULT,
+        Importance.MEDIUM,
+        STREAMS_DEFAULT_STREAM_DOC
+    )
+    .define(
+        STREAM_BUFFER_MAX_TIME_CONFIG,
+        Type.INT,
+        STREAM_BUFFER_MAX_TIME_DEFAULT,
+        Importance.MEDIUM,
+        STREAM_BUFFER_MAX_TIME_DOC
+    )
+    .define(
+        PRODUCERS_MAX_CACHES_NUM_CONFIG,
+        Type.INT,
+        PRODUCERS_MAX_CACHES_NUM_DEFAULT,
+        Importance.MEDIUM,
+        PRODUCERS_MAX_CACHES_NUM_DOC);
   }
 
   private Time time;
+  /**
+   * Indicates whether MapR Streams are used as a backend
+   */
+  private boolean defaultStreamSet;
+  private boolean isImpersonationEnabled;
   private Properties originalProperties;
+
+  private final Supplier<String> lazySchemaRegistryUrl
+          = Suppliers.memoize(this::initSchemaRegistryUrl);
 
   public KafkaRestConfig() {
     this(new Properties());
@@ -666,10 +781,22 @@ public class KafkaRestConfig extends RestConfig {
     metricsContext = new KafkaRestMetricsContext(
             getString(METRICS_JMX_PREFIX_CONFIG),
             originalsWithPrefix(METRICS_CONTEXT_PREFIX));
+
+    this.defaultStreamSet = !STREAMS_DEFAULT_STREAM_DEFAULT.equals(
+      getString(STREAMS_DEFAULT_STREAM_CONFIG));
+    this.isImpersonationEnabled = getBoolean(KafkaRestConfig.IMPERSONATION);
   }
 
   public Time getTime() {
     return time;
+  }
+
+  public boolean isImpersonationEnabled() {
+    return isImpersonationEnabled;
+  }
+
+  public boolean isDefaultStreamSet() {
+    return defaultStreamSet;
   }
 
   public Properties getOriginalProperties() {
@@ -747,6 +874,10 @@ public class KafkaRestConfig extends RestConfig {
     //copy cover the properties with prefixes "client." and  "admin."
     addPropertiesWithPrefix("client.", adminProps);
     addPropertiesWithPrefix("admin.", adminProps);
+    if (defaultStreamSet) {
+      adminProps.setProperty(AdminClientConfig.STREAMS_ADMIN_DEFAULT_STREAM_CONFIG,
+              getString(STREAMS_DEFAULT_STREAM_CONFIG));
+    }
     return adminProps;
   }
 
@@ -785,6 +916,23 @@ public class KafkaRestConfig extends RestConfig {
       }
     }
     return getInt(PORT_CONFIG);
+  }
+
+  public String getSchemaRegistryUrl() {
+    return lazySchemaRegistryUrl.get();
+  }
+
+  private String initSchemaRegistryUrl() {
+    String srUrl = getString(SCHEMA_REGISTRY_URL_CONFIG);
+    if (!DUMMY_SCHEMA_REGISTRY_URL.equals(srUrl)) {
+      return srUrl;
+    } else if (getBoolean(SCHEMA_REGISTRY_ENABLE_CONFIG)) {
+      SchemaRegistryDiscoveryClient discoveryClient
+              = SchemaRegistryDiscoveryConfig.configureDiscoveryClient(this);
+      return String.join(",", discoveryClient.discoverUrls());
+    } else {
+      return SCHEMA_REGISTRY_URL_DEFAULT;
+    }
   }
 
   public static KafkaRestConfig newConsumerConfig(KafkaRestConfig config,

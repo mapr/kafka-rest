@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.confluent</groupId>
         <artifactId>rest-utils-parent</artifactId>
-        <version>6.0.0</version>
+        <version>6.0.0.0-mapr-SNAPSHOT</version>
     </parent>
 
     <artifactId>kafka-rest-parent</artifactId>
@@ -47,13 +47,20 @@
     <properties>
         <confluent.maven.repo>http://packages.confluent.io/maven/</confluent.maven.repo>
         <checkstyle.suppressions.location>checkstyle/suppressions.xml</checkstyle.suppressions.location>
+        <spotbugs.version>3.1.9</spotbugs.version>
     </properties>
 
     <repositories>
         <repository>
             <id>confluent</id>
             <name>Confluent</name>
-            <url>${confluent.maven.repo}</url>
+            <url>http://packages.confluent.io/maven/</url>
+        </repository>
+
+        <!-- MapR repository -->
+        <repository>
+            <id>mapr</id>
+            <url>${env.MAPR_MAVEN_REPO}</url>
         </repository>
     </repositories>
 

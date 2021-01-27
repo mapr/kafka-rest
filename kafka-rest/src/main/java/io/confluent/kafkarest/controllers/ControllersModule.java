@@ -36,5 +36,6 @@ public final class ControllersModule extends AbstractBinder {
     bind(ReplicaManagerImpl.class).to(ReplicaManager.class);
     bind(TopicConfigManagerImpl.class).to(TopicConfigManager.class);
     bind(TopicManagerImpl.class).to(TopicManager.class);
+    bind(StreamManagerImpl.class).to(StreamManager.class);
   }
 }

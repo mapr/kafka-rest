@@ -13,22 +13,14 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package io.confluent.kafkarest;
+package io.confluent.kafkarest.extension;
 
-import io.confluent.kafkarest.v2.KafkaConsumerManager;
-import org.apache.kafka.clients.admin.Admin;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
-public interface KafkaRestContext {
+import javax.ws.rs.NameBinding;
 
-  KafkaRestConfig getConfig();
-
-  ProducerPool getProducerPool();
-
-  KafkaConsumerManager getKafkaConsumerManager();
-
-  Admin getAdmin();
-
-  void shutdown();
-
-  ResourcesExistenceChecker getResourcesExistenceChecker();
+@NameBinding
+@Retention(RetentionPolicy.RUNTIME)
+public @interface SchemaRegistryEnabled {
 }

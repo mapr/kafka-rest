@@ -29,6 +29,20 @@ public class Utils {
       = "Unexpected non-Kafka exception returned by Kafka";
 
   public static int errorCodeFromProducerException(Throwable e) {
+    // TODO: MapR Streams Producer implementation should throw relevant exception,
+    // TODO: after we can remove this work around
+    if (e instanceof IllegalArgumentException) {
+      if (e.getMessage().endsWith("err 1")) {
+        throw Errors.topicNotFoundException();
+      }
+      if (e.getMessage().endsWith("err 13")) {
+        throw Errors.noPermissionsException();
+      }
+      if (e.getMessage().endsWith("err 22")) {
+        throw Errors.streamNotFoundException();
+      }
+    }
+
     if (e instanceof AuthenticationException) {
       return Errors.KAFKA_AUTHENTICATION_ERROR_CODE;
     } else if (e instanceof AuthorizationException) {

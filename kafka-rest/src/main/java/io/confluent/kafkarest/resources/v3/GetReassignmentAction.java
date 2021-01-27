@@ -17,19 +17,16 @@ package io.confluent.kafkarest.resources.v3;
 
 import static java.util.Objects.requireNonNull;
 
+import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.controllers.ReassignmentManager;
 import io.confluent.kafkarest.entities.Reassignment;
-import io.confluent.kafkarest.entities.v3.GetReassignmentResponse;
 import io.confluent.kafkarest.entities.v3.ReassignmentData;
 import io.confluent.kafkarest.entities.v3.Resource;
-import io.confluent.kafkarest.resources.AsyncResponses;
 import io.confluent.kafkarest.response.CrnFactory;
 import io.confluent.kafkarest.response.UrlFactory;
-import java.util.concurrent.CompletableFuture;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.ws.rs.GET;
-import javax.ws.rs.NotFoundException;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -61,13 +58,15 @@ public final class GetReassignmentAction {
       @PathParam("clusterId") String clusterId,
       @PathParam("topicName") String topicName,
       @PathParam("partitionId") Integer partitionId) {
-    CompletableFuture<GetReassignmentResponse> response =
-        reassignmentManager.get().getReassignment(clusterId, topicName, partitionId)
-            .thenApply(reassignment -> reassignment.orElseThrow(NotFoundException::new))
-            .thenApply(
-                reassignment -> GetReassignmentResponse.create(toReassignmentData(reassignment)));
+    throw Errors.notSupportedByMapRStreams();
 
-    AsyncResponses.asyncResume(asyncResponse, response);
+    //CompletableFuture<GetReassignmentResponse> response =
+    //    reassignmentManager.get().getReassignment(clusterId, topicName, partitionId)
+    //        .thenApply(reassignment -> reassignment.orElseThrow(NotFoundException::new))
+    //        .thenApply(
+    //            reassignment -> GetReassignmentResponse.create(toReassignmentData(reassignment)));
+    //
+    //AsyncResponses.asyncResume(asyncResponse, response);
   }
 
   private ReassignmentData toReassignmentData(Reassignment reassignment) {

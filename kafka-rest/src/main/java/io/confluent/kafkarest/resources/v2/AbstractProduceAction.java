@@ -55,6 +55,9 @@ abstract class AbstractProduceAction {
         "Executing topic produce request id={} topic={} partition={} format={} request={}",
         asyncResponse, topic, partition, format, request
     );
+    if (partition != null) {
+      ctx.getResourcesExistenceChecker().checkIfTopicAndPartitionExists(topic, partition);
+    }
 
     ctx.getProducerPool().produce(
         topic, partition, format,

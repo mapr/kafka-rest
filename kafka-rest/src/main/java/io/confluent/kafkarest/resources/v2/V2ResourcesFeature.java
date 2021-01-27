@@ -36,6 +36,7 @@ public final class V2ResourcesFeature implements Feature {
     configurable.register(new ProduceToTopicAction(context));
     configurable.register(RootResource.class);
     configurable.register(TopicsResource.class);
+    configurable.register(StreamsResource.class);
     return true;
   }
 }

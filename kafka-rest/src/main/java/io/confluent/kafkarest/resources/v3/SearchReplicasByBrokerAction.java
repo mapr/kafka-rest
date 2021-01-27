@@ -15,21 +15,14 @@
 
 package io.confluent.kafkarest.resources.v3;
 
-import static java.util.Comparator.comparing;
 import static java.util.Objects.requireNonNull;
-
+import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.controllers.ReplicaManager;
 import io.confluent.kafkarest.entities.PartitionReplica;
 import io.confluent.kafkarest.entities.v3.ReplicaData;
-import io.confluent.kafkarest.entities.v3.ReplicaDataList;
 import io.confluent.kafkarest.entities.v3.Resource;
-import io.confluent.kafkarest.entities.v3.ResourceCollection;
-import io.confluent.kafkarest.entities.v3.SearchReplicasByBrokerResponse;
-import io.confluent.kafkarest.resources.AsyncResponses;
 import io.confluent.kafkarest.response.CrnFactory;
 import io.confluent.kafkarest.response.UrlFactory;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.ws.rs.GET;
@@ -62,34 +55,36 @@ public final class SearchReplicasByBrokerAction {
       @PathParam("clusterId") String clusterId,
       @PathParam("brokerId") Integer brokerId
   ) {
-    CompletableFuture<SearchReplicasByBrokerResponse> response =
-        replicaManager.get()
-            .searchReplicasByBrokerId(clusterId, brokerId)
-            .thenApply(
-                replicas ->
-                    SearchReplicasByBrokerResponse.create(
-                        ReplicaDataList.builder()
-                            .setMetadata(
-                                ResourceCollection.Metadata.builder()
-                                    .setSelf(
-                                        urlFactory.create(
-                                            "v3",
-                                            "clusters",
-                                            clusterId,
-                                            "brokers",
-                                            Integer.toString(brokerId),
-                                            "partition-replicas"))
-                                    .build())
-                            .setData(
-                                replicas.stream()
-                                    .sorted(
-                                        comparing(PartitionReplica::getTopicName)
-                                            .thenComparing(PartitionReplica::getPartitionId))
-                                    .map(this::toReplicaData)
-                                    .collect(Collectors.toList()))
-                            .build()));
+    throw Errors.notSupportedByMapRStreams();
 
-    AsyncResponses.asyncResume(asyncResponse, response);
+    //CompletableFuture<SearchReplicasByBrokerResponse> response =
+    //    replicaManager.get()
+    //        .searchReplicasByBrokerId(clusterId, brokerId)
+    //        .thenApply(
+    //            replicas ->
+    //                SearchReplicasByBrokerResponse.create(
+    //                    ReplicaDataList.builder()
+    //                        .setMetadata(
+    //                            ResourceCollection.Metadata.builder()
+    //                                .setSelf(
+    //                                    urlFactory.create(
+    //                                        "v3",
+    //                                        "clusters",
+    //                                        clusterId,
+    //                                        "brokers",
+    //                                        Integer.toString(brokerId),
+    //                                        "partition-replicas"))
+    //                                .build())
+    //                        .setData(
+    //                            replicas.stream()
+    //                                .sorted(
+    //                                    comparing(PartitionReplica::getTopicName)
+    //                                        .thenComparing(PartitionReplica::getPartitionId))
+    //                                .map(this::toReplicaData)
+    //                                .collect(Collectors.toList()))
+    //                        .build()));
+    //
+    //AsyncResponses.asyncResume(asyncResponse, response);
   }
 
   private ReplicaData toReplicaData(PartitionReplica replica) {

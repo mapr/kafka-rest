@@ -17,25 +17,17 @@ package io.confluent.kafkarest.resources.v3;
 
 import static java.util.Objects.requireNonNull;
 
+import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.controllers.ConsumerManager;
 import io.confluent.kafkarest.entities.Consumer;
 import io.confluent.kafkarest.entities.v3.ConsumerData;
-import io.confluent.kafkarest.entities.v3.ConsumerDataList;
-import io.confluent.kafkarest.entities.v3.GetConsumerResponse;
-import io.confluent.kafkarest.entities.v3.ListConsumersResponse;
 import io.confluent.kafkarest.entities.v3.Resource;
 import io.confluent.kafkarest.entities.v3.Resource.Relationship;
-import io.confluent.kafkarest.entities.v3.ResourceCollection;
-import io.confluent.kafkarest.resources.AsyncResponses;
 import io.confluent.kafkarest.response.CrnFactory;
 import io.confluent.kafkarest.response.UrlFactory;
-import java.util.Comparator;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.ws.rs.GET;
-import javax.ws.rs.NotFoundException;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -65,32 +57,34 @@ public final class ConsumersResource {
       @PathParam("clusterId") String clusterId,
       @PathParam("consumerGroupId") String consumerGroupId
   ) {
-    CompletableFuture<ListConsumersResponse> response =
-        consumerManager.get()
-            .listConsumers(clusterId, consumerGroupId)
-            .thenApply(
-                consumers ->
-                    ListConsumersResponse.create(
-                        ConsumerDataList.builder()
-                            .setMetadata(
-                                ResourceCollection.Metadata.builder()
-                                    .setSelf(
-                                        urlFactory.create(
-                                            "v3",
-                                            "clusters",
-                                            clusterId,
-                                            "consumer-groups",
-                                            consumerGroupId,
-                                            "consumers"))
-                                    .build())
-                            .setData(
-                                consumers.stream()
-                                    .map(this::toConsumerData)
-                                    .sorted(Comparator.comparing(ConsumerData::getConsumerId))
-                                    .collect(Collectors.toList()))
-                            .build()));
+    throw Errors.notSupportedByMapRStreams();
 
-    AsyncResponses.asyncResume(asyncResponse, response);
+    //CompletableFuture<ListConsumersResponse> response =
+    //    consumerManager.get()
+    //        .listConsumers(clusterId, consumerGroupId)
+    //        .thenApply(
+    //            consumers ->
+    //                ListConsumersResponse.create(
+    //                    ConsumerDataList.builder()
+    //                        .setMetadata(
+    //                            ResourceCollection.Metadata.builder()
+    //                                .setSelf(
+    //                                    urlFactory.create(
+    //                                        "v3",
+    //                                        "clusters",
+    //                                        clusterId,
+    //                                        "consumer-groups",
+    //                                        consumerGroupId,
+    //                                        "consumers"))
+    //                                .build())
+    //                        .setData(
+    //                            consumers.stream()
+    //                                .map(this::toConsumerData)
+    //                                .sorted(Comparator.comparing(ConsumerData::getConsumerId))
+    //                                .collect(Collectors.toList()))
+    //                        .build()));
+    //
+    //AsyncResponses.asyncResume(asyncResponse, response);
   }
 
   @GET
@@ -102,14 +96,16 @@ public final class ConsumersResource {
       @PathParam("consumerGroupId") String consumerGroupId,
       @PathParam("consumerId") String consumerId
   ) {
-    CompletableFuture<GetConsumerResponse> response =
-        consumerManager.get()
-            .getConsumer(clusterId, consumerGroupId, consumerId)
-            .thenApply(consumer -> consumer.orElseThrow(NotFoundException::new))
-            .thenApply(
-                consumer -> GetConsumerResponse.create(toConsumerData(consumer)));
+    throw Errors.notSupportedByMapRStreams();
 
-    AsyncResponses.asyncResume(asyncResponse, response);
+    //CompletableFuture<GetConsumerResponse> response =
+    //    consumerManager.get()
+    //        .getConsumer(clusterId, consumerGroupId, consumerId)
+    //        .thenApply(consumer -> consumer.orElseThrow(NotFoundException::new))
+    //        .thenApply(
+    //            consumer -> GetConsumerResponse.create(toConsumerData(consumer)));
+    //
+    //AsyncResponses.asyncResume(asyncResponse, response);
   }
 
   private ConsumerData toConsumerData(Consumer consumer) {
