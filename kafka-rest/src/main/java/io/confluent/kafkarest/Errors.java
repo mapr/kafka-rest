@@ -267,4 +267,14 @@ public class Errors {
             + message, NOT_SUPPORTED_API_BY_STREAMS_ERROR_CODE);
   }
 
+  private static final int SERVER_LOGIN_ERROR_CODE =
+          Response.Status.SERVICE_UNAVAILABLE.getStatusCode();
+  private static final String SERVER_LOGIN_ERROR_MESSAGE = "Login fails";
+
+  public static RestServerErrorException serverLoginException(Throwable e) {
+    return new RestServerErrorException(
+            SERVER_LOGIN_ERROR_MESSAGE,
+            SERVER_LOGIN_ERROR_CODE,
+            e);
+  }
 }
