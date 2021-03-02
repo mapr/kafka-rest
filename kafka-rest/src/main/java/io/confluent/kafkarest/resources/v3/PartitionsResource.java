@@ -17,6 +17,7 @@ package io.confluent.kafkarest.resources.v3;
 
 import static java.util.Objects.requireNonNull;
 
+import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.controllers.PartitionManager;
 import io.confluent.kafkarest.entities.Partition;
 import io.confluent.kafkarest.entities.v3.GetPartitionResponse;
@@ -35,7 +36,6 @@ import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
-import javax.ws.rs.NotFoundException;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -125,7 +125,7 @@ public final class PartitionsResource {
     CompletableFuture<GetPartitionResponse> response =
         partitionManager.get()
             .getPartition(clusterId, topicName, partitionId)
-            .thenApply(partition -> partition.orElseThrow(NotFoundException::new))
+            .thenApply(partition -> partition.orElseThrow(Errors::partitionNotFoundException))
             .thenApply(partition -> GetPartitionResponse.create(toPartitionData(partition)));
 
     AsyncResponses.asyncResume(asyncResponse, response);

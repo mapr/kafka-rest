@@ -17,6 +17,7 @@ package io.confluent.kafkarest.resources.v3;
 
 import static java.util.Objects.requireNonNull;
 
+import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.controllers.ReplicaManager;
 import io.confluent.kafkarest.entities.PartitionReplica;
 import io.confluent.kafkarest.entities.v3.GetReplicaResponse;
@@ -35,7 +36,6 @@ import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
-import javax.ws.rs.NotFoundException;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -129,7 +129,7 @@ public final class ReplicasResource {
     CompletableFuture<GetReplicaResponse> response =
         replicaManager.get()
             .getReplica(clusterId, topicName, partitionId, brokerId)
-            .thenApply(replica -> replica.orElseThrow(NotFoundException::new))
+            .thenApply(replica -> replica.orElseThrow(Errors::replicaNotFoundException))
             .thenApply(replica -> GetReplicaResponse.create(toReplicaData(replica)));
 
     AsyncResponses.asyncResume(asyncResponse, response);

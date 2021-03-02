@@ -15,6 +15,8 @@
 
 package io.confluent.kafkarest.controllers;
 
+import io.confluent.kafkarest.Errors;
+
 import java.util.Collection;
 import java.util.Optional;
 import java.util.function.Function;
@@ -26,7 +28,21 @@ final class Entities {
   }
 
   static <T> T checkEntityExists(Optional<T> entity, String message, Object... args) {
-    return entity.orElseThrow(() -> new NotFoundException(String.format(message, args)));
+    return entity.orElseThrow(() -> notFoundExeption(String.format(message, args)));
+  }
+
+  private static RuntimeException notFoundExeption(String message) {
+    String entity = message.split(" ")[0];
+    switch (entity) {
+      case "Cluster":
+        return Errors.clusterNotFoundException(message);
+      case "Topic":
+        return Errors.topicNotFoundException(message);
+      case "Partition":
+        return Errors.partitionNotFoundException(message);
+      default:
+        return new NotFoundException(message);
+    }
   }
 
   static <T, K> Optional<T> findEntityByKey(Collection<T> entities, Function<T, K> toKey, K key) {

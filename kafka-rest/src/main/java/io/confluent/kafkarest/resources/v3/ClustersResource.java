@@ -17,6 +17,7 @@ package io.confluent.kafkarest.resources.v3;
 
 import static java.util.Objects.requireNonNull;
 
+import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.controllers.ClusterManager;
 import io.confluent.kafkarest.entities.Cluster;
 import io.confluent.kafkarest.entities.v3.ClusterData;
@@ -35,7 +36,6 @@ import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
-import javax.ws.rs.NotFoundException;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -111,7 +111,7 @@ public final class ClustersResource {
     CompletableFuture<GetClusterResponse> response =
         clusterManager.get()
             .getCluster(clusterId)
-            .thenApply(cluster -> cluster.orElseThrow(NotFoundException::new))
+            .thenApply(cluster -> cluster.orElseThrow(Errors::clusterNotFoundException))
             .thenApply(cluster -> GetClusterResponse.create(toClusterData(cluster)));
 
     AsyncResponses.asyncResume(asyncResponse, response);

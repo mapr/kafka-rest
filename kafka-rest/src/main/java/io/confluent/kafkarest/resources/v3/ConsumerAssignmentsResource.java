@@ -21,17 +21,13 @@ import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.controllers.ConsumerAssignmentManager;
 import io.confluent.kafkarest.entities.ConsumerAssignment;
 import io.confluent.kafkarest.entities.v3.ConsumerAssignmentData;
-import io.confluent.kafkarest.entities.v3.GetConsumerAssignmentResponse;
 import io.confluent.kafkarest.entities.v3.Resource;
 import io.confluent.kafkarest.entities.v3.Resource.Relationship;
-import io.confluent.kafkarest.resources.AsyncResponses;
 import io.confluent.kafkarest.response.CrnFactory;
 import io.confluent.kafkarest.response.UrlFactory;
-import java.util.concurrent.CompletableFuture;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.ws.rs.GET;
-import javax.ws.rs.NotFoundException;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -113,15 +109,17 @@ public final class ConsumerAssignmentsResource {
       @PathParam("topicName") String topicName,
       @PathParam("partitionId") int partitionId
   ) {
-    CompletableFuture<GetConsumerAssignmentResponse> response =
-        consumerAssignmentManager.get()
-            .getConsumerAssignment(clusterId, consumerGroupId, consumerId, topicName, partitionId)
-            .thenApply(assignment -> assignment.orElseThrow(NotFoundException::new))
-            .thenApply(
-                assignment ->
-                    GetConsumerAssignmentResponse.create(toConsumerAssignmentData(assignment)));
+    throw Errors.notSupportedByMapRStreams();
 
-    AsyncResponses.asyncResume(asyncResponse, response);
+    //CompletableFuture<GetConsumerAssignmentResponse> response =
+    //    consumerAssignmentManager.get()
+    //        .getConsumerAssignment(clusterId, consumerGroupId, consumerId, topicName, partitionId)
+    //        .thenApply(assignment -> assignment.orElseThrow(NotFoundException::new))
+    //        .thenApply(
+    //            assignment ->
+    //                GetConsumerAssignmentResponse.create(toConsumerAssignmentData(assignment)));
+    //
+    //AsyncResponses.asyncResume(asyncResponse, response);
   }
 
   private ConsumerAssignmentData toConsumerAssignmentData(ConsumerAssignment assignment) {

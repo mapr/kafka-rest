@@ -51,7 +51,11 @@ public class Errors {
       KafkaExceptionMapper.TOPIC_NOT_FOUND_ERROR_CODE;
 
   public static RestException topicNotFoundException() {
-    return new RestNotFoundException(TOPIC_NOT_FOUND_MESSAGE, TOPIC_NOT_FOUND_ERROR_CODE);
+    return topicNotFoundException(TOPIC_NOT_FOUND_MESSAGE);
+  }
+
+  public static RestException topicNotFoundException(String message) {
+    return new RestNotFoundException(message, TOPIC_NOT_FOUND_ERROR_CODE);
   }
 
   public static final String PARTITION_NOT_FOUND_MESSAGE = "Partition not found.";
@@ -59,7 +63,11 @@ public class Errors {
       KafkaExceptionMapper.PARTITION_NOT_FOUND_ERROR_CODE;
 
   public static RestException partitionNotFoundException() {
-    return new RestNotFoundException(PARTITION_NOT_FOUND_MESSAGE, PARTITION_NOT_FOUND_ERROR_CODE);
+    return partitionNotFoundException(PARTITION_NOT_FOUND_MESSAGE);
+  }
+
+  public static RestException partitionNotFoundException(String message) {
+    return new RestNotFoundException(message, PARTITION_NOT_FOUND_ERROR_CODE);
   }
 
   public static final String CONSUMER_INSTANCE_NOT_FOUND_MESSAGE = "Consumer instance not found.";
@@ -86,9 +94,31 @@ public class Errors {
   public static final int STREAM_NOT_FOUND_ERROR_CODE = 40405;
 
   public static RestException streamNotFoundException() {
+    return streamNotFoundException(STREAM_NOT_FOUND_MESSAGE);
+  }
+
+  public static RestException streamNotFoundException(String message) {
+    return new RestNotFoundException(message, STREAM_NOT_FOUND_ERROR_CODE);
+  }
+
+  public static final String CLUSTER_NOT_FOUND_MESSAGE = "Cluster not found.";
+  public static final int CLUSTER_NOT_FOUND_ERROR_CODE = 40406;
+
+  public static RestException clusterNotFoundException() {
+    return clusterNotFoundException(CLUSTER_NOT_FOUND_MESSAGE);
+  }
+
+  public static RestException clusterNotFoundException(String message) {
+    return new RestNotFoundException(message, CLUSTER_NOT_FOUND_ERROR_CODE);
+  }
+
+  public static final String REPLICA_NOT_FOUND_MESSAGE = "Replica not found.";
+  public static final int REPLICA_NOT_FOUND_ERROR_CODE = 40407;
+
+  public static RestException replicaNotFoundException() {
     return new RestNotFoundException(
-        STREAM_NOT_FOUND_MESSAGE,
-        STREAM_NOT_FOUND_ERROR_CODE
+            REPLICA_NOT_FOUND_MESSAGE,
+            REPLICA_NOT_FOUND_ERROR_CODE
     );
   }
 
@@ -212,9 +242,6 @@ public class Errors {
         INVALID_SCHEMA_ERROR_CODE
     );
   }
-
-  public static final String ZOOKEEPER_ERROR_MESSAGE = "Zookeeper error: ";
-  public static final int ZOOKEEPER_ERROR_ERROR_CODE = 50001;
 
   // This is a catch-all for Kafka exceptions that can't otherwise be easily classified. For
   // producer operations this will be embedded in the per-message response. For consumer errors,
