@@ -67,7 +67,7 @@ public class KafkaRestContextProvider {
       mdObserver = new KafkaStreamsMetadataObserver(appConfig, zkUtils);
 
       if (consumerManager == null) {
-        consumerManager = new ConsumerManager(appConfig, mdObserver);
+        consumerManager = new ConsumerManager(appConfig);
       }
       if (simpleConsumerFactory == null) {
         simpleConsumerFactory = new SimpleConsumerFactory(appConfig);

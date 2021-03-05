@@ -101,7 +101,7 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
     }
 
     if (consumerManager == null) {
-      consumerManager = new ConsumerManager(appConfig, mdObserver);
+      consumerManager = new ConsumerManager(appConfig);
     }
     if (simpleConsumerFactory == null) {
       simpleConsumerFactory = new SimpleConsumerFactory(appConfig);

@@ -61,7 +61,6 @@ public class ConsumerManager {
   private final KafkaRestConfig config;
   private final Time time;
   private final String bootstrapServers;
-  private final KafkaStreamsMetadataObserver mdObserver;
 
   // ConsumerState is generic, but we store them untyped here. This allows many operations to
   // work without having to know the types for the consumer, only requiring type information
@@ -75,12 +74,10 @@ public class ConsumerManager {
   private final ReadTaskSchedulerThread readTaskSchedulerThread;
   private final ExpirationThread expirationThread;
 
-  public ConsumerManager(final KafkaRestConfig config, KafkaStreamsMetadataObserver mdObserver,
-                         ConsumerFactory consumerFactory) {
+  public ConsumerManager(final KafkaRestConfig config, ConsumerFactory consumerFactory) {
     this.config = config;
     this.time = config.getTime();
     this.bootstrapServers = config.getString(KafkaRestConfig.BOOTSTRAP_SERVERS_CONFIG);
-    this.mdObserver = mdObserver;
 
     // Cached thread pool
     int maxThreadCount = config.getInt(KafkaRestConfig.CONSUMER_MAX_THREADS_CONFIG) < 0
@@ -125,9 +122,8 @@ public class ConsumerManager {
   }
 
   public ConsumerManager(
-      KafkaRestConfig config,
-      KafkaStreamsMetadataObserver mdObserver) {
-    this(config, mdObserver, null);
+      KafkaRestConfig config) {
+    this(config,null);
   }
 
   /**
@@ -264,6 +260,7 @@ public class ConsumerManager {
   // correct decoders
   public <KafkaKeyT, KafkaValueT, ClientKeyT, ClientValueT>
         Future<List<ConsumerRecord<ClientKeyT, ClientValueT>>> readTopic(
+      final KafkaStreamsMetadataObserver mdObserver,
       final String group,
       final String instance,
       final String topic,

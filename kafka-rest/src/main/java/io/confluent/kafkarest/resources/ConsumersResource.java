@@ -192,18 +192,21 @@ public class ConsumersResource {
     maxBytes = (maxBytes <= 0) ? Long.MAX_VALUE : maxBytes;
     final KafkaStreamsMetadataObserver metadataObserver = ctx.getMetadataObserver();
     String fqTopic = metadataObserver.toFullyQualifiedTopic(topic);
-    if (ImpersonationUtils.isImpersonationEnabled()) {
-      new Thread(() -> metadataObserver.shutdown()).start();
-    }
-    ctx.getConsumerManager().readTopic(
-        group, instance, fqTopic, consumerStateType, maxBytes,
-        (records, e) -> {
-          if (e != null) {
-            asyncResponse.resume(e);
-          } else {
-            asyncResponse.resume(records);
+    try {
+      ctx.getConsumerManager().readTopic(metadataObserver,
+          group, instance, fqTopic, consumerStateType, maxBytes,
+          (records, e) -> {
+            if (e != null) {
+              asyncResponse.resume(e);
+            } else {
+              asyncResponse.resume(records);
+            }
           }
-        }
-    );
+      );
+    } finally {
+      if (ImpersonationUtils.isImpersonationEnabled()) {
+        new Thread(() -> metadataObserver.shutdown()).start();
+      }
+    }
   }
 }
