@@ -1,0 +1,72 @@
+#!/bin/bash
+
+MAPR_HOME=${MAPR_HOME:-/opt/mapr}
+KAFKA_REST_HOME="${KAFKA_REST_HOME:-__INSTALL__}"
+KAFKA_REST_CONF_FILE="${KAFKA_REST_CONF_FILE:-${KAFKA_REST_HOME}/config/kafka-rest.properties}"
+LOGFILE_BASE=${LOGFILE_BASE:-${KAFKA_REST_HOME}/var/log/kafka-rest/verify_service}
+PID_FILE=${MAPR_HOME}/pid/kafka-rest.pid
+
+EXIT_SUCCESS=0
+EXIT_NOT_RUNNING=1
+EXIT_RUNNING_NOT_RESPONDING=2
+EXIT_USAGE=3
+CONNECT_TIMEOUT=15
+USAGE="$0 [-q]"
+QUIET=0
+NOW=`date "+%Y%m%d_%H%M%S"`
+
+if [ $# -eq 1 ] && [ "$1" == '-q' ]; then
+    QUIET=1
+elif [ $# -ge 1 ]; then
+    echo $USAGE
+    exit $EXIT_USAGE
+fi
+
+# Check if the process is running
+echo "Starting verifier at $(date)" >> $LOGFILE_BASE.$NOW
+if [ -e "$PID_FILE" ] || [ -h "$PID_FILE" ]; then
+    kafka_rest_pid=$(cat $PID_FILE 2> /dev/null)
+    if [ $? -ne 0 ]; then
+        PID_FILE=$(ls -l $PID_FILE | awk '{print $11}')
+        kafka_rest_pid=$(cat $PID_FILE 2> /dev/null)
+    fi
+    if [ -z "$kafka_rest_pid" ]; then
+        echo "ERROR - could not get pid for kafka-rest" >> $LOGFILE_BASE.$NOW
+        exit $EXIT_NOT_RUNNING
+    fi
+    echo "checking to see if pid $kafka_rest_pid is alive" >> $LOGFILE_BASE.$NOW
+    if kill -s 0 $kafka_rest_pid ; then
+        echo "pid $kafka_rest_pid is alive" >> $LOGFILE_BASE.$NOW
+        RC=$EXIT_RUNNING_NOT_RESPONDING
+    else
+        echo "pid $kafka_rest_pid is NOT running" >> $LOGFILE_BASE.$NOW
+        [ $QUIET -eq 1 ] || cat $LOGFILE_BASE.$NOW
+        exit $EXIT_NOT_RUNNING
+    fi
+else
+    echo "no pid file, kafka-rest is NOT running" >> $LOGFILE_BASE.$NOW
+    [ $QUIET -eq 1 ] || cat $LOGFILE_BASE.$NOW
+    exit $EXIT_NOT_RUNNING
+fi
+
+# Check if the process is responding
+echo "checking to see if kafka-rest pid $kafka_rest_pid is responsive" >> $LOGFILE_BASE.$NOW
+listeners=$(grep listeners "$KAFKA_REST_CONF_FILE" | cut -d'=' -f 2 | sed -e 's/ //g')
+protocol=$(echo $listeners | cut -d':' -f 1 | sed -e 's/ //g')
+kafka_rest_port=$(echo $listeners | cut -d':' -f 3 | sed -e 's/ //g')
+kafka_rest_ip=$(hostname -i | head -n 1 | cut -d' ' -f1)
+if [ "$protocol" == "https" ]; then
+  OUTPUT=$(curl -umapr:mapr "$protocol://${kafka_rest_ip}:${kafka_rest_port}" -k)
+else
+  OUTPUT=$(curl "$protocol://${kafka_rest_ip}:${kafka_rest_port}")
+fi
+
+CRC=$?
+if [ $CRC -ne 0 ]; then
+    echo "kafka-rest didn't respond - rc=$CRC, output = $OUTPUT" >> $LOGFILE_BASE.$NOW
+else
+    echo "kafka-rest responded - rc=$CRC, output = $OUTPUT" >> $LOGFILE_BASE.$NOW
+    RC=$EXIT_SUCCESS
+fi
+[ $QUIET -eq 1 ] || cat $LOGFILE_BASE.$NOW
+exit $RC
