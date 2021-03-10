@@ -18,6 +18,7 @@ package io.confluent.kafkarest.common;
 import java.util.concurrent.CompletableFuture;
 import com.mapr.db.exceptions.AccessDeniedException;
 import io.confluent.kafkarest.Errors;
+import io.confluent.kafkarest.KafkaRestConfig;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
@@ -51,7 +52,9 @@ public final class KafkaFutures {
             if (exception instanceof UnknownTopicOrPartitionException) {
               exception = convertUnknownResourceException(exception);
             } else if (exception instanceof KafkaException) {
-              exception = Errors.notSupportedByMapRStreams();
+              exception = Errors.notSupportedByMapRStreams(
+                      "Please try to set " + KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG
+                              + " to return topics for default stream");
             } else if (exception instanceof AccessDeniedException) {
               exception = Errors.noPermissionsException();
             }
