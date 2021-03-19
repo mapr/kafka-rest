@@ -10,6 +10,7 @@ EXIT_SUCCESS=0
 EXIT_NOT_RUNNING=1
 EXIT_RUNNING_NOT_RESPONDING=2
 EXIT_USAGE=3
+EXIT_HTTP_ERROR=4
 CONNECT_TIMEOUT=15
 USAGE="$0 [-q]"
 QUIET=0
@@ -21,6 +22,9 @@ elif [ $# -ge 1 ]; then
     echo $USAGE
     exit $EXIT_USAGE
 fi
+
+# Create log directory
+mkdir -p "${LOGFILE_BASE%/*}"
 
 # Check if the process is running
 echo "Starting verifier at $(date)" >> $LOGFILE_BASE.$NOW
@@ -56,9 +60,13 @@ protocol=$(echo $listeners | cut -d':' -f 1 | sed -e 's/ //g')
 kafka_rest_port=$(echo $listeners | cut -d':' -f 3 | sed -e 's/ //g')
 kafka_rest_ip=$(hostname -i | head -n 1 | cut -d' ' -f1)
 if [ "$protocol" == "https" ]; then
-  OUTPUT=$(curl -umapr:mapr "$protocol://${kafka_rest_ip}:${kafka_rest_port}" -k)
+  # Getting MAPRSASL token
+  token=$(java -cp `mapr classpath` com.mapr.security.client.examples.MapRClient gettoken -url "$protocol://${kafka_rest_ip}:${kafka_rest_port}" 2> /dev/null \
+  |  grep 'Obtained challenge string' \
+  |  sed -E 's/Obtained challenge string (.*)/\1/')
+  OUTPUT=$(curl -s --write-out '%{http_code}' -k -H "Authorization: MAPR-Negotiate ${token}" "$protocol://${kafka_rest_ip}:${kafka_rest_port}" -k)
 else
-  OUTPUT=$(curl "$protocol://${kafka_rest_ip}:${kafka_rest_port}")
+  OUTPUT=$(curl -s --write-out '%{http_code}' "$protocol://${kafka_rest_ip}:${kafka_rest_port}")
 fi
 
 CRC=$?
@@ -66,7 +74,12 @@ if [ $CRC -ne 0 ]; then
     echo "kafka-rest didn't respond - rc=$CRC, output = $OUTPUT" >> $LOGFILE_BASE.$NOW
 else
     echo "kafka-rest responded - rc=$CRC, output = $OUTPUT" >> $LOGFILE_BASE.$NOW
-    RC=$EXIT_SUCCESS
+    http_code=${OUTPUT: -3}
+    if [ $http_code -ne 200 ]; then
+      RC=$EXIT_HTTP_ERROR
+    else
+      RC=$EXIT_SUCCESS
+    fi
 fi
 [ $QUIET -eq 1 ] || cat $LOGFILE_BASE.$NOW
 exit $RC
