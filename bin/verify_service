@@ -1,9 +1,11 @@
 #!/bin/bash
 
 MAPR_HOME=${MAPR_HOME:-/opt/mapr}
-KAFKA_REST_HOME="${KAFKA_REST_HOME:-__INSTALL__}"
+KAFKA_REST_VERSION=`cat "${MAPR_HOME}/kafka-rest/kafka-restversion"`
+KAFKA_REST_HOME="${KAFKA_REST_HOME:-${MAPR_HOME}/kafka-rest/kafka-rest-${KAFKA_REST_VERSION}}"
 KAFKA_REST_CONF_FILE="${KAFKA_REST_CONF_FILE:-${KAFKA_REST_HOME}/config/kafka-rest.properties}"
-LOGFILE_BASE=${LOGFILE_BASE:-${KAFKA_REST_HOME}/var/log/kafka-rest/verify_service}
+NOW=`date "+%Y%m%d_%H%M%S"`
+LOGFILE_BASE=${LOGFILE_BASE:-${KAFKA_REST_HOME}/logs/verify_service.${NOW}.log}
 PID_FILE=${MAPR_HOME}/pid/kafka-rest.pid
 
 EXIT_SUCCESS=0
@@ -14,7 +16,6 @@ EXIT_HTTP_ERROR=4
 CONNECT_TIMEOUT=15
 USAGE="$0 [-q]"
 QUIET=0
-NOW=`date "+%Y%m%d_%H%M%S"`
 
 if [ $# -eq 1 ] && [ "$1" == '-q' ]; then
     QUIET=1
@@ -23,11 +24,8 @@ elif [ $# -ge 1 ]; then
     exit $EXIT_USAGE
 fi
 
-# Create log directory
-mkdir -p "${LOGFILE_BASE%/*}"
-
 # Check if the process is running
-echo "Starting verifier at $(date)" >> $LOGFILE_BASE.$NOW
+echo "Starting verifier at $(date)" >> $LOGFILE_BASE
 if [ -e "$PID_FILE" ] || [ -h "$PID_FILE" ]; then
     kafka_rest_pid=$(cat $PID_FILE 2> /dev/null)
     if [ $? -ne 0 ]; then
@@ -35,26 +33,26 @@ if [ -e "$PID_FILE" ] || [ -h "$PID_FILE" ]; then
         kafka_rest_pid=$(cat $PID_FILE 2> /dev/null)
     fi
     if [ -z "$kafka_rest_pid" ]; then
-        echo "ERROR - could not get pid for kafka-rest" >> $LOGFILE_BASE.$NOW
+        echo "ERROR - could not get pid for kafka-rest" >> $LOGFILE_BASE
         exit $EXIT_NOT_RUNNING
     fi
-    echo "checking to see if pid $kafka_rest_pid is alive" >> $LOGFILE_BASE.$NOW
+    echo "checking to see if pid $kafka_rest_pid is alive" >> $LOGFILE_BASE
     if kill -s 0 $kafka_rest_pid ; then
-        echo "pid $kafka_rest_pid is alive" >> $LOGFILE_BASE.$NOW
+        echo "pid $kafka_rest_pid is alive" >> $LOGFILE_BASE
         RC=$EXIT_RUNNING_NOT_RESPONDING
     else
-        echo "pid $kafka_rest_pid is NOT running" >> $LOGFILE_BASE.$NOW
-        [ $QUIET -eq 1 ] || cat $LOGFILE_BASE.$NOW
+        echo "pid $kafka_rest_pid is NOT running" >> $LOGFILE_BASE
+        [ $QUIET -eq 1 ] || cat $LOGFILE_BASE
         exit $EXIT_NOT_RUNNING
     fi
 else
-    echo "no pid file, kafka-rest is NOT running" >> $LOGFILE_BASE.$NOW
-    [ $QUIET -eq 1 ] || cat $LOGFILE_BASE.$NOW
+    echo "no pid file, kafka-rest is NOT running" >> $LOGFILE_BASE
+    [ $QUIET -eq 1 ] || cat $LOGFILE_BASE
     exit $EXIT_NOT_RUNNING
 fi
 
 # Check if the process is responding
-echo "checking to see if kafka-rest pid $kafka_rest_pid is responsive" >> $LOGFILE_BASE.$NOW
+echo "checking to see if kafka-rest pid $kafka_rest_pid is responsive" >> $LOGFILE_BASE
 listeners=$(grep listeners "$KAFKA_REST_CONF_FILE" | cut -d'=' -f 2 | sed -e 's/ //g')
 protocol=$(echo $listeners | cut -d':' -f 1 | sed -e 's/ //g')
 kafka_rest_port=$(echo $listeners | cut -d':' -f 3 | sed -e 's/ //g')
@@ -71,9 +69,9 @@ fi
 
 CRC=$?
 if [ $CRC -ne 0 ]; then
-    echo "kafka-rest didn't respond - rc=$CRC, output = $OUTPUT" >> $LOGFILE_BASE.$NOW
+    echo "kafka-rest didn't respond - rc=$CRC, output = $OUTPUT" >> $LOGFILE_BASE
 else
-    echo "kafka-rest responded - rc=$CRC, output = $OUTPUT" >> $LOGFILE_BASE.$NOW
+    echo "kafka-rest responded - rc=$CRC, output = $OUTPUT" >> $LOGFILE_BASE
     http_code=${OUTPUT: -3}
     if [ $http_code -ne 200 ]; then
       RC=$EXIT_HTTP_ERROR
@@ -81,5 +79,5 @@ else
       RC=$EXIT_SUCCESS
     fi
 fi
-[ $QUIET -eq 1 ] || cat $LOGFILE_BASE.$NOW
+[ $QUIET -eq 1 ] || cat $LOGFILE_BASE
 exit $RC
