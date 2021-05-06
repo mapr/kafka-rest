@@ -1,6 +1,7 @@
 #!/bin/bash
 
 MAPR_HOME=${MAPR_HOME:-/opt/mapr}
+export MAPR_TICKETFILE_LOCATION=${MAPR_TICKETFILE_LOCATION:-"${MAPR_HOME}/conf/mapruserticket"}
 KAFKA_REST_VERSION=`cat "${MAPR_HOME}/kafka-rest/kafka-restversion"`
 KAFKA_REST_HOME="${KAFKA_REST_HOME:-${MAPR_HOME}/kafka-rest/kafka-rest-${KAFKA_REST_VERSION}}"
 KAFKA_REST_CONF_FILE="${KAFKA_REST_CONF_FILE:-${KAFKA_REST_HOME}/config/kafka-rest.properties}"
