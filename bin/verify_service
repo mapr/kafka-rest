@@ -57,15 +57,18 @@ echo "checking to see if kafka-rest pid $kafka_rest_pid is responsive" >> $LOGFI
 listeners=$(grep listeners "$KAFKA_REST_CONF_FILE" | cut -d'=' -f 2 | sed -e 's/ //g')
 protocol=$(echo $listeners | cut -d':' -f 1 | sed -e 's/ //g')
 kafka_rest_port=$(echo $listeners | cut -d':' -f 3 | sed -e 's/ //g')
-kafka_rest_ip=$(hostname -i | head -n 1 | cut -d' ' -f1)
+kafka_rest_ip=$(echo $listeners | cut -d':' -f 2 | sed -e 's/\///g')
+if [ "$kafka_rest_ip" = "0.0.0.0" ]; then
+  kafka_rest_ip="localhost"
+fi
 if [ "$protocol" == "https" ]; then
   # Getting MAPRSASL token
   token=$(java -cp `mapr classpath` com.mapr.security.client.examples.MapRClient gettoken -url "$protocol://${kafka_rest_ip}:${kafka_rest_port}" 2> /dev/null \
   |  grep 'Obtained challenge string' \
   |  sed -E 's/Obtained challenge string (.*)/\1/')
-  OUTPUT=$(curl -s --write-out '%{http_code}' -k -H "Authorization: MAPR-Negotiate ${token}" "$protocol://${kafka_rest_ip}:${kafka_rest_port}" -k)
+  OUTPUT=$(curl --noproxy '*' -s --write-out '%{http_code}' -k -H "Authorization: MAPR-Negotiate ${token}" "$protocol://${kafka_rest_ip}:${kafka_rest_port}" -k)
 else
-  OUTPUT=$(curl -s --write-out '%{http_code}' "$protocol://${kafka_rest_ip}:${kafka_rest_port}")
+  OUTPUT=$(curl --noproxy '*' -s --write-out '%{http_code}' "$protocol://${kafka_rest_ip}:${kafka_rest_port}")
 fi
 
 CRC=$?
