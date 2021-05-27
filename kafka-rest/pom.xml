@@ -40,9 +40,9 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>com.mapr.streams</groupId>
-            <artifactId>mapr-streams</artifactId>
-            <version>6.2.0.0-mapr-SNAPSHOT</version>
+            <groupId>com.mapr.kafka</groupId>
+            <artifactId>kafka-eventstreams</artifactId>
+            <version>0.1.0-SNAPSHOT</version>
             <scope>provided</scope>
             <exclusions>
                 <exclusion>

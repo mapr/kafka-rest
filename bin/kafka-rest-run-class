@@ -22,7 +22,6 @@ source `which mapr-config.sh` # Both "mapr" and "mapr-config.sh" are symlinked i
 
 add_streams_paths(){
   local MAPR_LIB_DIR="${BASEMAPR:-/opt/mapr}/lib"
-  local MAPR_STREAMS_LIB=$(ls ${MAPR_LIB_DIR}/mapr-streams*.jar 2> /dev/null | grep -v "tests.jar$" )
   local PROTOBUF_LIB=$(ls ${MAPR_LIB_DIR}/protobuf-java*.jar 2> /dev/null | grep -v "tests.jar$" )
   local MAPRFS_LIB=$(ls ${MAPR_LIB_DIR}/maprfs-*.jar 2> /dev/null | grep -v "maprfs-diagnostic-tools" | grep -v "tests.jar$" )
   local STREAMS_CLIENTS_LIB=$(ls ${MAPR_LIB_DIR}/kafka-clients*.jar 2> /dev/null | grep -v "tests.jar$" )
@@ -35,7 +34,6 @@ add_streams_paths(){
   local OJAI_LIB=$(ls ${MAPR_LIB_DIR}/ojai-3*.jar 2> /dev/null)
   local ANTLR_LIB=$(ls ${MAPR_LIB_DIR}/antlr4*.jar 2> /dev/null)
 
-  CLASSPATH="${MAPR_STREAMS_LIB}:${CLASSPATH}"
   CLASSPATH="${PROTOBUF_LIB}:${CLASSPATH}"
   CLASSPATH="${MAPRFS_LIB}:${CLASSPATH}"
   CLASSPATH="${STREAMS_CLIENTS_LIB}:${CLASSPATH}"

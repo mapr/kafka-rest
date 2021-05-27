@@ -15,7 +15,7 @@
 
 package io.confluent.kafkarest;
 
-import com.mapr.streams.Streams;
+import com.mapr.kafka.eventstreams.Streams;
 import io.confluent.kafkarest.common.KafkaFutures;
 import io.confluent.kafkarest.entities.Partition;
 import io.confluent.kafkarest.entities.PartitionReplica;
@@ -98,7 +98,7 @@ public class ResourcesExistenceChecker {
     } else {
       throw new IllegalStateException("There is no stream in topic and no default stream was set");
     }
-    try (com.mapr.streams.Admin admin = Streams.newAdmin(conf)) {
+    try (com.mapr.kafka.eventstreams.Admin admin = Streams.newAdmin(conf)) {
       return admin.streamExists(stream);
     } catch (IOException e) {
       throw Errors.kafkaErrorException(e);
