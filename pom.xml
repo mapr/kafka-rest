@@ -48,6 +48,7 @@
         <confluent.maven.repo>http://packages.confluent.io/maven/</confluent.maven.repo>
         <checkstyle.suppressions.location>checkstyle/suppressions.xml</checkstyle.suppressions.location>
         <spotbugs.version>3.1.9</spotbugs.version>
+        <jackson.version>2.11.1</jackson.version>
     </properties>
 
     <repositories>
@@ -79,6 +80,21 @@
             <dependency>
                 <groupId>com.fasterxml.jackson.datatype</groupId>
                 <artifactId>jackson-datatype-guava</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.datatype</groupId>
+                <artifactId>jackson-datatype-joda</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.datatype</groupId>
+                <artifactId>jackson-datatype-jsr310</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.module</groupId>
+                <artifactId>jackson-module-parameter-names</artifactId>
                 <version>${jackson.version}</version>
             </dependency>
             <dependency>
