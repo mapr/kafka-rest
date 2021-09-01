@@ -14,8 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 SERVICE_NAME='Kafka REST'
-TARGET=`jps | grep KafkaRestMain | awk '{print $1}'`
-if [ "x$TARGET" = "x" ]; then
+PID="${BASEMAPR:-/opt/mapr}/pid/kafka-rest.pid"
+
+if [ -e $PID ]
+then
+    TARGET=`cat "$PID"`
+fi
+
+if [ "x$TARGET" != "x" ]; then
+    kill -0 $TARGET
+    STATUS=$?
+fi
+
+if [ "$STATUS" != "0" ]; then
   echo "${SERVICE_NAME} not running."
   exit 1
 else
