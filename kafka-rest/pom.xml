@@ -151,6 +151,7 @@
             <groupId>com.mapr.security</groupId>
             <artifactId>mapr-security-web</artifactId>
             <version>6.2.0.0-mapr-SNAPSHOT</version>
+            <scope>provided</scope>
             <exclusions>
                 <exclusion>
                     <groupId>com.mapr.hadoop</groupId>
