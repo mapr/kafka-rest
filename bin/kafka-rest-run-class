@@ -263,6 +263,11 @@ else
 fi
 
 MAPR_CLIENT_CLASSPATH=$(mapr clientclasspath)
+# Add mapr-security-web-mapr.jar
+for file in "${BASEMAPR:-/opt/mapr}"/lib/mapr-security-web-*.jar
+do
+  MAPR_CLIENT_CLASSPATH="$MAPR_CLIENT_CLASSPATH":"$file"
+done
 KAFKAREST_CLASSPATH=$CLASSPATH:$MAPR_CLIENT_CLASSPATH
 
 KAFKA_VERSION=$(cat "/opt/mapr/kafka/kafkaversion")
