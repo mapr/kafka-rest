@@ -263,8 +263,6 @@ else
 fi
 
 MAPR_CLIENT_CLASSPATH=$(mapr clientclasspath)
-MAPR_SECURITY_JAR=$(find ${BASEMAPR:-/opt/mapr}/lib -name "mapr-security-web-*.jar" ! -name "mapr-security-web-*-tests.jar")
-MAPR_CLIENT_CLASSPATH=$MAPR_CLIENT_CLASSPATH:$MAPR_SECURITY_JAR
 KAFKAREST_CLASSPATH=$CLASSPATH:$MAPR_CLIENT_CLASSPATH
 
 KAFKA_VERSION=$(cat "/opt/mapr/kafka/kafkaversion")
