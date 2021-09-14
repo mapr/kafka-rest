@@ -66,6 +66,7 @@ public abstract class KafkaConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, Cli
   private Queue<ConsumerRecord<KafkaKeyT, KafkaValueT>> consumerRecords = new ArrayDeque<>();
 
   volatile long expiration;
+  private int timeout;
   private ReentrantLock lock;
 
   KafkaConsumerState(
@@ -78,6 +79,7 @@ public abstract class KafkaConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, Cli
     this.consumer = consumer;
     this.expiration = config.getTime().milliseconds()
                       + config.getInt(KafkaRestConfig.CONSUMER_INSTANCE_TIMEOUT_MS_CONFIG);
+    this.timeout = config.getInt(KafkaRestConfig.CONSUMER_REQUEST_TIMEOUT_MS_CONFIG);
     this.lock = new ReentrantLock();
   }
 
@@ -464,10 +466,10 @@ public abstract class KafkaConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, Cli
    */
   private void getOrCreateConsumerRecords() {
     consumerRecords = new ArrayDeque<>();
-    ConsumerRecords<KafkaKeyT, KafkaValueT> polledRecords = consumer.poll(0);
+    ConsumerRecords<KafkaKeyT, KafkaValueT> polledRecords = consumer.poll(this.timeout);
     if (polledRecords.count() == 0) {
       // The first poll is used to assign partitions. The second poll is used to fetch data.
-      polledRecords = consumer.poll(0);
+      polledRecords = consumer.poll(this.timeout);
     }
     //drain the iterator and buffer to list
     for (ConsumerRecord<KafkaKeyT, KafkaValueT> consumerRecord : polledRecords) {

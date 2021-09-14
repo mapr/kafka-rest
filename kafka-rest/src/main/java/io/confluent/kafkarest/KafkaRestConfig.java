@@ -157,7 +157,7 @@ public class KafkaRestConfig extends RestConfig {
   private static final String CONSUMER_REQUEST_TIMEOUT_MS_DOC =
       "The maximum total time to wait for messages for a "
       + "request if the maximum number of messages has not yet been reached.";
-  public static final String CONSUMER_REQUEST_TIMEOUT_MS_DEFAULT = "1";
+  public static final String CONSUMER_REQUEST_TIMEOUT_MS_DEFAULT = "1000";
 
   public static final String CONSUMER_REQUEST_MAX_BYTES_CONFIG = "consumer.request.max.bytes";
   private static final String CONSUMER_REQUEST_MAX_BYTES_DOC =
