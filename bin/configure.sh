@@ -129,18 +129,25 @@ function write_kafka_rest_restart(){
         chgrp -R ${MAPR_GROUP} ${MAPR_RESTART_SCRIPTS_DIR}
     fi
     
-    echo -e "#!/bin/bash\nsudo -u $MAPR_USER maprcli node services -action restart -name kafka-rest -nodes `hostname`" > ${KAFKA_REST_RESTART_SRC}
+    cat > "${KAFKA_REST_RESTART_SRC}" <<'EOF'
+#!/bin/bash
+MAPR_HOME="${MAPR_HOME:-/opt/mapr}"
+MAPR_USER="${MAPR_USER:-mapr}"
+if [ -z "$MAPR_TICKETFILE_LOCATION" ]; then
+    isSecured="false"
+    if [ -e "${MAPR_HOME}/conf/mapr-clusters.conf" ]; then
+        isSecured=$(head -n1 "${MAPR_HOME}/conf/mapr-clusters.conf" | grep -o 'secure=\w*' | cut -d '=' -f 2)
+    fi
+    if [ "$isSecured" = "true" ] && [ -e "${MAPR_HOME}/conf/mapruserticket" ]; then
+        export MAPR_TICKETFILE_LOCATION="${MAPR_HOME}/conf/mapruserticket"
+    fi
+fi
+maprcli node services -action restart -name kafka-rest -nodes $(hostname)
+EOF
 
     chown ${MAPR_USER} ${KAFKA_REST_RESTART_SRC}
     chgrp ${MAPR_GROUP} ${KAFKA_REST_RESTART_SRC}
     chmod u+x ${KAFKA_REST_RESTART_SRC}
-}
-
-function restart_kafka_rest_service() {
-	su ${MAPR_USER} <<-EOF
-	maprcli node services -name kafka-rest -action restart -nodes `hostname`
-	EOF
-	write_kafka_rest_restart
 }
 
 function register_port_if_available() {
@@ -259,6 +266,8 @@ setup_warden_config
 
 if [[ -f "$KAFKA_REST_CONF_DIR/.not_configured_yet" ]] ; then
     rm -f "$KAFKA_REST_CONF_DIR/.not_configured_yet"
+else
+    write_kafka_rest_restart
 fi
 
 exit 0
