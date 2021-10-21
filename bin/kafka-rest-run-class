@@ -277,6 +277,11 @@ if [ -f ${JMX_JAR} ]; then
   KAFKAREST_CLASSPATH=$KAFKAREST_CLASSPATH:$JMX_JAR
 fi
 
+# if FIPS mode is enabled, add security java options
+env=${MAPR_HOME:-/opt/mapr}/conf/env.sh
+[ -f "${env}" ] && . "${env}"
+KAFKAREST_OPTS="${KAFKAREST_OPTS} ${MAPR_COMMON_JAVA_OPTS}"
+
 # Launch mode
 if [ "x$DAEMON_MODE" = "xtrue" ]; then
   nohup $JAVA $KAFKAREST_HEAP_OPTS $KAFKAREST_JVM_PERFORMANCE_OPTS $KAFKAREST_JMX_OPTS $KAFKAREST_LOG4J_OPTS $KAFKAREST_SECURITY_OPTS -cp $KAFKAREST_CLASSPATH $KAFKAREST_OPTS "$MAIN" "$@" 2>&1 < /dev/null &
