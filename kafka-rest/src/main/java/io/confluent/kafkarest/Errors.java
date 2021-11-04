@@ -281,7 +281,7 @@ public class Errors {
   }
 
   public static final String NOT_SUPPORTED_API_BY_STREAMS_ERROR_MESSAGE =
-      "MapR Streams do not currently support this API. ";
+      "HPE Ezmeral Data Fabric Event Data Streams does not currently support this API. ";
   public static final int NOT_SUPPORTED_API_BY_STREAMS_ERROR_CODE = 80001;
 
   public static RestConstraintViolationException notSupportedByMapRStreams() {
