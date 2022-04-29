@@ -349,7 +349,7 @@ public class KafkaRestConfig extends RestConfig {
 
   public static final String API_V3_ENABLE_CONFIG = "api.v3.enable";
   private static final String API_V3_ENABLE_DOC =
-      "Whether to enable REST Proxy V3 API. Default is true.";
+      "Whether to enable REST Proxy V3 API. Default is false.";
   private static final boolean API_V3_ENABLE_DEFAULT = false;
 
   private static final ConfigDef config;
