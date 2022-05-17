@@ -29,19 +29,26 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import javax.inject.Inject;
+
+import io.confluent.kafkarest.extension.KafkaRestContextProvider;
+import io.confluent.kafkarest.v2.KafkaConsumerManager;
 import org.apache.kafka.clients.admin.Admin;
-import org.apache.kafka.clients.admin.ListOffsetsOptions;
 import org.apache.kafka.clients.admin.ListOffsetsResult;
 import org.apache.kafka.clients.admin.ListOffsetsResult.ListOffsetsResultInfo;
 import org.apache.kafka.clients.admin.OffsetSpec;
+import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.internals.KafkaFutureImpl;
 
 final class PartitionManagerImpl implements PartitionManager {
 
   private final Admin adminClient;
+  private final KafkaConsumerManager consumerManager = KafkaRestContextProvider.getCurrentContext()
+          .getKafkaConsumerManager();
   private final TopicManager topicManager;
 
   @Inject
@@ -130,11 +137,21 @@ final class PartitionManagerImpl implements PartitionManager {
   }
 
   private ListOffsetsResult listOffsets(List<Partition> partitions, OffsetSpec offsetSpec) {
-    HashMap<TopicPartition, OffsetSpec> request = new HashMap<>();
-    for (Partition partition : partitions) {
-      request.put(toTopicPartition(partition), offsetSpec);
+    //MarlinAdminClient does not implement getting beginning and timestamp offsets so we are
+    //fetching them through consumer instead
+    Map<TopicPartition, KafkaFuture<ListOffsetsResultInfo>> futures =
+            new HashMap<>(partitions.size());
+    for (Partition partition: partitions) {
+      long offset = offsetSpec instanceof OffsetSpec.EarliestSpec
+              ? consumerManager.getBeginningOffset(
+                      partition.getTopicName(), partition.getPartitionId())
+              : consumerManager.getEndOffset(
+                      partition.getTopicName(), partition.getPartitionId());
+      KafkaFutureImpl<ListOffsetsResultInfo> future = new KafkaFutureImpl<>();
+      future.complete(new ListOffsetsResultInfo(offset, -1 , Optional.empty()));
+      futures.put(toTopicPartition(partition),future);
     }
-    return adminClient.listOffsets(request, new ListOffsetsOptions());
+    return new ListOffsetsResult(futures);
   }
 
   private static TopicPartition toTopicPartition(Partition partition) {
