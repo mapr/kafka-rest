@@ -89,7 +89,7 @@ pipeline {
                       sh """
                         rm -rf ${env.PROJECT}; git clone git@github.com:mapr/private-pkg.git ${env.PROJECT}; \
                         cd ${env.PROJECT}; \
-                        git checkout MEP-8.0.0 ; \
+                        git checkout MEP-9.0.0 ; \
                         make ${env.PROJECT} TIMESTAMP=${ID} ${MAKEFILE_ARGS} ; \
                       """
                     }
@@ -149,7 +149,7 @@ pipeline {
                       sh """
                         rm -rf ${env.PROJECT}; git clone git@github.com:mapr/private-pkg.git ${env.PROJECT}; \
                         cd ${env.PROJECT}; \
-                        git checkout MEP-8.0.0 ; \
+                        git checkout MEP-9.0.0 ; \
                         make ${env.PROJECT} TIMESTAMP=${ID} ${MAKEFILE_ARGS} ; \
                       """
                     }
