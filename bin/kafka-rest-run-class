@@ -277,6 +277,10 @@ if [ -f ${JMX_JAR} ]; then
   KAFKAREST_CLASSPATH=$KAFKAREST_CLASSPATH:$JMX_JAR
 fi
 
+# Add logger jars
+KAFKAREST_CLASSPATH=$KAFKAREST_CLASSPATH:$(get_log4j12_jars) # function in mapr-config.sh
+KAFKAREST_CLASSPATH=$KAFKAREST_CLASSPATH:$(get_mapr_app_jars) # function in mapr-config.sh
+
 # if FIPS mode is enabled, add security java options
 env=${MAPR_HOME:-/opt/mapr}/conf/env.sh
 [ -f "${env}" ] && . "${env}"
