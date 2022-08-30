@@ -48,7 +48,7 @@
         <confluent.maven.repo>http://packages.confluent.io/maven/</confluent.maven.repo>
         <checkstyle.suppressions.location>checkstyle/suppressions.xml</checkstyle.suppressions.location>
         <spotbugs.version>3.1.9</spotbugs.version>
-        <jackson.version>2.11.1</jackson.version>
+        <jackson.version>2.13.3</jackson.version>
         <slf4j.version>1.7.36</slf4j.version>
     </properties>
 
