@@ -15,8 +15,12 @@
 
 package io.confluent.kafkarest.common;
 
+import io.confluent.kafkarest.Errors;
+import io.confluent.kafkarest.KafkaRestConfig;
 import java.util.concurrent.CompletableFuture;
+import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.KafkaFuture;
+import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.apache.kafka.common.internals.KafkaFutureImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,10 +48,37 @@ public final class KafkaFutures {
           if (exception == null) {
             completableFuture.complete(value);
           } else {
-            log.debug("Caught Exception on completion of KafkaFuture", exception);
+            exception = exception.getCause() == null ? exception : exception.getCause();
+            if (exception instanceof UnknownTopicOrPartitionException) {
+              exception = convertUnknownResourceException(exception);
+            } else if (exception instanceof KafkaException) {
+              exception =
+                  Errors.notSupportedByMapRStreams(
+                      "Please try to set "
+                          + KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG
+                          + " to return topics for default stream");
+            } else if ("com.mapr.db.exceptions.AccessDeniedException"
+                .equals(exception.getClass().getName())) {
+              exception = Errors.noPermissionsException();
+            }
             completableFuture.completeExceptionally(exception);
           }
         });
     return completableFuture;
+  }
+
+  public static Throwable convertUnknownResourceException(Throwable e) {
+    String message = e.getMessage();
+    String resource = message.split(" ")[0];
+    switch (resource) {
+      case "Stream":
+        return Errors.streamNotFoundException(message);
+      case "Topic":
+        return Errors.topicNotFoundException(message);
+      case "Partition":
+        return Errors.partitionNotFoundException(message);
+      default:
+        return e;
+    }
   }
 }

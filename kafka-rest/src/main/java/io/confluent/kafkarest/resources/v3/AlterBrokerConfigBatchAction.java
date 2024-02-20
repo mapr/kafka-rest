@@ -15,6 +15,8 @@
 
 package io.confluent.kafkarest.resources.v3;
 
+import static io.confluent.kafkarest.Errors.notSupportedByMapRStreams;
+import static io.confluent.kafkarest.Errors.throwRuntime;
 import static java.util.Objects.requireNonNull;
 
 import io.confluent.kafkarest.controllers.BrokerConfigManager;
@@ -58,6 +60,7 @@ public final class AlterBrokerConfigBatchAction {
       @PathParam("clusterId") String clusterId,
       @PathParam("brokerId") int brokerId,
       @Valid AlterBrokerConfigBatchRequest request) {
+    throwRuntime(notSupportedByMapRStreams());
     CompletableFuture<Void> response =
         brokerConfigManager
             .get()

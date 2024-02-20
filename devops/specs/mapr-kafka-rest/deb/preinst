@@ -1,0 +1,65 @@
+#!/bin/bash
+
+[ -n "$VERBOSE" ] && echo "preinst called with argument \`$1'" >&2
+[ -n "$VERBOSE" ] && set -x
+
+#
+# summary of how this script can be called:
+#        * <new-preinst> `install'
+#        * <new-preinst> `install' <old-version>
+#        * <new-preinst> `upgrade' <old-version>
+#
+case "$1" in
+    install)
+
+
+    ;;
+    upgrade)
+      if [ -f __PREFIX__/kafka-rest/kafkarestversion ] || [ -f __PREFIX__/kafka-rest/kafka-restversion ]; then
+        if [ -f __PREFIX__/kafka-rest/kafkarestversion ]; then
+            OLD_VERSION=$(cat __PREFIX__/kafka-rest/kafkarestversion)
+        else
+            OLD_VERSION=$(cat __PREFIX__/kafka-rest/kafka-restversion)
+        fi
+		if [ -d __PREFIX__/kafka-rest/kafka-rest-$OLD_VERSION/conf ]; then
+    		rm -rf __PREFIX__/kafka-rest/kafka-rest-$OLD_VERSION/conf
+		fi
+		if [ -d __PREFIX__/kafka-rest/kafka-rest-$OLD_VERSION/config/saved ]; then
+     		rm -rf __PREFIX__/kafka-rest/kafka-rest-$OLD_VERSION/config/saved
+        fi
+        if [ -d __PREFIX__/kafka-rest/kafka-rest-$OLD_VERSION/certs ]; then
+       		rm -rf __PREFIX__/kafka-rest/kafka-rest-$OLD_VERSION/certs
+        fi
+        if [ -d __PREFIX__/kafka-rest/kafka-rest-$OLD_VERSION/logs ]; then
+       		rm -rf __PREFIX__/kafka-rest/kafka-rest-$OLD_VERSION/logs
+        fi
+
+        #Saving of old configurations
+        OLD_TIMESTAMP="$2"
+        mkdir -p __PREFIX__/kafka-rest/kafka-rest-${OLD_TIMESTAMP}
+        mv __PREFIX__/kafka-rest/kafka-rest-${OLD_VERSION}/config __PREFIX__/kafka-rest/kafka-rest-${OLD_TIMESTAMP}/config
+        DAEMON_CONF=__PREFIX__/conf/daemon.conf
+
+        if [ -f "$DAEMON_CONF" ]; then
+            MAPR_USER=$( awk -F = '$1 == "mapr.daemon.user" { print $2 }' $DAEMON_CONF)
+            MAPR_GROUP=$( awk -F = '$1 == "mapr.daemon.group" { print $2 }' $DAEMON_CONF)
+            if [ ! -z "$MAPR_USER" ]; then
+                chown -R ${MAPR_USER}:${MAPR_GROUP} __PREFIX__/kafka-rest/kafka-rest-${OLD_TIMESTAMP}
+            fi
+
+        fi
+      fi
+    ;;
+
+    abort-upgrade)
+    ;;
+
+    *)
+        echo "preinst called with unknown argument \`$1'" >&2
+        exit 1
+    ;;
+esac
+
+
+
+

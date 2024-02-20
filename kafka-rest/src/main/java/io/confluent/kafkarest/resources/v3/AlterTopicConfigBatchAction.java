@@ -15,6 +15,8 @@
 
 package io.confluent.kafkarest.resources.v3;
 
+import static io.confluent.kafkarest.Errors.notSupportedByMapRStreams;
+import static io.confluent.kafkarest.Errors.throwRuntime;
 import static java.util.Objects.requireNonNull;
 
 import io.confluent.kafkarest.controllers.TopicConfigManager;
@@ -58,6 +60,7 @@ public final class AlterTopicConfigBatchAction {
       @PathParam("clusterId") String clusterId,
       @PathParam("topicName") String topicName,
       @Valid AlterTopicConfigBatchRequest request) {
+    throwRuntime(notSupportedByMapRStreams());
     boolean validateOnly = request.getValue().getValidateOnly().orElse(false);
     CompletableFuture<Void> response =
         validateOnly

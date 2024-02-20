@@ -15,6 +15,8 @@
 
 package io.confluent.kafkarest.resources.v3;
 
+import static io.confluent.kafkarest.Errors.notSupportedByMapRStreams;
+import static io.confluent.kafkarest.Errors.throwRuntime;
 import static java.util.Objects.requireNonNull;
 
 import io.confluent.kafkarest.controllers.ConsumerGroupManager;
@@ -68,6 +70,7 @@ public final class ConsumerGroupsResource {
   @ResourceName("api.v3.consumer-groups.list")
   public void listConsumerGroups(
       @Suspended AsyncResponse asyncResponse, @PathParam("clusterId") String clusterId) {
+    throwRuntime(notSupportedByMapRStreams());
     CompletableFuture<ListConsumerGroupsResponse> response =
         consumerGroupManager
             .get()
@@ -102,6 +105,7 @@ public final class ConsumerGroupsResource {
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
       @PathParam("consumerGroupId") String consumerGroupId) {
+    throwRuntime(notSupportedByMapRStreams());
     CompletableFuture<GetConsumerGroupResponse> response =
         consumerGroupManager
             .get()

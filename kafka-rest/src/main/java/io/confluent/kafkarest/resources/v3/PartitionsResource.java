@@ -17,6 +17,7 @@ package io.confluent.kafkarest.resources.v3;
 
 import static java.util.Objects.requireNonNull;
 
+import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.controllers.PartitionManager;
 import io.confluent.kafkarest.entities.Partition;
 import io.confluent.kafkarest.entities.v3.GetPartitionResponse;
@@ -30,17 +31,19 @@ import io.confluent.kafkarest.resources.AsyncResponses;
 import io.confluent.kafkarest.response.CrnFactory;
 import io.confluent.kafkarest.response.UrlFactory;
 import io.confluent.rest.annotations.PerformanceMetric;
+import io.confluent.rest.impersonation.ImpersonationUtils;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.ws.rs.GET;
-import javax.ws.rs.NotFoundException;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 
 @Path("/v3/clusters/{clusterId}/topics/{topicName}/partitions")
@@ -66,7 +69,19 @@ public final class PartitionsResource {
   public void listPartitions(
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
-      @PathParam("topicName") String topicName) {
+      @PathParam("topicName") String topicName,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          listPartitions(asyncResponse, clusterId, topicName);
+          return null;
+        },
+        auth,
+        cookie);
+  }
+
+  private void listPartitions(AsyncResponse asyncResponse, String clusterId, String topicName) {
     CompletableFuture<ListPartitionsResponse> response =
         partitionManager
             .get()
@@ -104,12 +119,25 @@ public final class PartitionsResource {
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
       @PathParam("topicName") String topicName,
-      @PathParam("partitionId") Integer partitionId) {
+      @PathParam("partitionId") Integer partitionId,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          getPartition(asyncResponse, clusterId, topicName, partitionId);
+          return null;
+        },
+        auth,
+        cookie);
+  }
+
+  private void getPartition(
+      AsyncResponse asyncResponse, String clusterId, String topicName, Integer partitionId) {
     CompletableFuture<GetPartitionResponse> response =
         partitionManager
             .get()
             .getPartition(clusterId, topicName, partitionId)
-            .thenApply(partition -> partition.orElseThrow(NotFoundException::new))
+            .thenApply(partition -> partition.orElseThrow(Errors::partitionNotFoundException))
             .thenApply(partition -> GetPartitionResponse.create(toPartitionData(partition)));
 
     AsyncResponses.asyncResume(asyncResponse, response);

@@ -1,0 +1,41 @@
+#!/bin/bash
+
+[ -n "$VERBOSE" ] && echo "postinst called with argument \`$1'" >&2
+[ -n "$VERBOSE" ] && set -x
+
+
+
+if [ -f __PREFIX__/kafka-rest/kafkarestversion ]; then
+    rm -f __PREFIX__/kafka-rest/kafkarestversion
+fi
+echo "__VERSION_3DIGIT__" > __PREFIX__/kafka-rest/kafka-restversion
+WARDEN_KAFKA_REST_CONF=__INSTALL_3DIGIT__/config/warden.kafka-rest.conf
+WARDEN_KAFKA_REST_DEST_CONF=__PREFIX__/conf/conf.d/warden.kafka-rest.conf
+if [ -f "$WARDEN_KAFKA_REST_DEST_CONF" ]; then
+    rm -f ${WARDEN_KAFKA_REST_DEST_CONF}
+fi
+
+mkdir -p "__INSTALL_3DIGIT__"/config
+OLD_CONFIG=$(ls  -r  __PREFIX__/kafka-rest/  | grep  "kafka-rest-__VERSION_3DIGIT__." |  head -1)
+if [ ! -z ${OLD_CONFIG} ]; then
+	cp __PREFIX__/kafka-rest/${OLD_CONFIG}/config/*  __INSTALL_3DIGIT__/config/
+fi
+
+case "$1" in
+    configure)
+      echo Post Configuration
+      if [ -z "$2" ]; then
+        touch "__INSTALL_3DIGIT__/config/.not_configured_yet"
+      fi
+    ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+    ;;
+
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+    ;;
+esac
+
+

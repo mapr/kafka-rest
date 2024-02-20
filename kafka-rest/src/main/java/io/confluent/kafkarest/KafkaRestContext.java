@@ -35,4 +35,6 @@ public interface KafkaRestContext {
   }
 
   void shutdown();
+
+  ResourcesExistenceChecker getResourcesExistenceChecker();
 }

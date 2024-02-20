@@ -41,7 +41,7 @@ public final class KafkaModule extends AbstractBinder {
   protected void configure() {
     bindFactory(KafkaRestContextFactory.class).to(KafkaRestContext.class).in(Singleton.class);
 
-    bindFactory(AdminFactory.class).to(Admin.class).in(Singleton.class);
+    bindFactory(AdminFactory.class).to(Admin.class);
 
     bindFactory(ProducerFactory.class)
         .to(new TypeLiteral<Producer<byte[], byte[]>>() {})

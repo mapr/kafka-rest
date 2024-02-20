@@ -152,7 +152,7 @@ public class PartitionsResourceTest {
     replay(partitionManager);
 
     FakeAsyncResponse response = new FakeAsyncResponse();
-    partitionsResource.listPartitions(response, CLUSTER_ID, TOPIC_NAME);
+    partitionsResource.listPartitions(response, CLUSTER_ID, TOPIC_NAME, null, null);
 
     ListPartitionsResponse expected =
         ListPartitionsResponse.create(
@@ -240,7 +240,7 @@ public class PartitionsResourceTest {
     replay(partitionManager);
 
     FakeAsyncResponse response = new FakeAsyncResponse();
-    partitionsResource.listPartitions(response, CLUSTER_ID, TOPIC_NAME);
+    partitionsResource.listPartitions(response, CLUSTER_ID, TOPIC_NAME, null, null);
 
     assertEquals(NotFoundException.class, response.getException().getClass());
   }
@@ -252,7 +252,8 @@ public class PartitionsResourceTest {
     replay(partitionManager);
 
     FakeAsyncResponse response = new FakeAsyncResponse();
-    partitionsResource.getPartition(response, CLUSTER_ID, TOPIC_NAME, PARTITION_1.getPartitionId());
+    partitionsResource.getPartition(
+        response, CLUSTER_ID, TOPIC_NAME, PARTITION_1.getPartitionId(), null, null);
 
     GetPartitionResponse expected =
         GetPartitionResponse.create(
@@ -286,7 +287,8 @@ public class PartitionsResourceTest {
     replay(partitionManager);
 
     FakeAsyncResponse response = new FakeAsyncResponse();
-    partitionsResource.getPartition(response, CLUSTER_ID, TOPIC_NAME, PARTITION_1.getPartitionId());
+    partitionsResource.getPartition(
+        response, CLUSTER_ID, TOPIC_NAME, PARTITION_1.getPartitionId(), null, null);
 
     assertEquals(NotFoundException.class, response.getException().getClass());
   }
@@ -298,7 +300,8 @@ public class PartitionsResourceTest {
     replay(partitionManager);
 
     FakeAsyncResponse response = new FakeAsyncResponse();
-    partitionsResource.getPartition(response, CLUSTER_ID, TOPIC_NAME, PARTITION_1.getPartitionId());
+    partitionsResource.getPartition(
+        response, CLUSTER_ID, TOPIC_NAME, PARTITION_1.getPartitionId(), null, null);
 
     assertEquals(NotFoundException.class, response.getException().getClass());
   }

@@ -31,6 +31,7 @@ import io.confluent.kafkarest.extension.EnumConverterProvider;
 import io.confluent.kafkarest.extension.InstantConverterProvider;
 import io.confluent.kafkarest.extension.ResourceAccesslistFeature;
 import io.confluent.kafkarest.extension.RestResourceExtension;
+import io.confluent.kafkarest.extension.SchemaRegistryEnabledRequestFilter;
 import io.confluent.kafkarest.ratelimit.RateLimitFeature;
 import io.confluent.kafkarest.requestlog.CustomLog;
 import io.confluent.kafkarest.requestlog.CustomLogRequestAttributes;
@@ -52,7 +53,6 @@ import org.eclipse.jetty.server.CustomRequestLog;
 import org.eclipse.jetty.server.RequestLog;
 import org.eclipse.jetty.server.Slf4jRequestLogWriter;
 import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.util.StringUtil;
 import org.glassfish.jersey.server.ServerProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -143,15 +143,14 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
 
   @Override
   public void setupResources(Configurable<?> config, KafkaRestConfig appConfig) {
-    if (StringUtil.isBlank(appConfig.getString(KafkaRestConfig.BOOTSTRAP_SERVERS_CONFIG))
-        && StringUtil.isBlank(appConfig.getString(KafkaRestConfig.ZOOKEEPER_CONNECT_CONFIG))) {
+    boolean impersonationEnabled = appConfig.isImpersonationEnabled();
+    boolean isAuthenticationEnabled =
+        appConfig.getBoolean(KafkaRestConfig.ENABLE_AUTHENTICATION_CONFIG);
+
+    if (impersonationEnabled && !isAuthenticationEnabled) {
       throw new RuntimeException(
-          "At least one of "
-              + KafkaRestConfig.BOOTSTRAP_SERVERS_CONFIG
-              + " "
-              + "or "
-              + KafkaRestConfig.ZOOKEEPER_CONNECT_CONFIG
-              + " needs to be configured");
+          KafkaRestConfig.ENABLE_AUTHENTICATION_CONFIG
+              + " must be enabled in order to support MapR Streams impersonation");
     }
 
     config.property(ServerProperties.OUTBOUND_CONTENT_LENGTH_BUFFER, 0);
@@ -165,6 +164,7 @@ public class KafkaRestApplication extends Application<KafkaRestConfig> {
     config.register(new ResponseModule());
 
     config.register(ResourceAccesslistFeature.class);
+    config.register(SchemaRegistryEnabledRequestFilter.class);
 
     config.register(EnumConverterProvider.class);
     config.register(InstantConverterProvider.class);

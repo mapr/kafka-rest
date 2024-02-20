@@ -25,8 +25,8 @@ import io.confluent.kafkarest.v2.KafkaConsumerManager;
 import java.net.URI;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.apache.hadoop.security.IdMappingServiceProvider;
 import org.apache.kafka.clients.admin.Admin;
-import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
@@ -43,6 +43,8 @@ public class DefaultKafkaRestContext implements KafkaRestContext {
 
   private final KafkaRestConfig config;
   private KafkaConsumerManager kafkaConsumerManager;
+  private AdminClientCache adminClientCache;
+  private ResourcesExistenceChecker resourcesExistenceChecker;
 
   private SchemaRegistryClient schemaRegistryClient;
 
@@ -66,7 +68,11 @@ public class DefaultKafkaRestContext implements KafkaRestContext {
 
   @Override
   public Admin getAdmin() {
-    return AdminClient.create(config.getAdminProperties());
+    if (adminClientCache == null) {
+      final IdMappingServiceProvider idMapper = UnixUserIdUtils.getUnixIdMapper();
+      adminClientCache = new AdminClientCache(idMapper);
+    }
+    return adminClientCache.get(config.getAdminProperties());
   }
 
   @Override
@@ -106,5 +112,16 @@ public class DefaultKafkaRestContext implements KafkaRestContext {
     if (kafkaConsumerManager != null) {
       kafkaConsumerManager.shutdown();
     }
+    if (adminClientCache != null) {
+      adminClientCache.close();
+    }
+  }
+
+  @Override
+  public ResourcesExistenceChecker getResourcesExistenceChecker() {
+    if (resourcesExistenceChecker == null) {
+      resourcesExistenceChecker = new ResourcesExistenceChecker(config, getAdmin());
+    }
+    return resourcesExistenceChecker;
   }
 }

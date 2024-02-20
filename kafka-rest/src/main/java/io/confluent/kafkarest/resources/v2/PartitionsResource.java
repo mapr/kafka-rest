@@ -25,6 +25,7 @@ import io.confluent.kafkarest.entities.v2.TopicPartitionOffsetResponse;
 import io.confluent.kafkarest.extension.ResourceAccesslistFeature.ResourceName;
 import io.confluent.kafkarest.resources.AsyncResponses;
 import io.confluent.rest.annotations.PerformanceMetric;
+import io.confluent.rest.impersonation.ImpersonationUtils;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -32,11 +33,13 @@ import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
+import javax.ws.rs.core.HttpHeaders;
 
 @Path("/topics/{topic}/partitions")
 @Consumes({Versions.KAFKA_V2_JSON})
@@ -53,8 +56,21 @@ public final class PartitionsResource {
 
   @GET
   @PerformanceMetric("partitions.list+v2")
-  @ResourceName("api.v2.partitions.list")
-  public void list(@Suspended AsyncResponse asyncResponse, @PathParam("topic") String topic) {
+  public void list(
+      @Suspended AsyncResponse asyncResponse,
+      final @PathParam("topic") String topic,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          list(asyncResponse, topic);
+          return null;
+        },
+        auth,
+        cookie);
+  }
+
+  private void list(@Suspended AsyncResponse asyncResponse, @PathParam("topic") String topic) {
     CompletableFuture<List<GetPartitionResponse>> response =
         partitionManager
             .get()
@@ -73,6 +89,21 @@ public final class PartitionsResource {
   @PerformanceMetric("partition.get+v2")
   @ResourceName("api.v2.partitions.get")
   public void getPartition(
+      @Suspended AsyncResponse asyncResponse,
+      @PathParam("topic") String topic,
+      @PathParam("partition") int partitionId,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          getPartition(asyncResponse, topic, partitionId);
+          return null;
+        },
+        auth,
+        cookie);
+  }
+
+  private void getPartition(
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topic,
       @PathParam("partition") int partitionId) {
@@ -97,6 +128,21 @@ public final class PartitionsResource {
   @Path("/{partition}/offsets")
   @ResourceName("api.v2.partitions.get-offsets")
   public void getOffsets(
+      @Suspended AsyncResponse asyncResponse,
+      @PathParam("topic") String topic,
+      @PathParam("partition") int partitionId,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          getOffsets(asyncResponse, topic, partitionId);
+          return null;
+        },
+        auth,
+        cookie);
+  }
+
+  private void getOffsets(
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topic,
       @PathParam("partition") int partitionId) {

@@ -23,6 +23,7 @@ import com.google.auto.value.AutoValue;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.protobuf.ByteString;
 import io.confluent.kafkarest.Errors;
+import io.confluent.kafkarest.KafkaRestContext;
 import io.confluent.kafkarest.common.CompletableFutures;
 import io.confluent.kafkarest.controllers.ProduceController;
 import io.confluent.kafkarest.controllers.RecordSerializer;
@@ -55,13 +56,17 @@ abstract class AbstractProduceAction {
   private final Provider<RecordSerializer> recordSerializer;
   private final Provider<ProduceController> produceController;
 
+  private final Provider<KafkaRestContext> context;
+
   AbstractProduceAction(
       Provider<SchemaManager> schemaManager,
       Provider<RecordSerializer> recordSerializer,
-      Provider<ProduceController> produceController) {
+      Provider<ProduceController> produceController,
+      Provider<KafkaRestContext> context) {
     this.schemaManager = requireNonNull(schemaManager);
     this.recordSerializer = requireNonNull(recordSerializer);
     this.produceController = requireNonNull(produceController);
+    this.context = requireNonNull(context);
   }
 
   final CompletableFuture<ProduceResponse> produceWithoutSchema(
@@ -77,6 +82,13 @@ abstract class AbstractProduceAction {
             /* keySchema= */ Optional.empty(),
             /* valueSchema= */ Optional.empty(),
             request.getRecords());
+
+    if (partition.isPresent())
+      context
+          .get()
+          .getResourcesExistenceChecker()
+          .checkIfTopicAndPartitionExists(topicName, partition.get());
+    else context.get().getResourcesExistenceChecker().checkIfTopicExists(topicName);
 
     List<CompletableFuture<ProduceResult>> resultFutures = doProduce(topicName, serialized);
 

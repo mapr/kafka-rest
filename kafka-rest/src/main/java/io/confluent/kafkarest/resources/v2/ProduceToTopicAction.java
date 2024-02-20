@@ -15,6 +15,7 @@
 
 package io.confluent.kafkarest.resources.v2;
 
+import io.confluent.kafkarest.KafkaRestContext;
 import io.confluent.kafkarest.Versions;
 import io.confluent.kafkarest.controllers.ProduceController;
 import io.confluent.kafkarest.controllers.RecordSerializer;
@@ -25,6 +26,7 @@ import io.confluent.kafkarest.entities.v2.ProduceResponse;
 import io.confluent.kafkarest.extension.ResourceAccesslistFeature.ResourceName;
 import io.confluent.kafkarest.resources.AsyncResponses.AsyncResponseBuilder;
 import io.confluent.rest.annotations.PerformanceMetric;
+import io.confluent.rest.impersonation.ImpersonationUtils;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import javax.inject.Inject;
@@ -32,12 +34,14 @@ import javax.inject.Provider;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.Response;
 
 @Path("/topics")
@@ -56,8 +60,9 @@ public final class ProduceToTopicAction extends AbstractProduceAction {
   public ProduceToTopicAction(
       Provider<SchemaManager> schemaManager,
       Provider<RecordSerializer> recordSerializer,
-      Provider<ProduceController> produceController) {
-    super(schemaManager, recordSerializer, produceController);
+      Provider<ProduceController> produceController,
+      Provider<KafkaRestContext> context) {
+    super(schemaManager, recordSerializer, produceController, context);
   }
 
   @POST
@@ -68,15 +73,23 @@ public final class ProduceToTopicAction extends AbstractProduceAction {
   public void produceBinary(
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topicName,
-      @Valid @NotNull ProduceRequest request) {
-    CompletableFuture<ProduceResponse> response =
-        produceWithoutSchema(
-            EmbeddedFormat.BINARY, topicName, /* partitionId= */ Optional.empty(), request);
+      @Valid @NotNull ProduceRequest request,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          CompletableFuture<ProduceResponse> response =
+              produceWithoutSchema(
+                  EmbeddedFormat.BINARY, topicName, /* partitionId= */ Optional.empty(), request);
 
-    AsyncResponseBuilder.<ProduceResponse>from(Response.ok())
-        .entity(response)
-        .status(ProduceResponse::getRequestStatus)
-        .asyncResume(asyncResponse);
+          AsyncResponseBuilder.<ProduceResponse>from(Response.ok())
+              .entity(response)
+              .status(ProduceResponse::getRequestStatus)
+              .asyncResume(asyncResponse);
+          return null;
+        },
+        auth,
+        cookie);
   }
 
   @POST
@@ -87,15 +100,23 @@ public final class ProduceToTopicAction extends AbstractProduceAction {
   public void produceJson(
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topicName,
-      @Valid @NotNull ProduceRequest request) {
-    CompletableFuture<ProduceResponse> response =
-        produceWithoutSchema(
-            EmbeddedFormat.JSON, topicName, /* partitionId= */ Optional.empty(), request);
+      @Valid @NotNull ProduceRequest request,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          CompletableFuture<ProduceResponse> response =
+              produceWithoutSchema(
+                  EmbeddedFormat.JSON, topicName, /* partitionId= */ Optional.empty(), request);
 
-    AsyncResponseBuilder.<ProduceResponse>from(Response.ok())
-        .entity(response)
-        .status(ProduceResponse::getRequestStatus)
-        .asyncResume(asyncResponse);
+          AsyncResponseBuilder.<ProduceResponse>from(Response.ok())
+              .entity(response)
+              .status(ProduceResponse::getRequestStatus)
+              .asyncResume(asyncResponse);
+          return null;
+        },
+        auth,
+        cookie);
   }
 
   @POST
@@ -106,15 +127,23 @@ public final class ProduceToTopicAction extends AbstractProduceAction {
   public void produceAvro(
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topicName,
-      @Valid @NotNull ProduceRequest request) {
-    CompletableFuture<ProduceResponse> response =
-        produceWithSchema(
-            EmbeddedFormat.AVRO, topicName, /* partitionId= */ Optional.empty(), request);
+      @Valid @NotNull ProduceRequest request,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          CompletableFuture<ProduceResponse> response =
+              produceWithSchema(
+                  EmbeddedFormat.AVRO, topicName, /* partitionId= */ Optional.empty(), request);
 
-    AsyncResponseBuilder.<ProduceResponse>from(Response.ok())
-        .entity(response)
-        .status(ProduceResponse::getRequestStatus)
-        .asyncResume(asyncResponse);
+          AsyncResponseBuilder.<ProduceResponse>from(Response.ok())
+              .entity(response)
+              .status(ProduceResponse::getRequestStatus)
+              .asyncResume(asyncResponse);
+          return null;
+        },
+        auth,
+        cookie);
   }
 
   @POST
@@ -125,15 +154,26 @@ public final class ProduceToTopicAction extends AbstractProduceAction {
   public void produceJsonSchema(
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topicName,
-      @Valid @NotNull ProduceRequest request) {
-    CompletableFuture<ProduceResponse> response =
-        produceWithSchema(
-            EmbeddedFormat.JSONSCHEMA, /* partitionId= */ topicName, Optional.empty(), request);
+      @Valid @NotNull ProduceRequest request,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          CompletableFuture<ProduceResponse> response =
+              produceWithSchema(
+                  EmbeddedFormat.JSONSCHEMA,
+                  /* partitionId= */ topicName,
+                  Optional.empty(),
+                  request);
 
-    AsyncResponseBuilder.<ProduceResponse>from(Response.ok())
-        .entity(response)
-        .status(ProduceResponse::getRequestStatus)
-        .asyncResume(asyncResponse);
+          AsyncResponseBuilder.<ProduceResponse>from(Response.ok())
+              .entity(response)
+              .status(ProduceResponse::getRequestStatus)
+              .asyncResume(asyncResponse);
+          return null;
+        },
+        auth,
+        cookie);
   }
 
   @POST
@@ -144,14 +184,22 @@ public final class ProduceToTopicAction extends AbstractProduceAction {
   public void produceProtobuf(
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topicName,
-      @Valid @NotNull ProduceRequest request) {
-    CompletableFuture<ProduceResponse> response =
-        produceWithSchema(
-            EmbeddedFormat.PROTOBUF, topicName, /* partitionId= */ Optional.empty(), request);
+      @Valid @NotNull ProduceRequest request,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          CompletableFuture<ProduceResponse> response =
+              produceWithSchema(
+                  EmbeddedFormat.PROTOBUF, topicName, /* partitionId= */ Optional.empty(), request);
 
-    AsyncResponseBuilder.<ProduceResponse>from(Response.ok())
-        .entity(response)
-        .status(ProduceResponse::getRequestStatus)
-        .asyncResume(asyncResponse);
+          AsyncResponseBuilder.<ProduceResponse>from(Response.ok())
+              .entity(response)
+              .status(ProduceResponse::getRequestStatus)
+              .asyncResume(asyncResponse);
+          return null;
+        },
+        auth,
+        cookie);
   }
 }

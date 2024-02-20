@@ -15,6 +15,8 @@
 
 package io.confluent.kafkarest.resources.v3;
 
+import static io.confluent.kafkarest.Errors.notSupportedByMapRStreams;
+import static io.confluent.kafkarest.Errors.throwRuntime;
 import static java.util.Objects.requireNonNull;
 
 import io.confluent.kafkarest.controllers.BrokerConfigManager;
@@ -78,6 +80,7 @@ public final class BrokerConfigsResource {
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
       @PathParam("brokerId") int brokerId) {
+    throwRuntime(notSupportedByMapRStreams());
     CompletableFuture<ListBrokerConfigsResponse> response =
         brokerConfigManager
             .get()
@@ -120,6 +123,7 @@ public final class BrokerConfigsResource {
       @PathParam("clusterId") String clusterId,
       @PathParam("brokerId") int brokerId,
       @PathParam("name") String name) {
+    throwRuntime(notSupportedByMapRStreams());
     CompletableFuture<GetBrokerConfigResponse> response =
         brokerConfigManager
             .get()
@@ -145,6 +149,7 @@ public final class BrokerConfigsResource {
       @PathParam("brokerId") int brokerId,
       @PathParam("name") String name,
       @Valid UpdateBrokerConfigRequest request) {
+    throwRuntime(notSupportedByMapRStreams());
     String newValue = request.getValue().orElse(null);
 
     CompletableFuture<Void> response =
@@ -165,6 +170,7 @@ public final class BrokerConfigsResource {
       @PathParam("clusterId") String clusterId,
       @PathParam("brokerId") int brokerId,
       @PathParam("name") String name) {
+    throwRuntime(notSupportedByMapRStreams());
     CompletableFuture<Void> response =
         brokerConfigManager.get().resetBrokerConfig(clusterId, brokerId, name);
 

@@ -15,6 +15,8 @@
 
 package io.confluent.kafkarest.resources.v2;
 
+import static io.confluent.kafkarest.Errors.notSupportedByMapRStreams;
+import static io.confluent.kafkarest.Errors.throwRuntime;
 import static java.util.Objects.requireNonNull;
 
 import io.confluent.kafkarest.Versions;
@@ -53,6 +55,7 @@ public final class BrokersResource {
   @PerformanceMetric("brokers.list+v2")
   @ResourceName("api.v2.brokers.list")
   public void list(@Suspended AsyncResponse asyncResponse) {
+    throwRuntime(notSupportedByMapRStreams());
     CompletableFuture<BrokerList> response =
         brokerManager
             .get()

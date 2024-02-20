@@ -1,0 +1,14 @@
+Package: mapr-kafka-rest
+Version: __RELEASE_VERSION__
+Section: base
+Priority: optional
+Architecture: all
+Depends: mapr-client (>= 7.1.0) | mapr-core (>= 7.1.0) , mapr-kafka (>= 2.6.1)
+#Breaks:
+#Provides:
+#Conflicts:
+#Recommends: 
+Maintainer: Hewlett Packard Enterprise <ezmeral_software_support@hpe.com>
+Description: Ezmeral Ecosystem Pack: Kafka REST package
+Tag: __RELEASE_BRANCH__
+Commit: __GIT_COMMIT__

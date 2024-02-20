@@ -73,6 +73,7 @@ public abstract class KafkaConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, Cli
 
   volatile Instant expiration;
   private final Object expirationLock = new Object();
+  private int timeout;
 
   KafkaConsumerState(
       KafkaRestConfig config,
@@ -85,6 +86,7 @@ public abstract class KafkaConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, Cli
         Duration.ofMillis(config.getInt(KafkaRestConfig.CONSUMER_INSTANCE_TIMEOUT_MS_CONFIG));
     this.expiration = clock.instant().plus(consumerInstanceTimeout);
     this.consumerInstanceConfig = consumerInstanceConfig;
+    this.timeout = config.getInt(KafkaRestConfig.CONSUMER_REQUEST_TIMEOUT_MS_CONFIG);
   }
 
   public ConsumerInstanceId getId() {
@@ -381,7 +383,11 @@ public abstract class KafkaConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, Cli
    * be invoked with the lock held, i.e. after startRead().
    */
   private synchronized void getOrCreateConsumerRecords() {
-    ConsumerRecords<KafkaKeyT, KafkaValueT> polledRecords = consumer.poll(0);
+    ConsumerRecords<KafkaKeyT, KafkaValueT> polledRecords = consumer.poll(this.timeout);
+    if (polledRecords.count() == 0) {
+      // The first poll is used to assign partitions. The second poll is used to fetch data.
+      polledRecords = consumer.poll(this.timeout);
+    }
     // drain the iterator and buffer to list
     for (ConsumerRecord<KafkaKeyT, KafkaValueT> consumerRecord : polledRecords) {
       consumerRecords.add(consumerRecord);

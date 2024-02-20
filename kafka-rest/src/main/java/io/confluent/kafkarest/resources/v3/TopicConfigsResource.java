@@ -15,6 +15,8 @@
 
 package io.confluent.kafkarest.resources.v3;
 
+import static io.confluent.kafkarest.Errors.notSupportedByMapRStreams;
+import static io.confluent.kafkarest.Errors.throwRuntime;
 import static java.util.Objects.requireNonNull;
 
 import io.confluent.kafkarest.controllers.TopicConfigManager;
@@ -78,6 +80,7 @@ public final class TopicConfigsResource {
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
       @PathParam("topicName") String topicName) {
+    throwRuntime(notSupportedByMapRStreams());
     CompletableFuture<ListTopicConfigsResponse> response =
         topicConfigManager
             .get()
@@ -119,6 +122,7 @@ public final class TopicConfigsResource {
       @PathParam("clusterId") String clusterId,
       @PathParam("topicName") String topicName,
       @PathParam("name") String name) {
+    throwRuntime(notSupportedByMapRStreams());
     CompletableFuture<GetTopicConfigResponse> response =
         topicConfigManager
             .get()
@@ -144,6 +148,7 @@ public final class TopicConfigsResource {
       @PathParam("topicName") String topicName,
       @PathParam("name") String name,
       @Valid UpdateTopicConfigRequest request) {
+    throwRuntime(notSupportedByMapRStreams());
     String newValue = request.getValue().orElse(null);
 
     CompletableFuture<Void> response =
@@ -164,6 +169,7 @@ public final class TopicConfigsResource {
       @PathParam("clusterId") String clusterId,
       @PathParam("topicName") String topicName,
       @PathParam("name") String name) {
+    throwRuntime(notSupportedByMapRStreams());
     CompletableFuture<Void> response =
         topicConfigManager.get().resetTopicConfig(clusterId, topicName, name);
 

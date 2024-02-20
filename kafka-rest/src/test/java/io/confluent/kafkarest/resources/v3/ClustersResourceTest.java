@@ -73,7 +73,7 @@ public class ClustersResourceTest {
     replay(clusterManager);
 
     FakeAsyncResponse response = new FakeAsyncResponse();
-    clustersResource.listClusters(response);
+    clustersResource.listClusters(response, null, null);
 
     ListClustersResponse expected =
         ListClustersResponse.create(
@@ -116,7 +116,7 @@ public class ClustersResourceTest {
     replay(clusterManager);
 
     FakeAsyncResponse response = new FakeAsyncResponse();
-    clustersResource.listClusters(response);
+    clustersResource.listClusters(response, null, null);
 
     assertEquals(TimeoutException.class, response.getException().getClass());
   }
@@ -128,7 +128,7 @@ public class ClustersResourceTest {
     replay(clusterManager);
 
     FakeAsyncResponse response = new FakeAsyncResponse();
-    clustersResource.getCluster(response, CLUSTER_1.getClusterId());
+    clustersResource.getCluster(response, CLUSTER_1.getClusterId(), null, null);
 
     GetClusterResponse expected =
         GetClusterResponse.create(
@@ -162,7 +162,7 @@ public class ClustersResourceTest {
     replay(clusterManager);
 
     FakeAsyncResponse response = new FakeAsyncResponse();
-    clustersResource.getCluster(response, "foobar");
+    clustersResource.getCluster(response, "foobar", null, null);
 
     assertEquals(NotFoundException.class, response.getException().getClass());
   }
@@ -174,7 +174,7 @@ public class ClustersResourceTest {
     replay(clusterManager);
 
     FakeAsyncResponse response = new FakeAsyncResponse();
-    clustersResource.getCluster(response, CLUSTER_1.getClusterId());
+    clustersResource.getCluster(response, CLUSTER_1.getClusterId(), null, null);
 
     assertEquals(TimeoutException.class, response.getException().getClass());
   }

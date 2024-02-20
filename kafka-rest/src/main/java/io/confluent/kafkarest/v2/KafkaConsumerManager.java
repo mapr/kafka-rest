@@ -17,6 +17,7 @@ package io.confluent.kafkarest.v2;
 
 import static io.confluent.kafkarest.KafkaRestConfig.CONSUMER_MAX_THREADS_CONFIG;
 
+import io.confluent.kafka.schemaregistry.client.SchemaRegistryClientConfig;
 import io.confluent.kafkarest.ConsumerInstanceId;
 import io.confluent.kafkarest.ConsumerReadCallback;
 import io.confluent.kafkarest.Errors;
@@ -69,9 +70,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.concurrent.GuardedBy;
 import javax.ws.rs.core.Response;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigException;
+import org.apache.kafka.common.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -243,6 +246,11 @@ public class KafkaConsumerManager {
     // Properties props = (Properties) config.getOriginalProperties().clone();
     Properties props = config.getConsumerProperties();
     props.setProperty("group.id", group);
+    // configure default stream
+    String defaultStream = config.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
+    if (!Utils.isBlank(defaultStream)) {
+      props.put(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, defaultStream);
+    }
     // This ID we pass here has to be unique, only pass a value along if the deprecated ID field
     // was passed in. This generally shouldn't be used, but is maintained for compatibility.
     if (instanceConfig.getId() != null) {
@@ -259,6 +267,12 @@ public class KafkaConsumerManager {
     // how much time the proxy should wait before returning a response
     // and should not be propagated to the consumer
     props.setProperty("request.timeout.ms", "30000");
+
+    boolean isAuthenticationEnabled =
+        config.getBoolean(KafkaRestConfig.ENABLE_AUTHENTICATION_CONFIG);
+    if (isAuthenticationEnabled) {
+      props.setProperty(SchemaRegistryClientConfig.MAPRSASL_AUTH_CONFIG, "true");
+    }
 
     switch (instanceConfig.getFormat()) {
       case AVRO:

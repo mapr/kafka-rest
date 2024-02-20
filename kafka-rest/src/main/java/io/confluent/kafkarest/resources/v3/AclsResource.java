@@ -15,6 +15,8 @@
 
 package io.confluent.kafkarest.resources.v3;
 
+import static io.confluent.kafkarest.Errors.notSupportedByMapRStreams;
+import static io.confluent.kafkarest.Errors.throwRuntime;
 import static java.util.Objects.requireNonNull;
 
 import io.confluent.kafkarest.Errors;
@@ -87,6 +89,7 @@ public final class AclsResource {
       @QueryParam("host") @DefaultValue("") String host,
       @QueryParam("operation") @DefaultValue("any") Operation operation,
       @QueryParam("permission") @DefaultValue("any") Permission permission) {
+    throwRuntime(notSupportedByMapRStreams());
     if (resourceType == Acl.ResourceType.UNKNOWN) {
       throw new BadRequestException("resource_type cannot be UNKNOWN");
     }
@@ -161,6 +164,7 @@ public final class AclsResource {
       @PathParam("clusterId") String clusterId,
       @Valid CreateAclRequest request) {
 
+    throwRuntime(notSupportedByMapRStreams());
     if (request == null) {
       throw Errors.invalidPayloadException("Null input provided. Data is required.");
     }
@@ -215,6 +219,7 @@ public final class AclsResource {
       @QueryParam("host") @DefaultValue("") String host,
       @QueryParam("operation") @DefaultValue("unknown") Operation operation,
       @QueryParam("permission") @DefaultValue("unknown") Permission permission) {
+    throwRuntime(notSupportedByMapRStreams());
     if (resourceType == Acl.ResourceType.UNKNOWN) {
       throw new BadRequestException("resource_type cannot be unspecified or UNKNOWN");
     }

@@ -15,6 +15,8 @@
 
 package io.confluent.kafkarest.resources.v3;
 
+import static io.confluent.kafkarest.Errors.notSupportedByMapRStreams;
+import static io.confluent.kafkarest.Errors.throwRuntime;
 import static java.util.Comparator.comparing;
 import static java.util.Objects.requireNonNull;
 
@@ -66,6 +68,7 @@ public final class SearchReplicasByBrokerAction {
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
       @PathParam("brokerId") Integer brokerId) {
+    throwRuntime(notSupportedByMapRStreams());
     CompletableFuture<SearchReplicasByBrokerResponse> response =
         replicaManager
             .get()

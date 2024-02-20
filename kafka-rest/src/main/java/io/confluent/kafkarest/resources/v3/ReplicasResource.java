@@ -17,6 +17,7 @@ package io.confluent.kafkarest.resources.v3;
 
 import static java.util.Objects.requireNonNull;
 
+import io.confluent.kafkarest.Errors;
 import io.confluent.kafkarest.controllers.ReplicaManager;
 import io.confluent.kafkarest.entities.PartitionReplica;
 import io.confluent.kafkarest.entities.v3.GetReplicaResponse;
@@ -30,17 +31,19 @@ import io.confluent.kafkarest.resources.AsyncResponses;
 import io.confluent.kafkarest.response.CrnFactory;
 import io.confluent.kafkarest.response.UrlFactory;
 import io.confluent.rest.annotations.PerformanceMetric;
+import io.confluent.rest.impersonation.ImpersonationUtils;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.ws.rs.GET;
-import javax.ws.rs.NotFoundException;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 
 @Path("/v3/clusters/{clusterId}/topics/{topicName}/partitions/{partitionId}/replicas")
@@ -67,7 +70,20 @@ public final class ReplicasResource {
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
       @PathParam("topicName") String topicName,
-      @PathParam("partitionId") Integer partitionId) {
+      @PathParam("partitionId") Integer partitionId,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          listReplicas(asyncResponse, clusterId, topicName, partitionId);
+          return null;
+        },
+        auth,
+        cookie);
+  }
+
+  private void listReplicas(
+      AsyncResponse asyncResponse, String clusterId, String topicName, Integer partitionId) {
     CompletableFuture<ListReplicasResponse> response =
         replicaManager
             .get()
@@ -108,12 +124,29 @@ public final class ReplicasResource {
       @PathParam("clusterId") String clusterId,
       @PathParam("topicName") String topicName,
       @PathParam("partitionId") Integer partitionId,
-      @PathParam("brokerId") Integer brokerId) {
+      @PathParam("brokerId") Integer brokerId,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          getReplica(asyncResponse, clusterId, topicName, partitionId, brokerId);
+          return null;
+        },
+        auth,
+        cookie);
+  }
+
+  private void getReplica(
+      AsyncResponse asyncResponse,
+      String clusterId,
+      String topicName,
+      Integer partitionId,
+      Integer brokerId) {
     CompletableFuture<GetReplicaResponse> response =
         replicaManager
             .get()
             .getReplica(clusterId, topicName, partitionId, brokerId)
-            .thenApply(replica -> replica.orElseThrow(NotFoundException::new))
+            .thenApply(replica -> replica.orElseThrow(Errors::replicaNotFoundException))
             .thenApply(replica -> GetReplicaResponse.create(toReplicaData(replica)));
 
     AsyncResponses.asyncResume(asyncResponse, response);

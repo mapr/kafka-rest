@@ -38,6 +38,7 @@ import io.confluent.kafkarest.resources.AsyncResponses.AsyncResponseBuilder;
 import io.confluent.kafkarest.response.CrnFactory;
 import io.confluent.kafkarest.response.UrlFactory;
 import io.confluent.rest.annotations.PerformanceMetric;
+import io.confluent.rest.impersonation.ImpersonationUtils;
 import java.net.URI;
 import java.util.Comparator;
 import java.util.List;
@@ -52,6 +53,7 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.PATCH;
 import javax.ws.rs.POST;
@@ -61,6 +63,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -90,7 +93,20 @@ public final class TopicsResource {
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
       @QueryParam("includeAuthorizedOperations") @DefaultValue("false")
-          boolean includeAuthorizedOperations) {
+          boolean includeAuthorizedOperations,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          listTopics(asyncResponse, clusterId, includeAuthorizedOperations);
+          return null;
+        },
+        auth,
+        cookie);
+  }
+
+  private void listTopics(
+      AsyncResponse asyncResponse, String clusterId, boolean includeAuthorizedOperations) {
     CompletableFuture<ListTopicsResponse> response =
         topicManagerProvider
             .get()
@@ -124,7 +140,23 @@ public final class TopicsResource {
       @PathParam("clusterId") String clusterId,
       @PathParam("topicName") String topicName,
       @QueryParam("include_authorized_operations") @DefaultValue("false")
-          boolean includeAuthorizedOperations) {
+          boolean includeAuthorizedOperations,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          getTopic(asyncResponse, clusterId, topicName, includeAuthorizedOperations);
+          return null;
+        },
+        auth,
+        cookie);
+  }
+
+  private void getTopic(
+      AsyncResponse asyncResponse,
+      String clusterId,
+      String topicName,
+      boolean includeAuthorizedOperations) {
     CompletableFuture<GetTopicResponse> response =
         topicManagerProvider
             .get()
@@ -173,12 +205,20 @@ public final class TopicsResource {
   public void createTopic(
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
-      @Valid CreateTopicRequest request) {
+      @Valid CreateTopicRequest request,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          createTopic(asyncResponse, clusterId, request);
+          return null;
+        },
+        auth,
+        cookie);
+  }
 
-    if (request == null) {
-      throw Errors.invalidPayloadException("Request body is empty. Data is required.");
-    }
-
+  private void createTopic(
+      AsyncResponse asyncResponse, String clusterId, CreateTopicRequest request) {
     String topicName = request.getTopicName();
     try {
       org.apache.kafka.common.internals.Topic.validate(topicName);
@@ -264,7 +304,19 @@ public final class TopicsResource {
   public void deleteTopic(
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
-      @PathParam("topicName") String topicName) {
+      @PathParam("topicName") String topicName,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          deleteTopic(asyncResponse, clusterId, topicName);
+          return null;
+        },
+        auth,
+        cookie);
+  }
+
+  private void deleteTopic(AsyncResponse asyncResponse, String clusterId, String topicName) {
     CompletableFuture<Void> response = topicManagerProvider.get().deleteTopic(clusterId, topicName);
 
     AsyncResponseBuilder.from(Response.status(Status.NO_CONTENT))

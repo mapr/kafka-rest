@@ -37,13 +37,17 @@ import io.confluent.kafkarest.entities.v2.CreateConsumerInstanceRequest;
 import io.confluent.kafkarest.entities.v2.CreateConsumerInstanceResponse;
 import io.confluent.kafkarest.entities.v2.JsonConsumerRecord;
 import io.confluent.kafkarest.entities.v2.SchemaConsumerRecord;
+import io.confluent.kafkarest.entities.v2.TopicPartition;
+import io.confluent.kafkarest.entities.v2.TopicPartitionOffsetMetadata;
 import io.confluent.kafkarest.extension.ResourceAccesslistFeature.ResourceName;
+import io.confluent.kafkarest.extension.SchemaRegistryEnabled;
 import io.confluent.kafkarest.v2.BinaryKafkaConsumerState;
 import io.confluent.kafkarest.v2.JsonKafkaConsumerState;
 import io.confluent.kafkarest.v2.KafkaConsumerManager;
 import io.confluent.kafkarest.v2.KafkaConsumerState;
 import io.confluent.kafkarest.v2.SchemaKafkaConsumerState;
 import io.confluent.rest.annotations.PerformanceMetric;
+import io.confluent.rest.impersonation.ImpersonationUtils;
 import java.time.Duration;
 import java.util.List;
 import java.util.function.Function;
@@ -56,6 +60,7 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -63,6 +68,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.UriInfo;
 
 @Path("/consumers")
@@ -100,9 +106,17 @@ public final class ConsumersResource {
   @PerformanceMetric("consumer.create+v2")
   @ResourceName("api.v2.consumers.create")
   public CreateConsumerInstanceResponse createGroup(
-      @javax.ws.rs.core.Context UriInfo uriInfo,
+      final @javax.ws.rs.core.Context UriInfo uriInfo,
       final @PathParam("group") String group,
-      @Valid CreateConsumerInstanceRequest config) {
+      final @Valid CreateConsumerInstanceRequest config,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    return ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> createGroup(uriInfo, group, config), auth, cookie);
+  }
+
+  private CreateConsumerInstanceResponse createGroup(
+      UriInfo uriInfo, String group, CreateConsumerInstanceRequest config) {
     if (config == null) {
       config = CreateConsumerInstanceRequest.PROTOTYPE;
     }
@@ -122,8 +136,17 @@ public final class ConsumersResource {
   @PerformanceMetric("consumer.delete+v2")
   @ResourceName("api.v2.consumers.delete")
   public void deleteGroup(
-      final @PathParam("group") String group, final @PathParam("instance") String instance) {
-    context.get().getKafkaConsumerManager().deleteConsumer(group, instance);
+      final @PathParam("group") String group,
+      final @PathParam("instance") String instance,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          context.get().getKafkaConsumerManager().deleteConsumer(group, instance);
+          return null;
+        },
+        auth,
+        cookie);
   }
 
   @POST
@@ -134,7 +157,20 @@ public final class ConsumersResource {
       @javax.ws.rs.core.Context UriInfo uriInfo,
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
-      @Valid @NotNull ConsumerSubscriptionRecord subscription) {
+      final @Valid @NotNull ConsumerSubscriptionRecord subscription,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          subscribe(uriInfo, group, instance, subscription);
+          return null;
+        },
+        auth,
+        cookie);
+  }
+
+  private void subscribe(
+      UriInfo uriInfo, String group, String instance, ConsumerSubscriptionRecord subscription) {
     try {
       context.get().getKafkaConsumerManager().subscribe(group, instance, subscription);
     } catch (java.lang.IllegalStateException e) {
@@ -149,8 +185,11 @@ public final class ConsumersResource {
   public ConsumerSubscriptionResponse subscription(
       @javax.ws.rs.core.Context UriInfo uriInfo,
       final @PathParam("group") String group,
-      final @PathParam("instance") String instance) {
-    return context.get().getKafkaConsumerManager().subscription(group, instance);
+      final @PathParam("instance") String instance,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    return ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> context.get().getKafkaConsumerManager().subscription(group, instance), auth, cookie);
   }
 
   @DELETE
@@ -160,8 +199,16 @@ public final class ConsumersResource {
   public void unsubscribe(
       @javax.ws.rs.core.Context UriInfo uriInfo,
       final @PathParam("group") String group,
-      final @PathParam("instance") String instance) {
-    context.get().getKafkaConsumerManager().unsubscribe(group, instance);
+      final @PathParam("instance") String instance,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          context.get().getKafkaConsumerManager().unsubscribe(group, instance);
+          return null;
+        },
+        auth,
+        cookie);
   }
 
   @GET
@@ -173,16 +220,24 @@ public final class ConsumersResource {
       final @Suspended AsyncResponse asyncResponse,
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
-      @QueryParam("timeout") @DefaultValue("-1") long timeoutMs,
-      @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes) {
-    readRecords(
-        asyncResponse,
-        group,
-        instance,
-        Duration.ofMillis(timeoutMs),
-        maxBytes,
-        BinaryKafkaConsumerState.class,
-        BinaryConsumerRecord::fromConsumerRecord);
+      final @QueryParam("timeout") @DefaultValue("-1") long timeoutMs,
+      final @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          readRecords(
+              asyncResponse,
+              group,
+              instance,
+              Duration.ofMillis(timeoutMs),
+              maxBytes,
+              BinaryKafkaConsumerState.class,
+              BinaryConsumerRecord::fromConsumerRecord);
+          return null;
+        },
+        auth,
+        cookie);
   }
 
   @GET
@@ -194,20 +249,29 @@ public final class ConsumersResource {
       final @Suspended AsyncResponse asyncResponse,
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
-      @QueryParam("timeout") @DefaultValue("-1") long timeoutMs,
-      @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes) {
-    readRecords(
-        asyncResponse,
-        group,
-        instance,
-        Duration.ofMillis(timeoutMs),
-        maxBytes,
-        JsonKafkaConsumerState.class,
-        JsonConsumerRecord::fromConsumerRecord);
+      final @QueryParam("timeout") @DefaultValue("-1") long timeoutMs,
+      final @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          readRecords(
+              asyncResponse,
+              group,
+              instance,
+              Duration.ofMillis(timeoutMs),
+              maxBytes,
+              JsonKafkaConsumerState.class,
+              JsonConsumerRecord::fromConsumerRecord);
+          return null;
+        },
+        auth,
+        cookie);
   }
 
   @GET
   @Path("/{group}/instances/{instance}/records")
+  @SchemaRegistryEnabled
   @PerformanceMetric("consumer.records.read-avro+v2")
   @Produces({Versions.KAFKA_V2_JSON_AVRO_WEIGHTED_LOW})
   @ResourceName("api.v2.consumers.consume-avro")
@@ -216,15 +280,23 @@ public final class ConsumersResource {
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
       @QueryParam("timeout") @DefaultValue("-1") long timeoutMs,
-      @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes) {
-    readRecords(
-        asyncResponse,
-        group,
-        instance,
-        Duration.ofMillis(timeoutMs),
-        maxBytes,
-        SchemaKafkaConsumerState.class,
-        SchemaConsumerRecord::fromConsumerRecord);
+      @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          readRecords(
+              asyncResponse,
+              group,
+              instance,
+              Duration.ofMillis(timeoutMs),
+              maxBytes,
+              SchemaKafkaConsumerState.class,
+              SchemaConsumerRecord::fromConsumerRecord);
+          return null;
+        },
+        auth,
+        cookie);
   }
 
   @GET
@@ -237,15 +309,23 @@ public final class ConsumersResource {
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
       @QueryParam("timeout") @DefaultValue("-1") long timeoutMs,
-      @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes) {
-    readRecords(
-        asyncResponse,
-        group,
-        instance,
-        Duration.ofMillis(timeoutMs),
-        maxBytes,
-        SchemaKafkaConsumerState.class,
-        SchemaConsumerRecord::fromConsumerRecord);
+      @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          readRecords(
+              asyncResponse,
+              group,
+              instance,
+              Duration.ofMillis(timeoutMs),
+              maxBytes,
+              SchemaKafkaConsumerState.class,
+              SchemaConsumerRecord::fromConsumerRecord);
+          return null;
+        },
+        auth,
+        cookie);
   }
 
   @GET
@@ -258,15 +338,23 @@ public final class ConsumersResource {
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
       @QueryParam("timeout") @DefaultValue("-1") long timeoutMs,
-      @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes) {
-    readRecords(
-        asyncResponse,
-        group,
-        instance,
-        Duration.ofMillis(timeoutMs),
-        maxBytes,
-        SchemaKafkaConsumerState.class,
-        SchemaConsumerRecord::fromConsumerRecord);
+      @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          readRecords(
+              asyncResponse,
+              group,
+              instance,
+              Duration.ofMillis(timeoutMs),
+              maxBytes,
+              SchemaKafkaConsumerState.class,
+              SchemaConsumerRecord::fromConsumerRecord);
+          return null;
+        },
+        auth,
+        cookie);
   }
 
   @POST
@@ -277,26 +365,50 @@ public final class ConsumersResource {
       final @Suspended AsyncResponse asyncResponse,
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
-      @QueryParam("async") @DefaultValue("false") String async,
-      @Valid ConsumerOffsetCommitRequest offsetCommitRequest) {
-    context
-        .get()
-        .getKafkaConsumerManager()
-        .commitOffsets(
-            group,
-            instance,
-            async,
-            offsetCommitRequest,
-            new KafkaConsumerManager.CommitCallback() {
-              @Override
-              public void onCompletion(List<TopicPartitionOffset> offsets, Exception e) {
-                if (e != null) {
-                  asyncResponse.resume(e);
-                } else {
-                  asyncResponse.resume(CommitOffsetsResponse.fromOffsets(offsets));
+      final @QueryParam("async") @DefaultValue("false") String async,
+      final @Valid ConsumerOffsetCommitRequest offsetCommitRequest,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          commitOffsets(asyncResponse, group, instance, async, offsetCommitRequest);
+          return null;
+        },
+        auth,
+        cookie);
+  }
+
+  private void commitOffsets(
+      AsyncResponse asyncResponse,
+      String group,
+      String instance,
+      String async,
+      ConsumerOffsetCommitRequest offsetCommitRequest) {
+    try {
+      if (offsetCommitRequest != null) {
+        checkIfAllTopicPartitionOffsetsIsValidMetadata(offsetCommitRequest.getOffsets());
+      }
+      context
+          .get()
+          .getKafkaConsumerManager()
+          .commitOffsets(
+              group,
+              instance,
+              async,
+              offsetCommitRequest,
+              new KafkaConsumerManager.CommitCallback() {
+                @Override
+                public void onCompletion(List<TopicPartitionOffset> offsets, Exception e) {
+                  if (e != null) {
+                    asyncResponse.resume(e);
+                  } else {
+                    asyncResponse.resume(CommitOffsetsResponse.fromOffsets(offsets));
+                  }
                 }
-              }
-            });
+              });
+    } catch (java.lang.IllegalStateException e) {
+      throw Errors.illegalStateException(e);
+    }
   }
 
   @GET
@@ -306,11 +418,24 @@ public final class ConsumersResource {
   public ConsumerCommittedResponse committedOffsets(
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
-      @Valid ConsumerCommittedRequest request) {
-    if (request == null) {
-      throw Errors.partitionNotFoundException();
+      final @Valid @NotNull ConsumerCommittedRequest request,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    return ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> committedOffsets(group, instance, request), auth, cookie);
+  }
+
+  private ConsumerCommittedResponse committedOffsets(
+      String group, String instance, ConsumerCommittedRequest request) {
+    try {
+      if (request == null) {
+        throw Errors.partitionNotFoundException();
+      }
+      checkIfAllTopicPartitionsIsValid(request.getPartitions());
+      return context.get().getKafkaConsumerManager().committed(group, instance, request);
+    } catch (java.lang.IllegalStateException e) {
+      throw Errors.illegalStateException(e);
     }
-    return context.get().getKafkaConsumerManager().committed(group, instance, request);
   }
 
   @POST
@@ -321,8 +446,24 @@ public final class ConsumersResource {
       @javax.ws.rs.core.Context UriInfo uriInfo,
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
-      @Valid @NotNull ConsumerSeekToRequest seekToRequest) {
+      final @Valid @NotNull ConsumerSeekToRequest seekToRequest,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          seekToBeginning(uriInfo, group, instance, seekToRequest);
+          return null;
+        },
+        auth,
+        cookie);
+  }
+
+  private void seekToBeginning(
+      UriInfo uriInfo, String group, String instance, ConsumerSeekToRequest seekToRequest) {
     try {
+      if (seekToRequest != null) {
+        checkIfAllTopicPartitionsIsValid(seekToRequest.getPartitions());
+      }
       context.get().getKafkaConsumerManager().seekToBeginning(group, instance, seekToRequest);
     } catch (java.lang.IllegalStateException e) {
       throw Errors.illegalStateException(e);
@@ -337,8 +478,24 @@ public final class ConsumersResource {
       @javax.ws.rs.core.Context UriInfo uriInfo,
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
-      @Valid @NotNull ConsumerSeekToRequest seekToRequest) {
+      final @Valid @NotNull ConsumerSeekToRequest seekToRequest,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          seekToEnd(uriInfo, group, instance, seekToRequest);
+          return null;
+        },
+        auth,
+        cookie);
+  }
+
+  private void seekToEnd(
+      UriInfo uriInfo, String group, String instance, ConsumerSeekToRequest seekToRequest) {
     try {
+      if (seekToRequest != null) {
+        checkIfAllTopicPartitionsIsValid(seekToRequest.getPartitions());
+      }
       context.get().getKafkaConsumerManager().seekToEnd(group, instance, seekToRequest);
     } catch (java.lang.IllegalStateException e) {
       throw Errors.illegalStateException(e);
@@ -353,8 +510,24 @@ public final class ConsumersResource {
       @javax.ws.rs.core.Context UriInfo uriInfo,
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
-      @Valid @NotNull ConsumerSeekRequest request) {
+      final @Valid @NotNull ConsumerSeekRequest request,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          seekToOffset(uriInfo, group, instance, request);
+          return null;
+        },
+        auth,
+        cookie);
+  }
+
+  private void seekToOffset(
+      UriInfo uriInfo, String group, String instance, ConsumerSeekRequest request) {
     try {
+      if (request != null) {
+        checkIfAllTopicPartitionOffsetsIsValid(request.getOffsets());
+      }
       context.get().getKafkaConsumerManager().seek(group, instance, request);
     } catch (java.lang.IllegalStateException e) {
       throw Errors.illegalStateException(e);
@@ -369,7 +542,20 @@ public final class ConsumersResource {
       @javax.ws.rs.core.Context UriInfo uriInfo,
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
-      @Valid @NotNull ConsumerAssignmentRequest assignmentRequest) {
+      final @Valid @NotNull ConsumerAssignmentRequest assignmentRequest,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> {
+          assign(uriInfo, group, instance, assignmentRequest);
+          return null;
+        },
+        auth,
+        cookie);
+  }
+
+  private void assign(
+      UriInfo uriInfo, String group, String instance, ConsumerAssignmentRequest assignmentRequest) {
     try {
       context.get().getKafkaConsumerManager().assign(group, instance, assignmentRequest);
     } catch (java.lang.IllegalStateException e) {
@@ -384,8 +570,19 @@ public final class ConsumersResource {
   public ConsumerAssignmentResponse assignment(
       @javax.ws.rs.core.Context UriInfo uriInfo,
       final @PathParam("group") String group,
-      final @PathParam("instance") String instance) {
-    return context.get().getKafkaConsumerManager().assignment(group, instance);
+      final @PathParam("instance") String instance,
+      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
+      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+    return ImpersonationUtils.runAsUserIfImpersonationEnabled(
+        () -> assignment(uriInfo, group, instance), auth, cookie);
+  }
+
+  private ConsumerAssignmentResponse assignment(UriInfo uriInfo, String group, String instance) {
+    try {
+      return context.get().getKafkaConsumerManager().assignment(group, instance);
+    } catch (java.lang.IllegalStateException e) {
+      throw Errors.illegalStateException(e);
+    }
   }
 
   private <KafkaKeyT, KafkaValueT, ClientKeyT, ClientValueT> void readRecords(
@@ -420,5 +617,34 @@ public final class ConsumersResource {
                 }
               }
             });
+  }
+
+  private void checkIfAllTopicPartitionOffsetsIsValid(
+      List<ConsumerSeekRequest.PartitionOffset> offsets) {
+    offsets.forEach(
+        x ->
+            context
+                .get()
+                .getResourcesExistenceChecker()
+                .checkIfTopicAndPartitionExists(x.getTopic(), x.getPartition()));
+  }
+
+  private void checkIfAllTopicPartitionOffsetsIsValidMetadata(
+      List<TopicPartitionOffsetMetadata> offsets) {
+    offsets.forEach(
+        x ->
+            context
+                .get()
+                .getResourcesExistenceChecker()
+                .checkIfTopicAndPartitionExists(x.getTopic(), x.getPartition()));
+  }
+
+  private void checkIfAllTopicPartitionsIsValid(List<TopicPartition> partitions) {
+    partitions.forEach(
+        x ->
+            context
+                .get()
+                .getResourcesExistenceChecker()
+                .checkIfTopicAndPartitionExists(x.getTopic(), x.getPartition()));
   }
 }

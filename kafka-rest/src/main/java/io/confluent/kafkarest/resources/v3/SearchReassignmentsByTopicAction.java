@@ -15,6 +15,8 @@
 
 package io.confluent.kafkarest.resources.v3;
 
+import static io.confluent.kafkarest.Errors.notSupportedByMapRStreams;
+import static io.confluent.kafkarest.Errors.throwRuntime;
 import static java.util.Objects.requireNonNull;
 
 import io.confluent.kafkarest.controllers.ReassignmentManager;
@@ -67,6 +69,7 @@ public final class SearchReassignmentsByTopicAction {
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
       @PathParam("topicName") String topicName) {
+    throwRuntime(notSupportedByMapRStreams());
     CompletableFuture<SearchReassignmentsByTopicResponse> response =
         reassignmentManager
             .get()

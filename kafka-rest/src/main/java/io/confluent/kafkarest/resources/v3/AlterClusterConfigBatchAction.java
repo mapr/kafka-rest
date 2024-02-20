@@ -15,6 +15,8 @@
 
 package io.confluent.kafkarest.resources.v3;
 
+import static io.confluent.kafkarest.Errors.notSupportedByMapRStreams;
+import static io.confluent.kafkarest.Errors.throwRuntime;
 import static java.util.Objects.requireNonNull;
 
 import io.confluent.kafkarest.controllers.ClusterConfigManager;
@@ -59,6 +61,7 @@ public final class AlterClusterConfigBatchAction {
       @PathParam("clusterId") String clusterId,
       @PathParam("config_type") ClusterConfig.Type configType,
       @Valid AlterClusterConfigBatchRequest request) {
+    throwRuntime(notSupportedByMapRStreams());
     CompletableFuture<Void> response =
         clusterConfigManager
             .get()

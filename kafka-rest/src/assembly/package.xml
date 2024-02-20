@@ -17,7 +17,6 @@
             <directory>${project.parent.basedir}</directory>
             <outputDirectory>share/doc/kafka-rest/</outputDirectory>
             <includes>
-                <include>version.txt</include>
                 <include>README*</include>
                 <include>LICENSE*</include>
                 <include>NOTICE*</include>
@@ -33,7 +32,7 @@
         </fileSet>
         <fileSet>
             <directory>${project.parent.basedir}/config</directory>
-            <outputDirectory>etc/kafka-rest</outputDirectory>
+            <outputDirectory>conf.new</outputDirectory>
             <includes>
                 <include>*</include>
             </includes>
@@ -45,7 +44,6 @@
             <useProjectArtifact>true</useProjectArtifact>
             <useTransitiveFiltering>true</useTransitiveFiltering>
             <excludes>
-                <exclude>io.confluent:rest-utils</exclude>
                 <exclude>org.slf4j:slf4j-log4j12</exclude>
                 <exclude>org.slf4j:slf4j-reload4j</exclude>
             </excludes>

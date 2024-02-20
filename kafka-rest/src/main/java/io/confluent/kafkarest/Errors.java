@@ -32,12 +32,31 @@ public class Errors {
   public static final int KAFKA_RETRIABLE_ERROR_ERROR_CODE =
       KafkaExceptionMapper.KAFKA_RETRIABLE_ERROR_ERROR_CODE;
 
+  public static final String NO_PERMISSIONS_ERROR_MESSAGE =
+      "You have no permissions to perform that action.";
+  public static final int NO_PERMISSIONS_ERROR_CODE = 403001;
+
+  public static void throwRuntime(RuntimeException e) {
+    throw e;
+  }
+
+  public static RestException noPermissionsException() {
+    return new RestException(
+        NO_PERMISSIONS_ERROR_MESSAGE,
+        Response.Status.FORBIDDEN.getStatusCode(),
+        NO_PERMISSIONS_ERROR_CODE);
+  }
+
   public static final String TOPIC_NOT_FOUND_MESSAGE = "Topic not found.";
   public static final int TOPIC_NOT_FOUND_ERROR_CODE =
       KafkaExceptionMapper.TOPIC_NOT_FOUND_ERROR_CODE;
 
   public static RestException topicNotFoundException() {
-    return new RestNotFoundException(TOPIC_NOT_FOUND_MESSAGE, TOPIC_NOT_FOUND_ERROR_CODE);
+    return topicNotFoundException(TOPIC_NOT_FOUND_MESSAGE);
+  }
+
+  public static RestException topicNotFoundException(String message) {
+    return new RestNotFoundException(message, TOPIC_NOT_FOUND_ERROR_CODE);
   }
 
   public static final String PARTITION_NOT_FOUND_MESSAGE = "Partition not found.";
@@ -45,7 +64,11 @@ public class Errors {
       KafkaExceptionMapper.PARTITION_NOT_FOUND_ERROR_CODE;
 
   public static RestException partitionNotFoundException() {
-    return new RestNotFoundException(PARTITION_NOT_FOUND_MESSAGE, PARTITION_NOT_FOUND_ERROR_CODE);
+    return partitionNotFoundException(PARTITION_NOT_FOUND_MESSAGE);
+  }
+
+  public static RestException partitionNotFoundException(String message) {
+    return new RestNotFoundException(message, PARTITION_NOT_FOUND_ERROR_CODE);
   }
 
   public static final String CONSUMER_INSTANCE_NOT_FOUND_MESSAGE = "Consumer instance not found.";
@@ -64,6 +87,35 @@ public class Errors {
 
   public static RestException leaderNotAvailableException() {
     return new RestNotFoundException(LEADER_NOT_AVAILABLE_MESSAGE, LEADER_NOT_AVAILABLE_ERROR_CODE);
+  }
+
+  public static final String STREAM_NOT_FOUND_MESSAGE = "Stream not found.";
+  public static final int STREAM_NOT_FOUND_ERROR_CODE = 40405;
+
+  public static RestException streamNotFoundException() {
+    return streamNotFoundException(STREAM_NOT_FOUND_MESSAGE);
+  }
+
+  public static RestException streamNotFoundException(String message) {
+    return new RestNotFoundException(message, STREAM_NOT_FOUND_ERROR_CODE);
+  }
+
+  public static final String CLUSTER_NOT_FOUND_MESSAGE = "Cluster not found.";
+  public static final int CLUSTER_NOT_FOUND_ERROR_CODE = 40406;
+
+  public static RestException clusterNotFoundException() {
+    return clusterNotFoundException(CLUSTER_NOT_FOUND_MESSAGE);
+  }
+
+  public static RestException clusterNotFoundException(String message) {
+    return new RestNotFoundException(message, CLUSTER_NOT_FOUND_ERROR_CODE);
+  }
+
+  public static final String REPLICA_NOT_FOUND_MESSAGE = "Replica not found.";
+  public static final int REPLICA_NOT_FOUND_ERROR_CODE = 40407;
+
+  public static RestException replicaNotFoundException() {
+    return new RestNotFoundException(REPLICA_NOT_FOUND_MESSAGE, REPLICA_NOT_FOUND_ERROR_CODE);
   }
 
   public static final String CONSUMER_FORMAT_MISMATCH_MESSAGE =
@@ -203,9 +255,6 @@ public class Errors {
     return new RestConstraintViolationException(cause, PRODUCE_BATCH_EXCEPTION_ERROR_CODE);
   }
 
-  public static final String ZOOKEEPER_ERROR_MESSAGE = "Zookeeper error: ";
-  public static final int ZOOKEEPER_ERROR_ERROR_CODE = 50001;
-
   // This is a catch-all for Kafka exceptions that can't otherwise be easily classified. For
   // producer operations this will be embedded in the per-message response. For consumer errors,
   // these are returned in the standard error format
@@ -233,5 +282,28 @@ public class Errors {
   public static RestServerErrorException simpleConsumerPoolTimeoutException() {
     return new RestServerErrorException(
         NO_SIMPLE_CONSUMER_AVAILABLE_ERROR_MESSAGE, NO_SIMPLE_CONSUMER_AVAILABLE_ERROR_CODE);
+  }
+
+  public static final String NOT_SUPPORTED_API_BY_STREAMS_ERROR_MESSAGE =
+      "HPE Ezmeral Data Fabric Event Data Streams does not currently support this API. ";
+  public static final int NOT_SUPPORTED_API_BY_STREAMS_ERROR_CODE = 80001;
+
+  public static RestConstraintViolationException notSupportedByMapRStreams() {
+    return new RestConstraintViolationException(
+        NOT_SUPPORTED_API_BY_STREAMS_ERROR_MESSAGE, NOT_SUPPORTED_API_BY_STREAMS_ERROR_CODE);
+  }
+
+  public static RestConstraintViolationException notSupportedByMapRStreams(String message) {
+    return new RestConstraintViolationException(
+        NOT_SUPPORTED_API_BY_STREAMS_ERROR_MESSAGE + message,
+        NOT_SUPPORTED_API_BY_STREAMS_ERROR_CODE);
+  }
+
+  private static final int SERVER_LOGIN_ERROR_CODE =
+      Response.Status.SERVICE_UNAVAILABLE.getStatusCode();
+  private static final String SERVER_LOGIN_ERROR_MESSAGE = "Login fails";
+
+  public static RestServerErrorException serverLoginException(Throwable e) {
+    return new RestServerErrorException(SERVER_LOGIN_ERROR_MESSAGE, SERVER_LOGIN_ERROR_CODE, e);
   }
 }

@@ -15,6 +15,9 @@
 
 package io.confluent.kafkarest.resources;
 
+import io.confluent.kafkarest.Errors;
+import io.confluent.kafkarest.KafkaRestConfig;
+import io.confluent.kafkarest.common.KafkaFutures;
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
@@ -24,6 +27,8 @@ import javax.annotation.Nullable;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
+import org.apache.kafka.common.KafkaException;
+import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,6 +103,19 @@ public final class AsyncResponses {
 
       entityFuture.whenComplete(
           (entity, exception) -> {
+            if (exception != null
+                && exception.getCause() != null
+                && exception.getCause() instanceof KafkaException) {
+              if (exception instanceof UnknownTopicOrPartitionException) {
+                exception = KafkaFutures.convertUnknownResourceException(exception);
+              } else if (exception instanceof KafkaException) {
+                exception =
+                    Errors.notSupportedByMapRStreams(
+                        "Please try to set "
+                            + KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG
+                            + " to return topics for default stream");
+              }
+            }
             if (exception == null) {
               if (statusFunction != null) {
                 responseBuilder.status(statusFunction.apply(entity));

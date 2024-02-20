@@ -15,6 +15,8 @@
 
 package io.confluent.kafkarest.resources.v3;
 
+import static io.confluent.kafkarest.Errors.notSupportedByMapRStreams;
+import static io.confluent.kafkarest.Errors.throwRuntime;
 import static java.util.Objects.requireNonNull;
 
 import io.confluent.kafkarest.controllers.BrokerManager;
@@ -65,6 +67,7 @@ public final class BrokersResource {
   @ResourceName("api.v3.brokers.list")
   public void listBrokers(
       @Suspended AsyncResponse asyncResponse, @PathParam("clusterId") String clusterId) {
+    throwRuntime(notSupportedByMapRStreams());
     CompletableFuture<ListBrokersResponse> response =
         brokerManager
             .get()
@@ -96,6 +99,7 @@ public final class BrokersResource {
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
       @PathParam("brokerId") Integer brokerId) {
+    throwRuntime(notSupportedByMapRStreams());
     CompletableFuture<GetBrokerResponse> response =
         brokerManager
             .get()

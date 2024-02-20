@@ -146,4 +146,8 @@
   <allow class="kafka.utils.TestUtils" />
   <allow class="kafka.zk.EmbeddedZookeeper" />
 
+  <!-- MapR-specific -->
+  <allow pkg="com.mapr" />
+  <allow pkg="org.apache.hadoop" />
+  <allow class="org.apache.kafka.common.utils.Utils" />
 </import-control>

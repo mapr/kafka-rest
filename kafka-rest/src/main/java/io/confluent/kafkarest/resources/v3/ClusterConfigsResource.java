@@ -15,6 +15,8 @@
 
 package io.confluent.kafkarest.resources.v3;
 
+import static io.confluent.kafkarest.Errors.notSupportedByMapRStreams;
+import static io.confluent.kafkarest.Errors.throwRuntime;
 import static java.util.Objects.requireNonNull;
 
 import io.confluent.kafkarest.controllers.ClusterConfigManager;
@@ -78,6 +80,7 @@ public final class ClusterConfigsResource {
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
       @PathParam("config_type") ClusterConfig.Type configType) {
+    throwRuntime(notSupportedByMapRStreams());
     CompletableFuture<ListClusterConfigsResponse> response =
         clusterConfigManager
             .get()
@@ -118,6 +121,7 @@ public final class ClusterConfigsResource {
       @PathParam("clusterId") String clusterId,
       @PathParam("config_type") ClusterConfig.Type configType,
       @PathParam("name") String name) {
+    throwRuntime(notSupportedByMapRStreams());
     CompletableFuture<GetClusterConfigResponse> response =
         clusterConfigManager
             .get()
@@ -140,6 +144,7 @@ public final class ClusterConfigsResource {
       @PathParam("config_type") ClusterConfig.Type configType,
       @PathParam("name") String name,
       @Valid UpdateClusterConfigRequest request) {
+    throwRuntime(notSupportedByMapRStreams());
     String newValue = request.getValue().orElse(null);
 
     CompletableFuture<Void> response =
@@ -160,6 +165,7 @@ public final class ClusterConfigsResource {
       @PathParam("clusterId") String clusterId,
       @PathParam("config_type") ClusterConfig.Type configType,
       @PathParam("name") String name) {
+    throwRuntime(notSupportedByMapRStreams());
     CompletableFuture<Void> response =
         clusterConfigManager.get().deleteClusterConfig(clusterId, configType, name);
 

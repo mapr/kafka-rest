@@ -93,7 +93,7 @@ public class ReplicasResourceTest {
     replay(replicaManager);
 
     FakeAsyncResponse response = new FakeAsyncResponse();
-    replicasResource.listReplicas(response, CLUSTER_ID, TOPIC_NAME, PARTITION_ID);
+    replicasResource.listReplicas(response, CLUSTER_ID, TOPIC_NAME, PARTITION_ID, null, null);
 
     ListReplicasResponse expected =
         ListReplicasResponse.create(
@@ -173,7 +173,7 @@ public class ReplicasResourceTest {
     replay(replicaManager);
 
     FakeAsyncResponse response = new FakeAsyncResponse();
-    replicasResource.listReplicas(response, CLUSTER_ID, TOPIC_NAME, PARTITION_ID);
+    replicasResource.listReplicas(response, CLUSTER_ID, TOPIC_NAME, PARTITION_ID, null, null);
 
     assertEquals(NotFoundException.class, response.getException().getClass());
   }
@@ -186,7 +186,7 @@ public class ReplicasResourceTest {
 
     FakeAsyncResponse response = new FakeAsyncResponse();
     replicasResource.getReplica(
-        response, CLUSTER_ID, TOPIC_NAME, PARTITION_ID, REPLICA_1.getBrokerId());
+        response, CLUSTER_ID, TOPIC_NAME, PARTITION_ID, REPLICA_1.getBrokerId(), null, null);
 
     GetReplicaResponse expected =
         GetReplicaResponse.create(
@@ -217,7 +217,7 @@ public class ReplicasResourceTest {
 
     FakeAsyncResponse response = new FakeAsyncResponse();
     replicasResource.getReplica(
-        response, CLUSTER_ID, TOPIC_NAME, PARTITION_ID, REPLICA_1.getBrokerId());
+        response, CLUSTER_ID, TOPIC_NAME, PARTITION_ID, REPLICA_1.getBrokerId(), null, null);
 
     assertEquals(NotFoundException.class, response.getException().getClass());
   }
@@ -230,7 +230,7 @@ public class ReplicasResourceTest {
 
     FakeAsyncResponse response = new FakeAsyncResponse();
     replicasResource.getReplica(
-        response, CLUSTER_ID, TOPIC_NAME, PARTITION_ID, REPLICA_1.getBrokerId());
+        response, CLUSTER_ID, TOPIC_NAME, PARTITION_ID, REPLICA_1.getBrokerId(), null, null);
 
     assertEquals(NotFoundException.class, response.getException().getClass());
   }
