@@ -246,11 +246,7 @@ public class KafkaConsumerManager {
     // Properties props = (Properties) config.getOriginalProperties().clone();
     Properties props = config.getConsumerProperties();
     props.setProperty("group.id", group);
-    // configure default stream
-    String defaultStream = config.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
-    if (!Utils.isBlank(defaultStream)) {
-      props.put(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, defaultStream);
-    }
+    addMaprConfigs(props);
     // This ID we pass here has to be unique, only pass a value along if the deprecated ID field
     // was passed in. This generally shouldn't be used, but is maintained for compatibility.
     if (instanceConfig.getId() != null) {
@@ -267,12 +263,6 @@ public class KafkaConsumerManager {
     // how much time the proxy should wait before returning a response
     // and should not be propagated to the consumer
     props.setProperty("request.timeout.ms", "30000");
-
-    boolean isAuthenticationEnabled =
-        config.getBoolean(KafkaRestConfig.ENABLE_AUTHENTICATION_CONFIG);
-    if (isAuthenticationEnabled) {
-      props.setProperty(SchemaRegistryClientConfig.MAPRSASL_AUTH_CONFIG, "true");
-    }
 
     switch (instanceConfig.getFormat()) {
       case AVRO:
@@ -304,6 +294,19 @@ public class KafkaConsumerManager {
     }
 
     return props;
+  }
+
+  private void addMaprConfigs(Properties props) {
+    // configure default stream
+    String defaultStream = config.getString(KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG);
+    if (!Utils.isBlank(defaultStream)) {
+      props.put(ConsumerConfig.STREAMS_CONSUMER_DEFAULT_STREAM_CONFIG, defaultStream);
+    }
+    boolean isAuthenticationEnabled =
+        config.getBoolean(KafkaRestConfig.ENABLE_AUTHENTICATION_CONFIG);
+    if (isAuthenticationEnabled) {
+      props.setProperty(SchemaRegistryClientConfig.MAPRSASL_AUTH_CONFIG, "true");
+    }
   }
 
   private KafkaConsumerState createConsumerState(

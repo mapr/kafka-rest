@@ -83,12 +83,14 @@ abstract class AbstractProduceAction {
             /* valueSchema= */ Optional.empty(),
             request.getRecords());
 
-    if (partition.isPresent())
+    if (partition.isPresent()) {
       context
           .get()
           .getResourcesExistenceChecker()
           .checkIfTopicAndPartitionExists(topicName, partition.get());
-    else context.get().getResourcesExistenceChecker().checkIfTopicExists(topicName);
+    } else {
+      context.get().getResourcesExistenceChecker().checkIfTopicExists(topicName);
+    }
 
     List<CompletableFuture<ProduceResult>> resultFutures = doProduce(topicName, serialized);
 

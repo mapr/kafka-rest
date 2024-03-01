@@ -103,19 +103,7 @@ public final class AsyncResponses {
 
       entityFuture.whenComplete(
           (entity, exception) -> {
-            if (exception != null
-                && exception.getCause() != null
-                && exception.getCause() instanceof KafkaException) {
-              if (exception instanceof UnknownTopicOrPartitionException) {
-                exception = KafkaFutures.convertUnknownResourceException(exception);
-              } else if (exception instanceof KafkaException) {
-                exception =
-                    Errors.notSupportedByMapRStreams(
-                        "Please try to set "
-                            + KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG
-                            + " to return topics for default stream");
-              }
-            }
+            exception = handleMaprException(exception);
             if (exception == null) {
               if (statusFunction != null) {
                 responseBuilder.status(statusFunction.apply(entity));
@@ -141,6 +129,22 @@ public final class AsyncResponses {
               asyncResponse.resume(exception);
             }
           });
+    }
+
+    private Throwable handleMaprException(Throwable exception) {
+      if (exception != null
+          && exception.getCause() != null
+          && exception.getCause() instanceof KafkaException) {
+        if (exception instanceof UnknownTopicOrPartitionException) {
+          return KafkaFutures.convertUnknownResourceException(exception);
+        } else if (exception instanceof KafkaException) {
+          return Errors.notSupportedByMapRStreams(
+              "Please try to set "
+                  + KafkaRestConfig.STREAMS_DEFAULT_STREAM_CONFIG
+                  + " to return topics for default stream");
+        }
+      }
+      return exception;
     }
   }
 }
