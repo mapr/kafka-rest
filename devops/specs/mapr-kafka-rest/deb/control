@@ -3,7 +3,7 @@ Version: __RELEASE_VERSION__
 Section: base
 Priority: optional
 Architecture: all
-Depends: mapr-client (>= 7.1.0) | mapr-core (>= 7.1.0) , mapr-kafka (>= 2.6.1)
+Depends: mapr-client (>= 7.7.0) | mapr-core (>= 7.7.0) , mapr-kafka (>= 3.6.1)
 #Breaks:
 #Provides:
 #Conflicts:
