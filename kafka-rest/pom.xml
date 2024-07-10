@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.confluent</groupId>
         <artifactId>kafka-rest-parent</artifactId>
-        <version>7.6.0.0-eep-930-SNAPSHOT</version>
+        <version>7.6.0.0-eep-930</version>
     </parent>
 
     <artifactId>kafka-rest</artifactId>
@@ -59,7 +59,7 @@
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>connect-runtime</artifactId>
-            <version>3.6.1.0-eep-930-SNAPSHOT</version>
+            <version>3.6.1.0-eep-930</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -117,7 +117,7 @@
         <dependency>
             <groupId>org.apache.zookeeper</groupId>
             <artifactId>zookeeper</artifactId>
-            <version>3.5.6-mapr-SNAPSHOT</version>
+            <version>3.8.3.0-mapr-2407</version>
             <scope>provided</scope>
             <exclusions>
                 <exclusion>
@@ -137,7 +137,7 @@
         <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-common</artifactId>
-            <version>3.3.4.200-eep-911-SNAPSHOT</version>
+            <version>3.3.5.400-eep-930</version>
             <scope>provided</scope>
             <exclusions>
                 <exclusion>
@@ -162,7 +162,7 @@
         <dependency>
             <groupId>com.mapr.security</groupId>
             <artifactId>mapr-security-web</artifactId>
-            <version>7.1.0.0-mapr-SNAPSHOT</version>
+            <version>7.1.0.0-mapr</version>
             <scope>provided</scope>
             <exclusions>
                 <exclusion>
