@@ -48,12 +48,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Provider;
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
-import javax.ws.rs.HeaderParam;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.PATCH;
 import javax.ws.rs.POST;
@@ -63,7 +63,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
-import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -90,19 +90,17 @@ public final class TopicsResource {
   @PerformanceMetric("v3.topics.list")
   @ResourceName("api.v3.topics.list")
   public void listTopics(
+      @Context HttpServletRequest httpServletRequest,
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
       @QueryParam("includeAuthorizedOperations") @DefaultValue("false")
-          boolean includeAuthorizedOperations,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+          boolean includeAuthorizedOperations) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           listTopics(asyncResponse, clusterId, includeAuthorizedOperations);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   private void listTopics(
@@ -136,20 +134,18 @@ public final class TopicsResource {
   @PerformanceMetric("v3.topics.get")
   @ResourceName("api.v3.topics.get")
   public void getTopic(
+      @Context HttpServletRequest httpServletRequest,
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
       @PathParam("topicName") String topicName,
       @QueryParam("include_authorized_operations") @DefaultValue("false")
-          boolean includeAuthorizedOperations,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+          boolean includeAuthorizedOperations) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           getTopic(asyncResponse, clusterId, topicName, includeAuthorizedOperations);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   private void getTopic(
@@ -203,18 +199,16 @@ public final class TopicsResource {
   @PerformanceMetric("v3.topics.create")
   @ResourceName("api.v3.topics.create")
   public void createTopic(
+      @Context HttpServletRequest httpServletRequest,
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
-      @Valid CreateTopicRequest request,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      @Valid CreateTopicRequest request) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           createTopic(asyncResponse, clusterId, request);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   private void createTopic(
@@ -302,18 +296,16 @@ public final class TopicsResource {
   @PerformanceMetric("v3.topics.delete")
   @ResourceName("api.v3.topics.delete")
   public void deleteTopic(
+      @Context HttpServletRequest httpServletRequest,
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
-      @PathParam("topicName") String topicName,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      @PathParam("topicName") String topicName) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           deleteTopic(asyncResponse, clusterId, topicName);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   private void deleteTopic(AsyncResponse asyncResponse, String clusterId, String topicName) {

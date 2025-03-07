@@ -36,14 +36,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Provider;
+import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.GET;
-import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
-import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 
 @Path("/v3/clusters")
@@ -65,16 +65,13 @@ public final class ClustersResource {
   @GET
   @Produces(MediaType.APPLICATION_JSON)
   public void listClusters(
-      @Suspended AsyncResponse asyncResponse,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      @Context HttpServletRequest httpServletRequest, @Suspended AsyncResponse asyncResponse) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           listClusters(asyncResponse);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   private void listClusters(AsyncResponse asyncResponse) {
@@ -105,17 +102,15 @@ public final class ClustersResource {
   @PerformanceMetric("v3.clusters.get")
   @ResourceName("api.v3.clusters.get")
   public void getCluster(
+      @Context HttpServletRequest httpServletRequest,
       @Suspended AsyncResponse asyncResponse,
-      @PathParam("clusterId") String clusterId,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      @PathParam("clusterId") String clusterId) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           getCluster(asyncResponse, clusterId);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   private void getCluster(AsyncResponse asyncResponse, String clusterId) {

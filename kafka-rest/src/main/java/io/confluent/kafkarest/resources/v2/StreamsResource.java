@@ -28,15 +28,15 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Provider;
+import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
-import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
-import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.Context;
 
 @Path("/streams")
 @Consumes({Versions.KAFKA_V2_JSON})
@@ -54,17 +54,15 @@ public class StreamsResource {
   @Path("/{stream}/topics")
   @PerformanceMetric("stream.topics.list+v2")
   public void list(
+      @Context HttpServletRequest httpServletRequest,
       @Suspended AsyncResponse asyncResponse,
-      @PathParam("stream") String stream,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      @PathParam("stream") String stream) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           list(asyncResponse, stream);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   private void list(AsyncResponse asyncResponse, String stream) {

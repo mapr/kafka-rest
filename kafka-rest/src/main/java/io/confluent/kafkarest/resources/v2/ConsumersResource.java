@@ -54,13 +54,13 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Provider;
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
-import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -68,7 +68,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
-import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.UriInfo;
 
 @Path("/consumers")
@@ -106,13 +106,12 @@ public final class ConsumersResource {
   @PerformanceMetric("consumer.create+v2")
   @ResourceName("api.v2.consumers.create")
   public CreateConsumerInstanceResponse createGroup(
+      @Context HttpServletRequest httpServletRequest,
       final @javax.ws.rs.core.Context UriInfo uriInfo,
       final @PathParam("group") String group,
-      final @Valid CreateConsumerInstanceRequest config,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      final @Valid CreateConsumerInstanceRequest config) {
     return ImpersonationUtils.runAsUserIfImpersonationEnabled(
-        () -> createGroup(uriInfo, group, config), auth, cookie);
+        () -> createGroup(uriInfo, group, config), httpServletRequest.getRemoteUser());
   }
 
   private CreateConsumerInstanceResponse createGroup(
@@ -136,17 +135,15 @@ public final class ConsumersResource {
   @PerformanceMetric("consumer.delete+v2")
   @ResourceName("api.v2.consumers.delete")
   public void deleteGroup(
+      @Context HttpServletRequest httpServletRequest,
       final @PathParam("group") String group,
-      final @PathParam("instance") String instance,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      final @PathParam("instance") String instance) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           context.get().getKafkaConsumerManager().deleteConsumer(group, instance);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   @POST
@@ -154,19 +151,17 @@ public final class ConsumersResource {
   @PerformanceMetric("consumer.subscribe+v2")
   @ResourceName("api.v2.consumers.subscribe")
   public void subscribe(
+      @Context HttpServletRequest httpServletRequest,
       @javax.ws.rs.core.Context UriInfo uriInfo,
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
-      final @Valid @NotNull ConsumerSubscriptionRecord subscription,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      final @Valid @NotNull ConsumerSubscriptionRecord subscription) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           subscribe(uriInfo, group, instance, subscription);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   private void subscribe(
@@ -183,13 +178,13 @@ public final class ConsumersResource {
   @PerformanceMetric("consumer.subscription+v2")
   @ResourceName("api.v2.consumers.get-subscription")
   public ConsumerSubscriptionResponse subscription(
+      @Context HttpServletRequest httpServletRequest,
       @javax.ws.rs.core.Context UriInfo uriInfo,
       final @PathParam("group") String group,
-      final @PathParam("instance") String instance,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      final @PathParam("instance") String instance) {
     return ImpersonationUtils.runAsUserIfImpersonationEnabled(
-        () -> context.get().getKafkaConsumerManager().subscription(group, instance), auth, cookie);
+        () -> context.get().getKafkaConsumerManager().subscription(group, instance),
+        httpServletRequest.getRemoteUser());
   }
 
   @DELETE
@@ -197,18 +192,16 @@ public final class ConsumersResource {
   @PerformanceMetric("consumer.unsubscribe+v2")
   @ResourceName("api.v2.consumers.unsubscribe")
   public void unsubscribe(
+      @Context HttpServletRequest httpServletRequest,
       @javax.ws.rs.core.Context UriInfo uriInfo,
       final @PathParam("group") String group,
-      final @PathParam("instance") String instance,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      final @PathParam("instance") String instance) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           context.get().getKafkaConsumerManager().unsubscribe(group, instance);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   @GET
@@ -217,13 +210,12 @@ public final class ConsumersResource {
   @Produces({Versions.KAFKA_V2_JSON_BINARY_WEIGHTED, Versions.KAFKA_V2_JSON_WEIGHTED})
   @ResourceName("api.v2.consumers.consume-binary")
   public void readRecordBinary(
+      @Context HttpServletRequest httpServletRequest,
       final @Suspended AsyncResponse asyncResponse,
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
       final @QueryParam("timeout") @DefaultValue("-1") long timeoutMs,
-      final @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      final @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           readRecords(
@@ -236,8 +228,7 @@ public final class ConsumersResource {
               BinaryConsumerRecord::fromConsumerRecord);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   @GET
@@ -246,13 +237,12 @@ public final class ConsumersResource {
   @Produces({Versions.KAFKA_V2_JSON_JSON_WEIGHTED_LOW})
   @ResourceName("api.v2.consumers.consume-json")
   public void readRecordJson(
+      @Context HttpServletRequest httpServletRequest,
       final @Suspended AsyncResponse asyncResponse,
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
       final @QueryParam("timeout") @DefaultValue("-1") long timeoutMs,
-      final @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      final @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           readRecords(
@@ -265,8 +255,7 @@ public final class ConsumersResource {
               JsonConsumerRecord::fromConsumerRecord);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   @GET
@@ -276,13 +265,12 @@ public final class ConsumersResource {
   @Produces({Versions.KAFKA_V2_JSON_AVRO_WEIGHTED_LOW})
   @ResourceName("api.v2.consumers.consume-avro")
   public void readRecordAvro(
+      @Context HttpServletRequest httpServletRequest,
       final @Suspended AsyncResponse asyncResponse,
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
       @QueryParam("timeout") @DefaultValue("-1") long timeoutMs,
-      @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           readRecords(
@@ -295,8 +283,7 @@ public final class ConsumersResource {
               SchemaConsumerRecord::fromConsumerRecord);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   @GET
@@ -305,13 +292,12 @@ public final class ConsumersResource {
   @Produces({Versions.KAFKA_V2_JSON_JSON_SCHEMA_WEIGHTED_LOW})
   @ResourceName("api.v2.consumers.consume-json-schema")
   public void readRecordJsonSchema(
+      @Context HttpServletRequest httpServletRequest,
       final @Suspended AsyncResponse asyncResponse,
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
       @QueryParam("timeout") @DefaultValue("-1") long timeoutMs,
-      @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           readRecords(
@@ -324,8 +310,7 @@ public final class ConsumersResource {
               SchemaConsumerRecord::fromConsumerRecord);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   @GET
@@ -334,13 +319,12 @@ public final class ConsumersResource {
   @Produces({Versions.KAFKA_V2_JSON_PROTOBUF_WEIGHTED_LOW})
   @ResourceName("api.v2.consumers.consume-protobuf")
   public void readRecordProtobuf(
+      @Context HttpServletRequest httpServletRequest,
       final @Suspended AsyncResponse asyncResponse,
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
       @QueryParam("timeout") @DefaultValue("-1") long timeoutMs,
-      @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      @QueryParam("max_bytes") @DefaultValue("-1") long maxBytes) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           readRecords(
@@ -353,8 +337,7 @@ public final class ConsumersResource {
               SchemaConsumerRecord::fromConsumerRecord);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   @POST
@@ -362,20 +345,18 @@ public final class ConsumersResource {
   @PerformanceMetric("consumer.commit-offsets+v2")
   @ResourceName("api.v2.consumers.commit-offsets")
   public void commitOffsets(
+      @Context HttpServletRequest httpServletRequest,
       final @Suspended AsyncResponse asyncResponse,
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
       final @QueryParam("async") @DefaultValue("false") String async,
-      final @Valid ConsumerOffsetCommitRequest offsetCommitRequest,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      final @Valid ConsumerOffsetCommitRequest offsetCommitRequest) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           commitOffsets(asyncResponse, group, instance, async, offsetCommitRequest);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   private void commitOffsets(
@@ -416,13 +397,12 @@ public final class ConsumersResource {
   @PerformanceMetric("consumer.committed-offsets+v2")
   @ResourceName("api.v2.consumers.get-committed-offsets")
   public ConsumerCommittedResponse committedOffsets(
+      @Context HttpServletRequest httpServletRequest,
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
-      final @Valid @NotNull ConsumerCommittedRequest request,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      final @Valid @NotNull ConsumerCommittedRequest request) {
     return ImpersonationUtils.runAsUserIfImpersonationEnabled(
-        () -> committedOffsets(group, instance, request), auth, cookie);
+        () -> committedOffsets(group, instance, request), httpServletRequest.getRemoteUser());
   }
 
   private ConsumerCommittedResponse committedOffsets(
@@ -443,19 +423,17 @@ public final class ConsumersResource {
   @PerformanceMetric("consumer.seek-to-beginning+v2")
   @ResourceName("api.v2.consumers.seek-to-beginning")
   public void seekToBeginning(
+      @Context HttpServletRequest httpServletRequest,
       @javax.ws.rs.core.Context UriInfo uriInfo,
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
-      final @Valid @NotNull ConsumerSeekToRequest seekToRequest,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      final @Valid @NotNull ConsumerSeekToRequest seekToRequest) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           seekToBeginning(uriInfo, group, instance, seekToRequest);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   private void seekToBeginning(
@@ -475,19 +453,17 @@ public final class ConsumersResource {
   @PerformanceMetric("consumer.seek-to-end+v2")
   @ResourceName("api.v2.consumers.seek-to-end")
   public void seekToEnd(
+      @Context HttpServletRequest httpServletRequest,
       @javax.ws.rs.core.Context UriInfo uriInfo,
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
-      final @Valid @NotNull ConsumerSeekToRequest seekToRequest,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      final @Valid @NotNull ConsumerSeekToRequest seekToRequest) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           seekToEnd(uriInfo, group, instance, seekToRequest);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   private void seekToEnd(
@@ -507,19 +483,17 @@ public final class ConsumersResource {
   @PerformanceMetric("consumer.seek-to-offset+v2")
   @ResourceName("api.v2.consumers.seek-to-offset")
   public void seekToOffset(
+      @Context HttpServletRequest httpServletRequest,
       @javax.ws.rs.core.Context UriInfo uriInfo,
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
-      final @Valid @NotNull ConsumerSeekRequest request,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      final @Valid @NotNull ConsumerSeekRequest request) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           seekToOffset(uriInfo, group, instance, request);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   private void seekToOffset(
@@ -539,19 +513,17 @@ public final class ConsumersResource {
   @PerformanceMetric("consumer.assign+v2")
   @ResourceName("api.v2.consumers.assign")
   public void assign(
+      @Context HttpServletRequest httpServletRequest,
       @javax.ws.rs.core.Context UriInfo uriInfo,
       final @PathParam("group") String group,
       final @PathParam("instance") String instance,
-      final @Valid @NotNull ConsumerAssignmentRequest assignmentRequest,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      final @Valid @NotNull ConsumerAssignmentRequest assignmentRequest) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           assign(uriInfo, group, instance, assignmentRequest);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   private void assign(
@@ -568,13 +540,12 @@ public final class ConsumersResource {
   @PerformanceMetric("consumer.assignment+v2")
   @ResourceName("api.v2.consumers.get-assignments")
   public ConsumerAssignmentResponse assignment(
+      @Context HttpServletRequest httpServletRequest,
       @javax.ws.rs.core.Context UriInfo uriInfo,
       final @PathParam("group") String group,
-      final @PathParam("instance") String instance,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      final @PathParam("instance") String instance) {
     return ImpersonationUtils.runAsUserIfImpersonationEnabled(
-        () -> assignment(uriInfo, group, instance), auth, cookie);
+        () -> assignment(uriInfo, group, instance), httpServletRequest.getRemoteUser());
   }
 
   private ConsumerAssignmentResponse assignment(UriInfo uriInfo, String group, String instance) {

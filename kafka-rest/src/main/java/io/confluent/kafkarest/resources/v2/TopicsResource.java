@@ -33,15 +33,15 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Provider;
+import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
-import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
-import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.Context;
 
 @Path("/topics")
 @Consumes({Versions.KAFKA_V2_JSON})
@@ -63,16 +63,13 @@ public final class TopicsResource {
   @GET
   @PerformanceMetric("topics.list+v2")
   public void list(
-      @Suspended AsyncResponse asyncResponse,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      @Context HttpServletRequest httpServletRequest, @Suspended AsyncResponse asyncResponse) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           list(asyncResponse);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   private void list(AsyncResponse asyncResponse) {
@@ -91,17 +88,15 @@ public final class TopicsResource {
   @PerformanceMetric("topic.get+v2")
   @ResourceName("api.v2.topics.get")
   public void getTopic(
+      @Context HttpServletRequest httpServletRequest,
       @Suspended AsyncResponse asyncResponse,
-      @PathParam("topic") String topicName,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      @PathParam("topic") String topicName) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           getTopic(asyncResponse, topicName);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   private void getTopic(AsyncResponse asyncResponse, String topicName) {

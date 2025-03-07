@@ -36,14 +36,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Provider;
+import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.GET;
-import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
-import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 
 @Path("/v3/clusters/{clusterId}/topics/{topicName}/partitions")
@@ -67,18 +67,16 @@ public final class PartitionsResource {
   @PerformanceMetric("v3.partitions.list")
   @ResourceName("api.v3.partitions.list")
   public void listPartitions(
+      @Context HttpServletRequest httpServletRequest,
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
-      @PathParam("topicName") String topicName,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      @PathParam("topicName") String topicName) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           listPartitions(asyncResponse, clusterId, topicName);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   private void listPartitions(AsyncResponse asyncResponse, String clusterId, String topicName) {
@@ -116,19 +114,17 @@ public final class PartitionsResource {
   @PerformanceMetric("v3.partitions.get")
   @ResourceName("api.v3.partitions.get")
   public void getPartition(
+      @Context HttpServletRequest httpServletRequest,
       @Suspended AsyncResponse asyncResponse,
       @PathParam("clusterId") String clusterId,
       @PathParam("topicName") String topicName,
-      @PathParam("partitionId") Integer partitionId,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      @PathParam("partitionId") Integer partitionId) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           getPartition(asyncResponse, clusterId, topicName, partitionId);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   private void getPartition(

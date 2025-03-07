@@ -31,15 +31,15 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Provider;
+import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
-import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
-import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.Context;
 
 @Path("/topics/{topic}/partitions")
 @Consumes({Versions.KAFKA_V2_JSON})
@@ -57,17 +57,15 @@ public final class PartitionsResource {
   @GET
   @PerformanceMetric("partitions.list+v2")
   public void list(
+      @Context HttpServletRequest httpServletRequest,
       @Suspended AsyncResponse asyncResponse,
-      final @PathParam("topic") String topic,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      final @PathParam("topic") String topic) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           list(asyncResponse, topic);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   private void list(@Suspended AsyncResponse asyncResponse, @PathParam("topic") String topic) {
@@ -89,18 +87,16 @@ public final class PartitionsResource {
   @PerformanceMetric("partition.get+v2")
   @ResourceName("api.v2.partitions.get")
   public void getPartition(
+      @Context HttpServletRequest httpServletRequest,
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topic,
-      @PathParam("partition") int partitionId,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      @PathParam("partition") int partitionId) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           getPartition(asyncResponse, topic, partitionId);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   private void getPartition(
@@ -128,18 +124,16 @@ public final class PartitionsResource {
   @Path("/{partition}/offsets")
   @ResourceName("api.v2.partitions.get-offsets")
   public void getOffsets(
+      @Context HttpServletRequest httpServletRequest,
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topic,
-      @PathParam("partition") int partitionId,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      @PathParam("partition") int partitionId) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           getOffsets(asyncResponse, topic, partitionId);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   private void getOffsets(

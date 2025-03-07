@@ -31,17 +31,17 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import javax.inject.Inject;
 import javax.inject.Provider;
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.Consumes;
-import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
-import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 
 @Path("/topics/{topic}/partitions")
@@ -71,12 +71,11 @@ public final class ProduceToPartitionAction extends AbstractProduceAction {
   @Consumes({Versions.KAFKA_V2_JSON_BINARY_WEIGHTED})
   @ResourceName("api.v2.produce-to-partition.binary")
   public void produceBinary(
+      @Context HttpServletRequest httpServletRequest,
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topicName,
       @PathParam("partition") int partitionId,
-      @Valid @NotNull ProduceRequest request,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      @Valid @NotNull ProduceRequest request) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           CompletableFuture<ProduceResponse> response =
@@ -89,8 +88,7 @@ public final class ProduceToPartitionAction extends AbstractProduceAction {
               .asyncResume(asyncResponse);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   @POST
@@ -99,12 +97,11 @@ public final class ProduceToPartitionAction extends AbstractProduceAction {
   @Consumes({Versions.KAFKA_V2_JSON_JSON_WEIGHTED_LOW})
   @ResourceName("api.v2.produce-to-partition.json")
   public void produceJson(
+      @Context HttpServletRequest httpServletRequest,
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topicName,
       @PathParam("partition") int partitionId,
-      @Valid @NotNull ProduceRequest request,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      @Valid @NotNull ProduceRequest request) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           CompletableFuture<ProduceResponse> response =
@@ -117,8 +114,7 @@ public final class ProduceToPartitionAction extends AbstractProduceAction {
               .asyncResume(asyncResponse);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   @POST
@@ -127,12 +123,11 @@ public final class ProduceToPartitionAction extends AbstractProduceAction {
   @Consumes({Versions.KAFKA_V2_JSON_AVRO_WEIGHTED_LOW})
   @ResourceName("api.v2.produce-to-partition.avro")
   public void produceAvro(
+      @Context HttpServletRequest httpServletRequest,
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topicName,
       @PathParam("partition") int partitionId,
-      @Valid @NotNull ProduceRequest request,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      @Valid @NotNull ProduceRequest request) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           CompletableFuture<ProduceResponse> response =
@@ -144,8 +139,7 @@ public final class ProduceToPartitionAction extends AbstractProduceAction {
               .asyncResume(asyncResponse);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   @POST
@@ -154,12 +148,11 @@ public final class ProduceToPartitionAction extends AbstractProduceAction {
   @Consumes({Versions.KAFKA_V2_JSON_JSON_SCHEMA_WEIGHTED_LOW})
   @ResourceName("api.v2.produce-to-partition.json-schema")
   public void produceJsonSchema(
+      @Context HttpServletRequest httpServletRequest,
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topicName,
       @PathParam("partition") int partitionId,
-      @Valid @NotNull ProduceRequest request,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      @Valid @NotNull ProduceRequest request) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           CompletableFuture<ProduceResponse> response =
@@ -172,8 +165,7 @@ public final class ProduceToPartitionAction extends AbstractProduceAction {
               .asyncResume(asyncResponse);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 
   @POST
@@ -182,12 +174,11 @@ public final class ProduceToPartitionAction extends AbstractProduceAction {
   @Consumes({Versions.KAFKA_V2_JSON_PROTOBUF_WEIGHTED_LOW})
   @ResourceName("api.v2.produce-to-partition.protobuf")
   public void produceProtobuf(
+      @Context HttpServletRequest httpServletRequest,
       @Suspended AsyncResponse asyncResponse,
       @PathParam("topic") String topicName,
       @PathParam("partition") int partitionId,
-      @Valid @NotNull ProduceRequest request,
-      @HeaderParam(HttpHeaders.AUTHORIZATION) String auth,
-      @HeaderParam(HttpHeaders.COOKIE) String cookie) {
+      @Valid @NotNull ProduceRequest request) {
     ImpersonationUtils.runAsUserIfImpersonationEnabled(
         () -> {
           CompletableFuture<ProduceResponse> response =
@@ -200,7 +191,6 @@ public final class ProduceToPartitionAction extends AbstractProduceAction {
               .asyncResume(asyncResponse);
           return null;
         },
-        auth,
-        cookie);
+        httpServletRequest.getRemoteUser());
   }
 }
