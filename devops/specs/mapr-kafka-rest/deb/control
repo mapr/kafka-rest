@@ -8,7 +8,7 @@ Depends: mapr-client (>= 7.2.0) | mapr-core (>= 7.2.0) , mapr-kafka (>= 3.6.1)
 #Provides:
 #Conflicts:
 #Recommends: 
-Maintainer: Hewlett Packard Enterprise <ezmeral_software_support@hpe.com>
-Description: Ezmeral Ecosystem Pack: Kafka REST package
+Maintainer: Hewlett Packard Enterprise
+Description: Confluent Kafka REST distribution included in HPE DataFabric Software Ecosystem Pack
 Tag: __RELEASE_BRANCH__
 Commit: __GIT_COMMIT__
