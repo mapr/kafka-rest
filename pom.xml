@@ -7,13 +7,13 @@
     <parent>
         <groupId>io.confluent</groupId>
         <artifactId>rest-utils-parent</artifactId>
-        <version>7.6.0.300-dep-1000-SNAPSHOT</version>
+        <version>7.6.0.300-dep-1000</version>
     </parent>
 
     <artifactId>kafka-rest-parent</artifactId>
     <packaging>pom</packaging>
     <name>kafka-rest-parent</name>
-    <version>7.6.0.300-dep-1000-SNAPSHOT</version>
+    <version>7.6.0.300-dep-1000</version>
     <organization>
         <name>Confluent, Inc.</name>
         <url>http://confluent.io</url>
@@ -48,9 +48,9 @@
         <confluent.maven.repo>https://packages.confluent.io/maven/</confluent.maven.repo>
         <checkstyle.config.location>checkstyle/checkstyle.xml</checkstyle.config.location>
         <checkstyle.suppressions.location>checkstyle/suppressions.xml</checkstyle.suppressions.location>
-        <io.confluent.kafka-rest.version>7.6.0.300-dep-1000-SNAPSHOT</io.confluent.kafka-rest.version>
-        <io.confluent.schema-registry.version>7.6.0.400-dep-1000-SNAPSHOT</io.confluent.schema-registry.version>
-        <io.confluent.rest-utils.version>7.6.0.300-dep-1000-SNAPSHOT</io.confluent.rest-utils.version>
+        <io.confluent.kafka-rest.version>7.6.0.300-dep-1000</io.confluent.kafka-rest.version>
+        <io.confluent.schema-registry.version>7.6.0.400-dep-1000</io.confluent.schema-registry.version>
+        <io.confluent.rest-utils.version>7.6.0.300-dep-1000</io.confluent.rest-utils.version>
         <spotbugs.version>3.1.9</spotbugs.version>
         <jackson.version>2.13.3</jackson.version>
         <jackson.databind.version>2.13.4.2</jackson.databind.version>
@@ -58,7 +58,7 @@
         <avro.version>1.11.4</avro.version>
         <classgraph.version>4.8.179</classgraph.version>
         <slf4j.version>1.7.36</slf4j.version>
-        <kafka.version>3.6.1.300-dep-1000-SNAPSHOT</kafka.version>
+        <kafka.version>3.6.1.300-dep-1000</kafka.version>
         <protobuf.version>3.25.5</protobuf.version>
 	<dependency.check.version>7.4.4</dependency.check.version>
     </properties>
