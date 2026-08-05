@@ -52,8 +52,11 @@
         <io.confluent.schema-registry.version>7.6.0.500-dep-1020-SNAPSHOT</io.confluent.schema-registry.version>
         <io.confluent.rest-utils.version>7.6.0.400-dep-1020-SNAPSHOT</io.confluent.rest-utils.version>
         <spotbugs.version>3.1.9</spotbugs.version>
-        <jackson.version>2.13.3</jackson.version>
-        <jackson.databind.version>2.13.4.2</jackson.databind.version>
+        <jackson.version>2.22.1</jackson.version>
+        <jackson.databind.version>2.22.1</jackson.databind.version>
+        <jackson.annotations.version>2.22</jackson.annotations.version>
+	<!-- Overriding transitive commons-lang3 dependency version to fix CVEs -->
+        <commons.lang3.version>3.20.0</commons.lang3.version>
         <jose4j.version>0.9.6</jose4j.version>
         <avro.version>1.11.5</avro.version>
         <classgraph.version>4.8.179</classgraph.version>
@@ -83,6 +86,17 @@
                 <groupId>com.google.auto.value</groupId>
                 <artifactId>auto-value-annotations</artifactId>
                 <version>1.7.2</version>
+            </dependency>
+            <!-- Overriding transitive commons-lang3 dependency version to fix CVEs -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>${commons.lang3.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
+                <version>${jackson.annotations.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.datatype</groupId>
