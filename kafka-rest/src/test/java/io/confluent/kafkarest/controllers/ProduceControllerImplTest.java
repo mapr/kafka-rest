@@ -93,7 +93,7 @@ public class ProduceControllerImplTest {
             new RoundRobinPartitioner(),
             new ByteArraySerializer(),
             new ByteArraySerializer());
-    produceController = new ProduceControllerImpl(producer);
+    produceController = new ProduceControllerImpl(() -> producer);
   }
 
   @Test

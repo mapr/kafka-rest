@@ -24,6 +24,8 @@ import io.confluent.kafkarest.config.SchemaRegistryConfig;
 import io.confluent.kafkarest.v2.KafkaConsumerManager;
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.apache.hadoop.security.IdMappingServiceProvider;
 import org.apache.kafka.clients.admin.Admin;
@@ -43,8 +45,9 @@ public class DefaultKafkaRestContext implements KafkaRestContext {
 
   private final KafkaRestConfig config;
   private KafkaConsumerManager kafkaConsumerManager;
-  private AdminClientCache adminClientCache;
-  private ResourcesExistenceChecker resourcesExistenceChecker;
+  private volatile AdminClientCache adminClientCache;
+  private final Map<String, ResourcesExistenceChecker> resourcesExistenceCheckers =
+      new ConcurrentHashMap<>();
 
   private SchemaRegistryClient schemaRegistryClient;
 
@@ -69,8 +72,12 @@ public class DefaultKafkaRestContext implements KafkaRestContext {
   @Override
   public Admin getAdmin() {
     if (adminClientCache == null) {
-      final IdMappingServiceProvider idMapper = UnixUserIdUtils.getUnixIdMapper();
-      adminClientCache = new AdminClientCache(idMapper);
+      synchronized (this) {
+        if (adminClientCache == null) {
+          final IdMappingServiceProvider idMapper = UnixUserIdUtils.getUnixIdMapper();
+          adminClientCache = new AdminClientCache(idMapper);
+        }
+      }
     }
     return adminClientCache.get(config.getAdminProperties());
   }
@@ -119,9 +126,8 @@ public class DefaultKafkaRestContext implements KafkaRestContext {
 
   @Override
   public ResourcesExistenceChecker getResourcesExistenceChecker() {
-    if (resourcesExistenceChecker == null) {
-      resourcesExistenceChecker = new ResourcesExistenceChecker(config, getAdmin());
-    }
-    return resourcesExistenceChecker;
+    String currentUser = ImpersonationUtils.getCurrentUserName();
+    return resourcesExistenceCheckers.computeIfAbsent(
+        currentUser, u -> new ResourcesExistenceChecker(config, getAdmin()));
   }
 }
