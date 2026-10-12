@@ -34,8 +34,9 @@ public class BinaryKafkaConsumerState
       KafkaRestConfig config,
       ConsumerInstanceConfig consumerInstanceConfig,
       ConsumerInstanceId instanceId,
-      Consumer consumer) {
-    super(config, consumerInstanceConfig, instanceId, consumer);
+      Consumer consumer,
+      String owner) {
+    super(config, consumerInstanceConfig, instanceId, consumer, owner);
   }
 
   @Override

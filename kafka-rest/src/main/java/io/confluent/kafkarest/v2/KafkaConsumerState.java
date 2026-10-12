@@ -68,6 +68,7 @@ public abstract class KafkaConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, Cli
   private final Clock clock = Clock.systemUTC();
   private final Duration consumerInstanceTimeout;
   private final ConsumerInstanceConfig consumerInstanceConfig;
+  private final String owner;
 
   private final Queue<ConsumerRecord<KafkaKeyT, KafkaValueT>> consumerRecords = new ArrayDeque<>();
 
@@ -79,11 +80,13 @@ public abstract class KafkaConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, Cli
       KafkaRestConfig config,
       ConsumerInstanceConfig consumerInstanceConfig,
       ConsumerInstanceId instanceId,
-      Consumer<KafkaKeyT, KafkaValueT> consumer) {
+      Consumer<KafkaKeyT, KafkaValueT> consumer,
+      String owner) {
     this.instanceId = instanceId;
     this.consumer = consumer;
     this.consumerInstanceTimeout =
         Duration.ofMillis(config.getInt(KafkaRestConfig.CONSUMER_INSTANCE_TIMEOUT_MS_CONFIG));
+    this.owner = owner;
     this.expiration = clock.instant().plus(consumerInstanceTimeout);
     this.consumerInstanceConfig = consumerInstanceConfig;
     this.timeout = config.getInt(KafkaRestConfig.CONSUMER_REQUEST_TIMEOUT_MS_CONFIG);
@@ -392,6 +395,10 @@ public abstract class KafkaConsumerState<KafkaKeyT, KafkaValueT, ClientKeyT, Cli
     for (ConsumerRecord<KafkaKeyT, KafkaValueT> consumerRecord : polledRecords) {
       consumerRecords.add(consumerRecord);
     }
+  }
+
+  public String getOwner() {
+    return owner;
   }
 
   private class NoOpOnRebalance implements ConsumerRebalanceListener {

@@ -21,6 +21,7 @@ import io.confluent.kafka.schemaregistry.client.SchemaRegistryClientConfig;
 import io.confluent.kafkarest.ConsumerInstanceId;
 import io.confluent.kafkarest.ConsumerReadCallback;
 import io.confluent.kafkarest.Errors;
+import io.confluent.kafkarest.ImpersonationUtils;
 import io.confluent.kafkarest.KafkaRestConfig;
 import io.confluent.kafkarest.converters.AvroConverter;
 import io.confluent.kafkarest.converters.JsonSchemaConverter;
@@ -206,7 +207,9 @@ public class KafkaConsumerManager {
         throw Errors.invalidConsumerConfigException(e.getMessage());
       }
 
-      KafkaConsumerState state = createConsumerState(instanceConfig, cid, consumer);
+      KafkaConsumerState state =
+          createConsumerState(
+              instanceConfig, cid, consumer, ImpersonationUtils.getCurrentUserName());
       synchronized (this) {
         consumers.put(cid, state);
       }
@@ -310,22 +313,25 @@ public class KafkaConsumerManager {
   }
 
   private KafkaConsumerState createConsumerState(
-      ConsumerInstanceConfig instanceConfig, ConsumerInstanceId cid, Consumer consumer)
+      ConsumerInstanceConfig instanceConfig,
+      ConsumerInstanceId cid,
+      Consumer consumer,
+      String owner)
       throws RestServerErrorException {
     switch (instanceConfig.getFormat()) {
       case BINARY:
-        return new BinaryKafkaConsumerState(config, instanceConfig, cid, consumer);
+        return new BinaryKafkaConsumerState(config, instanceConfig, cid, consumer, owner);
       case AVRO:
         return new SchemaKafkaConsumerState(
-            config, instanceConfig, cid, consumer, new AvroConverter());
+            config, instanceConfig, cid, consumer, new AvroConverter(), owner);
       case JSON:
-        return new JsonKafkaConsumerState(config, instanceConfig, cid, consumer);
+        return new JsonKafkaConsumerState(config, instanceConfig, cid, consumer, owner);
       case JSONSCHEMA:
         return new SchemaKafkaConsumerState(
-            config, instanceConfig, cid, consumer, new JsonSchemaConverter());
+            config, instanceConfig, cid, consumer, new JsonSchemaConverter(), owner);
       case PROTOBUF:
         return new SchemaKafkaConsumerState(
-            config, instanceConfig, cid, consumer, new ProtobufConverter());
+            config, instanceConfig, cid, consumer, new ProtobufConverter(), owner);
       default:
         throw new RestServerErrorException(
             String.format(
@@ -692,6 +698,12 @@ public class KafkaConsumerManager {
     final KafkaConsumerState state = toRemove ? consumers.remove(id) : consumers.get(id);
     if (state == null) {
       throw Errors.consumerInstanceNotFoundException();
+    }
+
+    String currentUser = ImpersonationUtils.getCurrentUserName();
+    String owner = state.getOwner();
+    if (owner == null || !owner.equals(currentUser)) {
+      throw Errors.noPermissionsException();
     }
     state.updateExpiration();
     return state;

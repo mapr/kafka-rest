@@ -20,12 +20,12 @@ import static java.util.Objects.requireNonNull;
 import io.confluent.kafkarest.DefaultKafkaRestContext;
 import io.confluent.kafkarest.KafkaRestConfig;
 import io.confluent.kafkarest.KafkaRestContext;
+import io.confluent.kafkarest.ProducerCache;
+import io.confluent.kafkarest.ProducerCacheImpl;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import org.apache.kafka.clients.admin.Admin;
-import org.apache.kafka.clients.producer.Producer;
 import org.glassfish.hk2.api.Factory;
-import org.glassfish.hk2.api.TypeLiteral;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 
 /**
@@ -43,9 +43,7 @@ public final class KafkaModule extends AbstractBinder {
 
     bindFactory(AdminFactory.class).to(Admin.class);
 
-    bindFactory(ProducerFactory.class)
-        .to(new TypeLiteral<Producer<byte[], byte[]>>() {})
-        .in(Singleton.class);
+    bind(ProducerCacheImpl.class).to(ProducerCache.class).in(Singleton.class);
   }
 
   private static final class KafkaRestContextFactory implements Factory<KafkaRestContext> {
@@ -83,25 +81,6 @@ public final class KafkaModule extends AbstractBinder {
     @Override
     public void dispose(Admin admin) {
       admin.close();
-    }
-  }
-
-  private static final class ProducerFactory implements Factory<Producer<byte[], byte[]>> {
-    private final KafkaRestContext context;
-
-    @Inject
-    private ProducerFactory(KafkaRestContext context) {
-      this.context = requireNonNull(context);
-    }
-
-    @Override
-    public Producer<byte[], byte[]> provide() {
-      return context.getProducer();
-    }
-
-    @Override
-    public void dispose(Producer<byte[], byte[]> producer) {
-      producer.close();
     }
   }
 }

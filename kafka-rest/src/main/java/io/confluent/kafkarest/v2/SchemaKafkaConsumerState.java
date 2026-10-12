@@ -38,8 +38,9 @@ public final class SchemaKafkaConsumerState
       ConsumerInstanceConfig consumerInstanceConfig,
       ConsumerInstanceId instanceId,
       Consumer consumer,
-      SchemaConverter schemaConverter) {
-    super(config, consumerInstanceConfig, instanceId, consumer);
+      SchemaConverter schemaConverter,
+      String owner) {
+    super(config, consumerInstanceConfig, instanceId, consumer, owner);
     this.schemaConverter = schemaConverter;
   }
 

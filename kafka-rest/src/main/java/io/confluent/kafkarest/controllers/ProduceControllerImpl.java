@@ -19,13 +19,13 @@ import static java.util.Objects.requireNonNull;
 
 import com.google.common.collect.Multimap;
 import com.google.protobuf.ByteString;
+import io.confluent.kafkarest.ProducerCache;
 import io.confluent.kafkarest.entities.ProduceResult;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
-import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.slf4j.Logger;
@@ -35,11 +35,11 @@ final class ProduceControllerImpl implements ProduceController {
 
   private static final Logger log = LoggerFactory.getLogger(ProduceController.class);
 
-  private final Producer<byte[], byte[]> producer;
+  private final ProducerCache producerCache;
 
   @Inject
-  ProduceControllerImpl(Producer<byte[], byte[]> producer) {
-    this.producer = requireNonNull(producer);
+  ProduceControllerImpl(ProducerCache producerCache) {
+    this.producerCache = requireNonNull(producerCache);
   }
 
   @Override
@@ -53,29 +53,31 @@ final class ProduceControllerImpl implements ProduceController {
       Instant timestamp) {
     CompletableFuture<ProduceResult> result = new CompletableFuture<>();
     log.debug("Producing to kafka");
-    producer.send(
-        new ProducerRecord<>(
-            topicName,
-            partitionId.orElse(null),
-            timestamp.toEpochMilli(),
-            key.map(ByteString::toByteArray).orElse(null),
-            value.map(ByteString::toByteArray).orElse(null),
-            headers.entries().stream()
-                .map(
-                    header ->
-                        new RecordHeader(
-                            header.getKey(),
-                            header.getValue().map(ByteString::toByteArray).orElse(null)))
-                .collect(Collectors.toList())),
-        (metadata, exception) -> {
-          if (exception != null) {
-            log.debug("Received exception from kafka", exception);
-            result.completeExceptionally(exception);
-          } else {
-            log.debug("Received response from kafka");
-            result.complete(ProduceResult.fromRecordMetadata(metadata, Instant.now()));
-          }
-        });
+    producerCache
+        .getProducer()
+        .send(
+            new ProducerRecord<>(
+                topicName,
+                partitionId.orElse(null),
+                timestamp.toEpochMilli(),
+                key.map(ByteString::toByteArray).orElse(null),
+                value.map(ByteString::toByteArray).orElse(null),
+                headers.entries().stream()
+                    .map(
+                        header ->
+                            new RecordHeader(
+                                header.getKey(),
+                                header.getValue().map(ByteString::toByteArray).orElse(null)))
+                    .collect(Collectors.toList())),
+            (metadata, exception) -> {
+              if (exception != null) {
+                log.debug("Received exception from kafka", exception);
+                result.completeExceptionally(exception);
+              } else {
+                log.debug("Received response from kafka");
+                result.complete(ProduceResult.fromRecordMetadata(metadata, Instant.now()));
+              }
+            });
     return result;
   }
 }
